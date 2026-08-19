@@ -7,8 +7,18 @@
     },
     {
       "path": "{app_dir}/app",
-      "type": "all",
-      "names": "all"
+      "type": "application",
+      "names": [
+        "template_service",
+        "db_manager",
+        "message_view",
+        "route_manager",
+        "user_panel",
+        "user_info",
+        "auth",
+        "home",
+        "server_manager"
+      ]
     }
   ],
   "system": {
