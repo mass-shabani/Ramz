@@ -1,0 +1,84 @@
+{% extends "panel_layout.html" %}
+
+{% block panel_title %}داشبورد{% endblock %}
+
+{% block panel_content %}
+<div class="dashboard-welcome">
+    <h3>خوش آمدید، {{ current_user.username }}!</h3>
+    <p>این صفحه اصلی پنل کاربری شما است. در آینده ویجت‌های متنوعی با قابلیت جابجایی در اینجا نمایش داده خواهند شد.</p>
+</div>
+
+<div class="widgets-grid">
+    <!-- Placeholder for future Lit widgets -->
+    <div class="widget-placeholder">
+        <span class="widget-icon">📊</span>
+        <p>ویجت آمار پورتفولیو</p>
+    </div>
+    <div class="widget-placeholder">
+        <span class="widget-icon">💰</span>
+        <p>ویجت موجودی کیف پول</p>
+    </div>
+    <div class="widget-placeholder">
+        <span class="widget-icon">📈</span>
+        <p>ویجت نمودار قیمت‌ها</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block head_extra %}
+{{ super() }}
+<style>
+.dashboard-welcome {
+    background: var(--surface-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+.dashboard-welcome h3 {
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+    font-size: 1.5rem;
+}
+
+.dashboard-welcome p {
+    color: var(--text-secondary);
+    line-height: 1.8;
+}
+
+.widgets-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+.widget-placeholder {
+    background: var(--surface-bg);
+    border: 1px dashed var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.widget-placeholder:hover {
+    border-color: var(--accent);
+    background: rgba(245, 158, 11, 0.05);
+    transform: translateY(-4px);
+}
+
+.widget-icon {
+    font-size: 3rem;
+    display: block;
+    margin-bottom: 1rem;
+}
+
+.widget-placeholder p {
+    color: var(--text-secondary);
+    font-weight: 500;
+    margin: 0;
+}
+</style>
+{% endblock %}

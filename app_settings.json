@@ -1,0 +1,79 @@
+{
+  "modules": [
+    {
+      "path": "{massir_dir}/modules",
+      "type": "systems",
+      "names": ["system_logger", "network_fastapi", "system_database"]
+    },
+    {
+      "path": "{app_dir}/app",
+      "type": "all",
+      "names": "all"
+    }
+  ],
+  "system": {
+    "auto_shutdown": true,
+    "auto_shutdown_delay": 10
+  },
+  "database": {
+    "connections": [
+      {
+        "name": "default",
+        "driver": "sqlite",
+        "path": "{app_dir}/data/ramz.db",
+        "cache_enabled": true,
+        "cache_ttl": 300
+      }
+    ],
+    "cache": {
+      "enabled": true,
+      "ttl": 300,
+      "max_size": 1000
+    }
+  },
+  "template": {
+    "project_banner_template": "\n==========================================================\n\t{project_name}\n\t{project_version}\n\t{project_info}\n==========================================================\n",
+    "system_log_template": "[{level}]\t{message}",
+    "banner_color_code": "32",
+    "system_log_color_code": "96"
+  },
+  "logs": {
+    "show_logs": true,
+    "show_banner": true,
+    "hide_log_tags": [],
+    "hide_log_levels": [],
+    "debug_mode": true
+  },
+  "information": {
+    "project_name": "Ramz",
+    "project_version": "1.0.0",
+    "project_info": "A modular cryptocurrency services web application built with Massir framework"
+  },
+  "fastapi_provider": {
+    "title": "Ramz",
+    "version": "1.0.0",
+    "description": "A modular cryptocurrency services web application built with Massir framework",
+    "docs_url": "/docs",
+    "redoc_url": "/redoc",
+    "openapi_url": "/openapi.json",
+    "debug": false,
+    "web": {
+      "host": "127.0.0.1",
+      "port": 8080,
+      "reload": false,
+      "workers": 1,
+      "log_level": "info"
+    },
+    "cors": {
+      "origins": ["*"],
+      "credentials": true,
+      "methods": ["*"],
+      "headers": ["*"]
+    },
+    "gzip": {
+      "enabled": true,
+      "minimum_size": 1000
+    },
+    "trusted_hosts": ["*"]
+  }
+}

@@ -1,0 +1,13 @@
+<footer class="main-footer">
+    <div class="footer-container">
+        <div class="footer-content">
+            <p class="footer-text">&copy; 2026 Crypto Services. All rights reserved.</p>
+            <div class="footer-links">
+                {% set footer_items = menu_manager.get_menu_items('footer') if menu_manager else [] %}
+                {% for item in footer_items %}
+                    <a href="{{ item.url }}" class="footer-link">{{ item.label }}</a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</footer>

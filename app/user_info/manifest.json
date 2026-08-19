@@ -1,0 +1,9 @@
+{
+  "name": "user_info",
+  "version": "1.0.0",
+  "type": "application",
+  "entrypoint": "UserInfoModule",
+  "description": "Manages user profile display and editing functionalities within the user panel.",
+  "requires": ["core_logger", "http_api", "template_service", "menu_manager", "panel_service", "app_db_service"],
+  "provides": ["user_info_service"]
+}

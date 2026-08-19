@@ -1,0 +1,9 @@
+{
+  "name": "home",
+  "version": "1.0.0",
+  "type": "application",
+  "entrypoint": "HomeModule",
+  "description": "Home page module with login button for the application.",
+  "requires": ["core_logger", "http_api", "template_service"],
+  "provides": []
+}

@@ -1,0 +1,9 @@
+{
+  "name": "template_service",
+  "version": "1.0.0",
+  "type": "application",
+  "entrypoint": "TemplateServiceModule",
+  "description": "Provides Jinja2 templating engine, theme management, global static assets, and menu registry for the application.",
+  "requires": ["core_logger", "http_api"],
+  "provides": ["template_service", "menu_manager"]
+}

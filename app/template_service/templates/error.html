@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}{{ status_code }} - {{ error_title }}{% endblock %}
+
+{% block content %}
+<div class="error-section">
+    <div class="error-container">
+        <div class="error-visual">
+            <div class="error-code">{{ status_code }}</div>
+            <div class="error-glow"></div>
+        </div>
+        
+        <div class="error-info">
+            <h1 class="error-title">{{ error_title }}</h1>
+            <p class="error-message">{{ error_message }}</p>
+            
+            <div class="error-actions">
+                <a href="{{ home_url }}" class="btn btn-primary">
+                    <span class="btn-icon">🏠</span>
+                    <span>بازگشت به خانه</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block head_extra %}
+<style>
+.error-section {
+    min-height: calc(100vh - 200px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 0;
+}
+
+.error-container {
+    text-align: center;
+    max-width: 600px;
+    padding: 2rem;
+    animation: fadeInUp 0.8s ease;
+}
+
+.error-visual {
+    position: relative;
+    margin-bottom: 2rem;
+}
+
+.error-code {
+    font-size: 10rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent) 0%, #EF4444 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+    margin: 0;
+    position: relative;
+    z-index: 2;
+}
+
+.error-glow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(245, 158, 11, 0.3) 0%, transparent 70%);
+    border-radius: 50%;
+    z-index: 1;
+    animation: pulse 3s ease-in-out infinite;
+}
+
+.error-title {
+    font-size: 2rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+}
+
+.error-message {
+    font-size: 1.125rem;
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+    line-height: 1.8;
+}
+
+.error-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0.5;
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.2);
+        opacity: 0.8;
+    }
+}
+
+@media (max-width: 640px) {
+    .error-code {
+        font-size: 6rem;
+    }
+    
+    .error-title {
+        font-size: 1.5rem;
+    }
+}
+</style>
+{% endblock %}

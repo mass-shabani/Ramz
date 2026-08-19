@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}پنل کاربری - Crypto Services{% endblock %}
+
+{% block content %}
+<div class="panel-container">
+    <!-- Lit Web Component for Sidebar -->
+    <app-sidebar id="sidebar"></app-sidebar>
+    
+    <main class="panel-content">
+        <div class="panel-header">
+            <h2 class="panel-title">{% block panel_title %}داشبورد{% endblock %}</h2>
+            <div class="user-badge">
+                <span class="user-icon">👤</span>
+                <span class="user-name">{{ current_user.username }}</span>
+            </div>
+        </div>
+        
+        <div class="panel-body">
+            {% block panel_content %}{% endblock %}
+        </div>
+    </main>
+</div>
+
+<script type="application/json" id="sidebar-data">
+    {{ sidebar_items | tojson | safe }}
+</script>
+
+<script>
+    // Pass sidebar items from Jinja context to the Lit Web Component
+    document.addEventListener('DOMContentLoaded', () => {
+        const sidebar = document.getElementById('sidebar');
+        const dataScript = document.getElementById('sidebar-data');
+        if (sidebar) {
+            sidebar.items = dataScript;
+        }
+    });
+</script>
+{% endblock %}
+
+{% block head_extra %}
+<style>
+.panel-container {
+    display: flex;
+    min-height: calc(100vh - 140px);
+    direction: rtl;
+    background: var(--primary-bg);
+}
+
+.panel-content {
+    flex: 1;
+    padding: 2rem;
+    overflow-y: auto;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 1.5rem;
+}
+
+.panel-title {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.user-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--surface-bg);
+    padding: 0.5rem 1rem;
+    border-radius: 50px;
+    border: 1px solid var(--border-color);
+}
+
+.user-icon {
+    font-size: 1.25rem;
+}
+
+.user-name {
+    color: var(--text-primary);
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+.panel-body {
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 768px) {
+    .panel-container {
+        flex-direction: column-reverse;
+    }
+    
+    .panel-content {
+        padding: 1.5rem;
+    }
+}
+</style>
+{% endblock %}

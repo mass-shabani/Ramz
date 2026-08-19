@@ -1,0 +1,163 @@
+{% extends "panel_layout.html" %}
+
+{% block panel_title %}اطلاعات کاربری{% endblock %}
+
+{% block panel_content %}
+<div class="profile-container">
+    {% if success_message %}
+    <div class="alert alert-success alert-auto-hide">
+        <span class="alert-icon">✅</span>
+        <span class="alert-text">{{ success_message }}</span>
+    </div>
+    {% endif %}
+
+    {% if error_message %}
+    <div class="alert alert-error alert-auto-hide">
+        <span class="alert-icon">⚠️</span>
+        <span class="alert-text">{{ error_message }}</span>
+    </div>
+    {% endif %}
+
+    <div class="profile-card">
+        <form method="POST" action="/panel/profile" class="profile-form">
+            <div class="form-group">
+                <label for="username" class="form-label">نام کاربری</label>
+                <input 
+                    type="text" 
+                    id="username" 
+                    name="username" 
+                    class="form-input" 
+                    value="{{ profile_data.username if profile_data else '' }}" 
+                    readonly
+                    title="نام کاربری قابل تغییر نیست"
+                >
+                <small class="form-hint">نام کاربری پس از ثبت‌نام قابل تغییر نیست.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="email" class="form-label">آدرس ایمیل</label>
+                <input 
+                    type="email" 
+                    id="email" 
+                    name="email" 
+                    class="form-input" 
+                    value="{{ profile_data.email if profile_data else '' }}" 
+                    required
+                    placeholder="example@domain.com"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="created_at" class="form-label">تاریخ عضویت</label>
+                <input 
+                    type="text" 
+                    id="created_at" 
+                    class="form-input" 
+                    value="{{ profile_data.created_at if profile_data else '' }}" 
+                    readonly
+                    dir="ltr"
+                    style="text-align: right;"
+                >
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <span class="btn-icon">💾</span>
+                    <span>ذخیره تغییرات</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block head_extra %}
+{{ super() }}
+<style>
+.profile-container {
+    max-width: 600px;
+}
+
+.profile-card {
+    background: var(--surface-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 2rem;
+    box-shadow: var(--shadow-md);
+}
+
+.profile-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.form-input {
+    background: var(--primary-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 0.875rem 1rem;
+    color: var(--text-primary);
+    font-size: 1rem;
+    transition: all 0.2s ease;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+}
+
+.form-input[readonly] {
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-muted);
+    cursor: not-allowed;
+}
+
+.form-hint {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+}
+
+.form-actions {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.alert {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+}
+
+.alert-success {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #6EE7B7;
+}
+
+.alert-error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #FCA5A5;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,9 @@
+{
+  "name": "auth",
+  "version": "1.0.0",
+  "type": "application",
+  "entrypoint": "AuthModule",
+  "description": "Handles user authentication, login, logout, and session management.",
+  "requires": ["core_logger", "http_api", "template_service", "app_db_service"],
+  "provides": ["auth_service"]
+}

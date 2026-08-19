@@ -1,0 +1,9 @@
+{
+  "name": "db_manager",
+  "version": "1.0.0",
+  "type": "application",
+  "entrypoint": "DbManagerModule",
+  "description": "Manages application database schema and provides app_db_service to other modules.",
+  "requires": ["core_logger", "core_config", "database_service", "database_types"],
+  "provides": ["app_db_service"]
+}

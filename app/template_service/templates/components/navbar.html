@@ -1,0 +1,26 @@
+<nav class="main-navbar">
+    <div class="navbar-container">
+        <div class="navbar-brand">
+            <a href="/" class="brand-link">
+                <span class="brand-icon">₿</span>
+                <span class="brand-text">Crypto Services</span>
+            </a>
+        </div>
+        
+        <div class="navbar-menu">
+            {% set nav_items = menu_manager.get_menu_items('main_nav') if menu_manager else [] %}
+            {% for item in nav_items %}
+                <a href="{{ item.url }}" class="nav-item" title="{{ item.tooltip or '' }}">
+                    {% if item.icon %}<span class="nav-icon">{{ item.icon }}</span>{% endif %}
+                    <span class="nav-label">{{ item.label }}</span>
+                </a>
+            {% endfor %}
+        </div>
+
+        <div class="navbar-actions">
+            {% block navbar_actions %}
+            <a href="/login" class="btn btn-accent">ورود</a>
+            {% endblock %}
+        </div>
+    </div>
+</nav>

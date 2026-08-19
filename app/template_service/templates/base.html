@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Crypto Services{% endblock %}</title>
+    
+    {# Load global CSS files registered in template_service #}
+    {% for css in get_global_css() %}
+        <link rel="stylesheet" href="{{ css }}">
+    {% endfor %}
+    
+    {# Load module-specific CSS if provided in context #}
+    {% if module_name %}
+        {% set assets = get_module_assets(module_name) %}
+        {% for css in assets.css %}
+            <link rel="stylesheet" href="{{ css }}">
+        {% endfor %}
+    {% endif %}
+    
+    {% block head_extra %}{% endblock %}
+</head>
+<body class="app-body">
+    {# Include global navigation bar #}
+    {% include "components/navbar.html" %}
+
+    <main class="main-content">
+        <div class="container">
+            {% block content %}
+            <p>No content provided.</p>
+            {% endblock %}
+        </div>
+    </main>
+
+    {# Include global footer #}
+    {% include "components/footer.html" %}
+
+    {# Load global JS files #}
+    {% for js in get_global_js() %}
+        <script src="{{ js }}" defer></script>
+    {% endfor %}
+    
+    {# Load module-specific JS if provided in context #}
+    {% if module_name %}
+        {% set assets = get_module_assets(module_name) %}
+        {% for js in assets.js %}
+            <script src="{{ js }}" defer></script>
+        {% endfor %}
+    {% endif %}
+
+    {% block scripts_extra %}{% endblock %}
+</body>
+</html>
