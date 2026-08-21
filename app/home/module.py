@@ -42,18 +42,14 @@ class HomeModule(IModule):
         self.template_service.register_template_directory(templates_dir, "home")
         
         # Register module assets (if any CSS/JS specific to home page)
-        self.template_service.register_module_assets(
-            "home",
-            css_files=["/static/css/home.css"],
-            js_files=["/static/js/home.js"]
-        )
-
+        # self.template_service.register_module_assets(
+        #     "home",
+        #     css_files=["/static/css/home.css"],
+        #     js_files=["/static/js/home.js"]
+        # )
+        
         # Register routes
-        register_routes(
-            self.http_api,
-            self.template_service,
-            self.logger
-        )
+        register_routes(self.http_api, self.template_service, self.logger)
         
         if self.logger:
             self.logger.log("Home module started successfully", tag="home")

@@ -13,7 +13,7 @@ class DbManagerModule(IModule):
     """
     name = "db_manager"
     provides = ["app_db_service"]
-    requires = ["core_logger", "core_config", "database_service", "database_types"]
+    requires = ["core_logger", "core_config", "database_service"]
 
     def __init__(self):
         self.logger = None
@@ -27,21 +27,26 @@ class DbManagerModule(IModule):
         self.logger = context.services.get("core_logger")
         self.config = context.services.get("core_config")
         self.database_service = context.services.get("database_service")
+        
+        # Fetch database_types dynamically
         self.database_types = context.services.get("database_types")
         
         if self.logger:
             self.logger.log("DbManager module loaded", tag="database")
 
+        # Initialize manager and REGISTER SERVICE in LOAD phase
+        if self.database_service:
+            self.db_manager = AppDatabaseManager(self.database_service, self.logger)
+            context.services.set("app_db_service", self.db_manager)
+
     async def start(self, context: ModuleContext):
-        """Initialize database tables and register app_db_service."""
-        if not self.database_service or not self.database_types:
+        """Create database tables (requires database_service to be fully initialized)."""
+        if not self.db_manager or not self.database_types:
             if self.logger:
-                self.logger.log("database_service or database_types not available, cannot start db_manager", level="ERROR", tag="database")
+                self.logger.log("Required services not available, cannot start db_manager", 
+                              level="ERROR", tag="database")
             return
 
-        # Initialize AppDatabaseManager with system database service
-        self.db_manager = AppDatabaseManager(self.database_service, self.logger)
-        
         # Get table definitions for the application
         tables = get_app_tables(self.database_types)
         
@@ -55,11 +60,8 @@ class DbManagerModule(IModule):
             if self.logger:
                 self.logger.log(f"Error creating database tables: {e}", level="ERROR", tag="database")
 
-        # Register the service so other modules can use it
-        context.services.set("app_db_service", self.db_manager)
-        
         if self.logger:
-            self.logger.log("DbManager module started and app_db_service registered", tag="database")
+            self.logger.log("DbManager module started successfully", tag="database")
 
     async def stop(self, context: ModuleContext):
         """Cleanup resources."""

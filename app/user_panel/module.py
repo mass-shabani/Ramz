@@ -36,8 +36,13 @@ class UserPanelModule(IModule):
         if self.logger:
             self.logger.log("UserPanel module loaded", tag="panel")
 
+        # Initialize service and REGISTER in LOAD phase
+        if self.template_service and self.menu_manager:
+            self.panel_service = PanelService(self.template_service, self.menu_manager, self.logger)
+            context.services.set("panel_service", self.panel_service)
+
     async def start(self, context: ModuleContext):
-        """Initialize panel service, register templates, assets, and routes."""
+        """Register templates, assets, menu items, and routes."""
         if not self.http_api or not self.template_service or not self.menu_manager:
             if self.logger:
                 self.logger.log("Required services not available, cannot start user_panel", 
@@ -54,11 +59,7 @@ class UserPanelModule(IModule):
             js_files=["/static/js/sidebar.js"]
         )
 
-        # 3. Initialize panel service
-        self.panel_service = PanelService(self.template_service, self.menu_manager, self.logger)
-        context.services.set("panel_service", self.panel_service)
-
-        # 4. Register default sidebar items for this module
+        # 3. Register default sidebar items for this module
         self.menu_manager.register_menu_item(
             menu_id="sidebar",
             item_id="panel_dashboard",
@@ -69,7 +70,7 @@ class UserPanelModule(IModule):
             order=10
         )
 
-        # 5. Register routes
+        # 4. Register routes
         register_routes(self.http_api, self.panel_service, self.logger)
         
         if self.logger:

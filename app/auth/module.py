@@ -13,12 +13,13 @@ class AuthModule(IModule):
     """
     name = "auth"
     provides = ["auth_service"]
-    requires = ["core_logger", "http_api", "template_service", "app_db_service"]
+    requires = ["core_logger", "http_api", "template_service", "app_db_service", "menu_manager"]
 
     def __init__(self):
         self.logger = None
         self.http_api = None
         self.template_service = None
+        self.menu_manager = None
         self.app_db_service = None
         self.auth_service = None
 
@@ -27,36 +28,38 @@ class AuthModule(IModule):
         self.logger = context.services.get("core_logger")
         self.http_api = context.services.get("http_api")
         self.template_service = context.services.get("template_service")
+        self.menu_manager = context.services.get("menu_manager")
         self.app_db_service = context.services.get("app_db_service")
         
         if self.logger:
             self.logger.log("Auth module loaded", tag="auth")
 
+        # Initialize auth service in LOAD phase
+        if self.app_db_service:
+            self.auth_service = AuthService(self.app_db_service, self.logger)
+            context.services.set("auth_service", self.auth_service)
+
     async def start(self, context: ModuleContext):
         """Register auth routes and menu items."""
-        if not self.http_api or not self.template_service or not self.app_db_service:
+        if not all([self.http_api, self.template_service, self.menu_manager, self.app_db_service]):
             if self.logger:
                 self.logger.log("Required services not available, cannot start auth module", 
                               level="ERROR", tag="auth")
             return
 
-        # Initialize auth service
-        self.auth_service = AuthService(self.app_db_service, self.logger)
-        context.services.set("auth_service", self.auth_service)
-
         # Register template directory
         templates_dir = str(Path(__file__).parent / "templates")
         self.template_service.register_template_directory(templates_dir, "auth")
 
-        # Register menu items
-        self.template_service.register_menu_item(
+        # Register menu items using menu_manager (NOT template_service)
+        self.menu_manager.register_menu_item(
             menu_id="main_nav",
             item_id="auth_login",
             label="ورود",
             url="/login",
             order=900
         )
-        self.template_service.register_menu_item(
+        self.menu_manager.register_menu_item(
             menu_id="main_nav",
             item_id="auth_logout",
             label="خروج",
@@ -64,13 +67,12 @@ class AuthModule(IModule):
             order=999
         )
 
-        # --- Register Routes using http_api ---
+        # --- Register Routes ---
 
         # GET /login - Login page
         @self.http_api.get("/login", response_class=self.http_api.HTMLResponse)
         async def login_page(request: self.http_api.Request):
             """Display the login page."""
-            # Check if already logged in
             current_user = request.session.get("user") if hasattr(request, "session") else None
             if current_user:
                 return self.http_api.RedirectResponse(url="/panel", status_code=302)

@@ -32,8 +32,13 @@ class MessageViewModule(IModule):
         if self.logger:
             self.logger.log("MessageView module loaded", tag="messages")
 
+        # Initialize service and REGISTER in LOAD phase
+        if self.template_service:
+            self.message_service = MessageService(self.template_service, self.logger)
+            context.services.set("message_service", self.message_service)
+
     async def start(self, context: ModuleContext):
-        """Initialize message service and register routes."""
+        """Register template directory and routes."""
         if not self.http_api or not self.template_service:
             if self.logger:
                 self.logger.log("Required services not available, cannot start message_view", 
@@ -44,14 +49,8 @@ class MessageViewModule(IModule):
         templates_dir = str(Path(__file__).parent / "templates")
         self.template_service.register_template_directory(templates_dir, "message_view")
 
-        # Initialize message service
-        self.message_service = MessageService(self.template_service, self.logger)
-
         # Register routes
         register_routes(self.http_api, self.message_service, self.logger)
-
-        # Provide service to other modules
-        context.services.set("message_service", self.message_service)
         
         if self.logger:
             self.logger.log("MessageView module started successfully", tag="messages")

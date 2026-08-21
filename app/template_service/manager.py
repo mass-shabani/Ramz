@@ -118,10 +118,17 @@ class TemplateManager:
         self.global_js = ["/static/js/theme.js"]
 
     async def render(self, template_name: str, context: Dict[str, Any] = None) -> str:
-        """Render a template with the given context."""
+        """
+        Render a template with the given context.
+        Returns the rendered HTML string.
+        """
         try:
-            template = await self.env.get_template(template_name)
+            # CORRECTION: get_template is synchronous, do NOT use await here
+            template = self.env.get_template(template_name)
+            
+            # render_async is the actual asynchronous method
             return await template.render_async(context or {})
+            
         except jinja2.TemplateNotFound as e:
             if self.logger:
                 self.logger.log(f"Template not found: {template_name}", level="ERROR", tag="template")
