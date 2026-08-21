@@ -61,10 +61,10 @@ class UserInfoModule(IModule):
         self.menu_manager.register_menu_item(
             menu_id="sidebar",
             item_id="user_info_profile",
-            label="اطلاعات کاربری",
+            label="User Information",
             url="/panel/profile",
             icon="👤",
-            tooltip="مشاهده و ویرایش اطلاعات حساب",
+            tooltip="View and edit account information",
             order=20
         )
 

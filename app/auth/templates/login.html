@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 
-{% block title %}ورود به سیستم - Crypto Services{% endblock %}
+{% block title %}Login - Crypto Services{% endblock %}
 
 {% block content %}
 <div class="auth-section">
     <div class="auth-container">
         <div class="auth-card">
             <div class="auth-header">
-                <h2 class="auth-title">ورود به حساب کاربری</h2>
-                <p class="auth-subtitle">برای دسترسی به پنل مدیریت وارد شوید</p>
+                <h2 class="auth-title">Login to Your Account</h2>
+                <p class="auth-subtitle">Sign in to access your account</p>
             </div>
 
             {% if error %}
@@ -20,7 +20,7 @@
 
             <form method="POST" action="/login" class="auth-form">
                 <div class="form-group">
-                    <label for="username" class="form-label">نام کاربری</label>
+                    <label for="username" class="form-label">Username</label>
                     <input 
                         type="text" 
                         id="username" 
@@ -28,12 +28,12 @@
                         class="form-input" 
                         required 
                         autocomplete="username"
-                        placeholder="نام کاربری خود را وارد کنید"
+                        placeholder="Enter your username"
                     >
                 </div>
 
                 <div class="form-group">
-                    <label for="password" class="form-label">رمز عبور</label>
+                    <label for="password" class="form-label">Password</label>
                     <input 
                         type="password" 
                         id="password" 
@@ -41,19 +41,16 @@
                         class="form-input" 
                         required 
                         autocomplete="current-password"
-                        placeholder="رمز عبور خود را وارد کنید"
+                        placeholder="Enter your password"
                     >
                 </div>
 
                 <button type="submit" class="btn btn-primary btn-block">
                     <span class="btn-icon">🔐</span>
-                    <span>ورود به سیستم</span>
+                    <span>Login</span>
                 </button>
             </form>
 
-            <div class="auth-footer">
-                <p class="auth-text">حساب کاربری ندارید؟ <a href="/register">ثبت‌نام کنید</a></p>
-            </div>
         </div>
     </div>
 </div>

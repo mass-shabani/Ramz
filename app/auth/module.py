@@ -55,14 +55,14 @@ class AuthModule(IModule):
         self.menu_manager.register_menu_item(
             menu_id="main_nav",
             item_id="auth_login",
-            label="ورود",
+            label="Login",
             url="/login",
             order=900
         )
         self.menu_manager.register_menu_item(
             menu_id="main_nav",
             item_id="auth_logout",
-            label="خروج",
+            label="Logout",
             url="/logout",
             order=999
         )
@@ -119,7 +119,7 @@ class AuthModule(IModule):
                     "login.html",
                     context={
                         "current_user": None,
-                        "error": "نام کاربری یا رمز عبور اشتباه است.",
+                        "error": "Invalid username or password.",
                         "module_name": "auth"
                     }
                 )

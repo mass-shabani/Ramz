@@ -58,7 +58,7 @@ def register_routes(http_api: Any, panel_service: Any, user_info_service: Any, l
                     "module_name": "user_info",
                     "profile_data": await user_info_service.get_profile_data(current_user["id"]),
                     "success_message": None,
-                    "error_message": "لطفاً ایمیل را به درستی وارد کنید."
+                    "error_message": "Please enter a valid email address."
                 }
                 html_content = await panel_service.render_panel_view("profile.html", context, request)
                 return http_api.HTMLResponse(content=html_content)

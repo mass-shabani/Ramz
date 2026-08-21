@@ -1,6 +1,6 @@
 {% extends "panel_layout.html" %}
 
-{% block panel_title %}اطلاعات کاربری{% endblock %}
+{% block panel_title %}User Information{% endblock %}
 
 {% block panel_content %}
 <div class="profile-container">
@@ -21,7 +21,7 @@
     <div class="profile-card">
         <form method="POST" action="/panel/profile" class="profile-form">
             <div class="form-group">
-                <label for="username" class="form-label">نام کاربری</label>
+                <label for="username" class="form-label">Username</label>
                 <input 
                     type="text" 
                     id="username" 
@@ -29,13 +29,13 @@
                     class="form-input" 
                     value="{{ profile_data.username if profile_data else '' }}" 
                     readonly
-                    title="نام کاربری قابل تغییر نیست"
+                    title="Username cannot be changed"
                 >
-                <small class="form-hint">نام کاربری پس از ثبت‌نام قابل تغییر نیست.</small>
+                <small class="form-hint">Username cannot be changed after registration.</small>
             </div>
 
             <div class="form-group">
-                <label for="email" class="form-label">آدرس ایمیل</label>
+                <label for="email" class="form-label">Email Address</label>
                 <input 
                     type="email" 
                     id="email" 
@@ -48,7 +48,7 @@
             </div>
 
             <div class="form-group">
-                <label for="created_at" class="form-label">تاریخ عضویت</label>
+                <label for="created_at" class="form-label">Registration Date</label>
                 <input 
                     type="text" 
                     id="created_at" 
@@ -56,14 +56,14 @@
                     value="{{ profile_data.created_at if profile_data else '' }}" 
                     readonly
                     dir="ltr"
-                    style="text-align: right;"
+                    style="text-align: left;"
                 >
             </div>
 
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary">
                     <span class="btn-icon">💾</span>
-                    <span>ذخیره تغییرات</span>
+                    <span>Save Changes</span>
                 </button>
             </div>
         </form>

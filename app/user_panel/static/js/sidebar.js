@@ -115,7 +115,7 @@ class AppSidebar extends LitElement {
     render() {
         return html`
             <div class="sidebar-header">
-                <button class="toggle-btn" @click=${this._toggle} title="بستن/باز کردن منو">
+                <button class="toggle-btn" @click=${this._toggle} title="Collapse/Expand Menu">
                     ☰
                 </button>
             </div>

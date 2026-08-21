@@ -39,19 +39,19 @@ class UserInfoService:
             # Check if email is already taken by another user
             existing_user = await self.app_db_service.get_user_by_email(email)
             if existing_user and existing_user["id"] != user_id:
-                return False, "این ایمیل قبلاً توسط کاربر دیگری استفاده شده است."
+                return False, "This email is already used by another user."
 
             # Update data
             update_data = {"email": email}
             success = await self.app_db_service.update_user(user_id, update_data)
             
             if success:
-                return True, "اطلاعات با موفقیت به‌روزرسانی شد."
+                return True, "Information updated successfully."
             else:
-                return False, "خطا در به‌روزرسانی اطلاعات. لطفاً دوباره تلاش کنید."
+                return False, "Error updating information. Please try again."
                 
         except Exception as e:
             if self.logger:
                 self.logger.log(f"Error updating profile for user {user_id}: {e}", 
                               level="ERROR", tag="user_info")
-            return False, "یک خطای داخلی رخ داد."
+            return False, "An internal error occurred."

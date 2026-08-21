@@ -1,26 +1,26 @@
 {% extends "panel_layout.html" %}
 
-{% block panel_title %}داشبورد{% endblock %}
+{% block panel_title %}Dashboard{% endblock %}
 
 {% block panel_content %}
 <div class="dashboard-welcome">
-    <h3>خوش آمدید، {{ current_user.username }}!</h3>
-    <p>این صفحه اصلی پنل کاربری شما است. در آینده ویجت‌های متنوعی با قابلیت جابجایی در اینجا نمایش داده خواهند شد.</p>
+    <h3>Welcome, {{ current_user.username }}!</h3>
+    <p>This is your user panel dashboard. Various widgets with drag-and-drop capability will be displayed here in the future.</p>
 </div>
 
 <div class="widgets-grid">
     <!-- Placeholder for future Lit widgets -->
     <div class="widget-placeholder">
         <span class="widget-icon">📊</span>
-        <p>ویجت آمار پورتفولیو</p>
+        <p>Portfolio Statistics Widget</p>
     </div>
     <div class="widget-placeholder">
         <span class="widget-icon">💰</span>
-        <p>ویجت موجودی کیف پول</p>
+        <p>Wallet Balance Widget</p>
     </div>
     <div class="widget-placeholder">
         <span class="widget-icon">📈</span>
-        <p>ویجت نمودار قیمت‌ها</p>
+        <p>Price Chart Widget</p>
     </div>
 </div>
 {% endblock %}

@@ -63,10 +63,10 @@ class UserPanelModule(IModule):
         self.menu_manager.register_menu_item(
             menu_id="sidebar",
             item_id="panel_dashboard",
-            label="داشبورد",
+            label="Dashboard",
             url="/panel",
             icon="🏠",
-            tooltip="صفحه اصلی پنل",
+            tooltip="Panel Home",
             order=10
         )
 
