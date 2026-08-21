@@ -22,7 +22,7 @@
     }
   ],
   "system": {
-    "auto_shutdown": true,
+    "auto_shutdown": false,
     "auto_shutdown_delay": 10
   },
   "database": {
