@@ -28,7 +28,7 @@ class AuthService:
             user = await self.app_db_service.get_user_by_username(username)
             
             if user and user.get("password_hash") == password_hash:
-                if user.get("is_active"):
+                if user.get("enabled"):
                     return user
                 else:
                     if self.logger:
