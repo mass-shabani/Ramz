@@ -13,9 +13,6 @@ class MessageViewModule(IModule):
     Message view module.
     Provides message_service for rendering messages and registers message routes.
     """
-    name = "message_view"
-    provides = ["message_service"]
-    requires = ["core_logger", "http_api", "template_service"]
 
     def __init__(self):
         self.logger = None

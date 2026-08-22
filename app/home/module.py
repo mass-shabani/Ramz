@@ -10,9 +10,6 @@ class HomeModule(IModule):
     """
     Home module that provides the main landing page.
     """
-    name = "home"
-    provides = []
-    requires = ["core_logger", "http_api", "template_service"]
 
     def __init__(self):
         self.logger = None

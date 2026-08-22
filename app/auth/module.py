@@ -11,9 +11,6 @@ class AuthModule(IModule):
     Auth module.
     Provides auth_service and registers authentication routes.
     """
-    name = "auth"
-    provides = ["auth_service"]
-    requires = ["core_logger", "http_api", "template_service", "app_db_service", "menu_manager"]
 
     def __init__(self):
         self.logger = None

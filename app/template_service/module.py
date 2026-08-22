@@ -12,9 +12,6 @@ class TemplateServiceModule(IModule):
     Template service module.
     Provides template_service, menu_manager, and asset_service to other modules.
     """
-    name = "template_service"
-    provides = ["template_service", "menu_manager", "asset_service"]
-    requires = ["core_logger", "http_api"]
 
     def __init__(self):
         self.logger = None
@@ -75,7 +72,6 @@ class TemplateServiceModule(IModule):
                 self.http_api.app.mount(
                     url_prefix, 
                     self.http_api.StaticFiles(directory=str(static_dir)), 
-                    name="global_static"
                 )
                 if self.logger:
                     self.logger.log(f"Static files mounted at {url_prefix}", tag="template")

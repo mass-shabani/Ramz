@@ -11,9 +11,6 @@ class DbManagerModule(IModule):
     Database manager module.
     Provides app_db_service for other modules to interact with application database tables.
     """
-    name = "db_manager"
-    provides = ["app_db_service"]
-    requires = ["core_logger", "core_config", "database_service"]
 
     def __init__(self):
         self.logger = None

@@ -13,12 +13,6 @@ class UserInfoModule(IModule):
     User info module.
     Provides user_info_service and registers profile management routes.
     """
-    name = "user_info"
-    provides = ["user_info_service"]
-    requires = [
-        "core_logger", "http_api", "template_service", 
-        "menu_manager", "panel_service", "app_db_service"
-    ]
 
     def __init__(self):
         self.logger = None

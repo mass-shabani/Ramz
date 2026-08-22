@@ -11,9 +11,6 @@ class RouteManagerModule(IModule):
     Route manager module.
     Provides route_manager service for centralized route handling.
     """
-    name = "route_manager"
-    provides = ["route_manager"]
-    requires = ["core_logger", "http_api", "message_service"]
 
     def __init__(self):
         self.logger = None

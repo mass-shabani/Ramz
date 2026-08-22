@@ -13,9 +13,6 @@ class UserPanelModule(IModule):
     User panel module.
     Provides panel_service and registers panel routes.
     """
-    name = "user_panel"
-    provides = ["panel_service"]
-    requires = ["core_logger", "http_api", "template_service", "menu_manager", "asset_service"]
 
     def __init__(self):
         self.logger = None
