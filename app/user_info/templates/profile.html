@@ -35,6 +35,20 @@
             </div>
 
             <div class="form-group">
+                <label for="full_name" class="form-label">Full Name</label>
+                <input 
+                    type="text" 
+                    id="full_name" 
+                    name="full_name" 
+                    class="form-input" 
+                    value="{{ profile_data.full_name if profile_data else '' }}" 
+                    readonly
+                    title="Full name cannot be changed"
+                >
+                <small class="form-hint">Full name cannot be changed.</small>
+            </div>
+
+            <div class="form-group">
                 <label for="email" class="form-label">Email Address</label>
                 <input 
                     type="email" 
@@ -44,6 +58,33 @@
                     value="{{ profile_data.email if profile_data else '' }}" 
                     required
                     placeholder="example@domain.com"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="phone" class="form-label">Phone Number</label>
+                <input 
+                    type="text" 
+                    id="phone" 
+                    name="phone" 
+                    class="form-input" 
+                    value="{{ profile_data.phone if profile_data else '' }}" 
+                    readonly
+                    title="Phone number cannot be changed"
+                    dir="ltr"
+                >
+                <small class="form-hint">Phone number cannot be changed.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="role_name" class="form-label">Role</label>
+                <input 
+                    type="text" 
+                    id="role_name" 
+                    name="role_name" 
+                    class="form-input" 
+                    value="{{ profile_data.role_name if profile_data else '' }}" 
+                    readonly
                 >
             </div>
 

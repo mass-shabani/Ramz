@@ -30,7 +30,7 @@
       {
         "name": "default",
         "driver": "sqlite",
-        "path": "{app_dir}/data/ramz.db",
+        "path": "{app_dir}/data/rmz_data.db",
         "cache_enabled": true,
         "cache_ttl": 300
       }

@@ -4,7 +4,7 @@
 
 {% block panel_content %}
 <div class="dashboard-welcome">
-    <h3>Welcome, {{ current_user.username }}!</h3>
+    <h3>Welcome, {{ current_user.get('full_name') or current_user.get('username') }}!</h3>
     <p>This is your user panel dashboard. Various widgets with drag-and-drop capability will be displayed here in the future.</p>
 </div>
 

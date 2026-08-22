@@ -99,9 +99,16 @@ class AuthModule(IModule):
                 # Set session
                 if hasattr(request, "session"):
                     request.session["user"] = {
-                        "id": user["id"],
+                        "id": user["user_id"],
                         "username": user["username"],
-                        "email": user["email"]
+                        "email": user.get("email_address", ""),
+                        "people_id": user.get("people_id"),
+                        "email_id": user.get("email_id"),
+                        "phone_id": user.get("phone_id"),
+                        "role_id": user.get("role_id"),
+                        "first_name": user.get("first_name", ""),
+                        "last_name": user.get("last_name", ""),
+                        "full_name": f"{user.get('first_name', '')} {user.get('last_name', '')}".strip(),
                     }
                 
                 if self.logger:

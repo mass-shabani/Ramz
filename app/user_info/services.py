@@ -18,12 +18,8 @@ class UserInfoService:
         Fetch user profile data by ID.
         """
         try:
-            user = await self.app_db_service.get_user_by_id(user_id)
-            if user:
-                # Remove sensitive data before sending to template
-                user.pop("password_hash", None)
-                return user
-            return None
+            profile = await self.app_db_service.get_profile_data(user_id)
+            return profile
         except Exception as e:
             if self.logger:
                 self.logger.log(f"Error fetching profile data for user {user_id}: {e}", 
@@ -42,8 +38,7 @@ class UserInfoService:
                 return False, "This email is already used by another user."
 
             # Update data
-            update_data = {"email": email}
-            success = await self.app_db_service.update_user(user_id, update_data)
+            success = await self.app_db_service.update_user_email(user_id, email)
             
             if success:
                 return True, "Information updated successfully."
