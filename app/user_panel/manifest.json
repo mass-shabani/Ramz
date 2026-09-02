@@ -1,7 +1,6 @@
 {
   "name": "user_panel",
   "version": "1.0.0",
-  "type": "application",
   "entrypoint": "UserPanelModule",
   "description": "Manages the user panel layout, sidebar navigation, and dashboard.",
   "requires": ["core_logger", "http_api", "template_service", "menu_manager", "asset_service"],

@@ -14,50 +14,35 @@ class UserPanelModule(IModule):
     Provides panel_service and registers panel routes.
     """
 
-    def __init__(self):
-        self.logger = None
-        self.http_api = None
-        self.template_service = None
-        self.menu_manager = None
-        self.asset_service = None
-        self.panel_service = None
-
-    async def load(self, context: ModuleContext):
-        """Get services from context."""
-        self.logger = context.services.get("core_logger")
-        self.http_api = context.services.get("http_api")
-        self.template_service = context.services.get("template_service")
-        self.menu_manager = context.services.get("menu_manager")
-        self.asset_service = context.services.get("asset_service")
-        
-        if self.logger:
-            self.logger.log("UserPanel module loaded", tag="panel")
-
-        # Initialize service and REGISTER in LOAD phase
-        if self.template_service and self.menu_manager:
-            self.panel_service = PanelService(self.template_service, self.menu_manager, self.logger)
-            context.services.set("panel_service", self.panel_service)
-
     async def start(self, context: ModuleContext):
-        """Register templates, assets, menu items, and routes."""
-        if not self.http_api or not self.template_service or not self.menu_manager:
-            if self.logger:
-                self.logger.log("Required services not available, cannot start user_panel", 
+        """Get services, initialize panel service, register templates, assets, menu items, and routes."""
+        logger = context.services.get("core_logger")
+        http_api = context.services.get("http_api")
+        template_service = context.services.get("template_service")
+        menu_manager = context.services.get("menu_manager")
+        asset_service = context.services.get("asset_service")
+        
+        if logger:
+            logger.log("UserPanel module started", tag="panel")
+
+        if not http_api or not template_service or not menu_manager:
+            if logger:
+                logger.log("Required services not available, cannot start user_panel", 
                               level="ERROR", tag="panel")
             return
 
-        # 1. Register template directory
-        templates_dir = str(Path(__file__).parent / "templates")
-        self.template_service.register_template_directory(templates_dir, "user_panel")
+        panel_service = PanelService(template_service, menu_manager, logger)
+        context.services.set("panel_service", panel_service)
 
-        # 2. Register module assets (Lit component for sidebar)
-        self.template_service.register_module_assets(
+        templates_dir = str(Path(__file__).parent / "templates")
+        template_service.register_template_directory(templates_dir, "user_panel")
+
+        template_service.register_module_assets(
             "user_panel",
             js_files=["/static/js/sidebar.js"]
         )
 
-        # 3. Register default sidebar items for this module
-        self.menu_manager.register_menu_item(
+        menu_manager.register_menu_item(
             menu_id="sidebar",
             item_id="panel_dashboard",
             label="Dashboard",
@@ -67,13 +52,13 @@ class UserPanelModule(IModule):
             order=10
         )
 
-        # 4. Register routes
-        register_routes(self.http_api, self.panel_service, self.logger)
+        register_routes(http_api, panel_service, logger)
         
-        if self.logger:
-            self.logger.log("UserPanel module started successfully", tag="panel")
+        if logger:
+            logger.log("UserPanel module started successfully", tag="panel")
 
     async def stop(self, context: ModuleContext):
         """Cleanup resources."""
-        if self.logger:
-            self.logger.log("UserPanel module stopped", tag="panel")
+        logger = context.services.get("core_logger")
+        if logger:
+            logger.log("UserPanel module stopped", tag="panel")

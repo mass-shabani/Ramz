@@ -12,55 +12,38 @@ class DbManagerModule(IModule):
     Provides app_db_service for other modules to interact with application database tables.
     """
 
-    def __init__(self):
-        self.logger = None
-        self.config = None
-        self.database_service = None
-        self.database_types = None
-        self.db_manager = None
-
-    async def load(self, context: ModuleContext):
-        """Get services and types from context."""
-        self.logger = context.services.get("core_logger")
-        self.config = context.services.get("core_config")
-        self.database_service = context.services.get("database_service")
-        
-        # Fetch database_types dynamically
-        self.database_types = context.services.get("database_types")
-        
-        if self.logger:
-            self.logger.log("DbManager module loaded", tag="database")
-
-        # Initialize manager and REGISTER SERVICE in LOAD phase
-        if self.database_service:
-            self.db_manager = AppDatabaseManager(self.database_service, self.logger)
-            context.services.set("app_db_service", self.db_manager)
-
     async def start(self, context: ModuleContext):
-        """Create database tables (requires database_service to be fully initialized)."""
-        if not self.db_manager or not self.database_types:
-            if self.logger:
-                self.logger.log("Required services not available, cannot start db_manager", 
-                              level="ERROR", tag="database")
-            return
-
-        # Get table definitions for the application
-        tables = get_app_tables(self.database_types)
+        """Get services, initialize manager, register service, and create tables."""
+        logger = context.services.get("core_logger")
+        config = context.services.get("core_config")
+        database_service = context.services.get("database_service")
+        database_types = context.services.get("database_types")
         
-        # Create tables if they don't exist
-        try:
-            for table_def in tables:
-                await self.db_manager.create_table(table_def)
-            if self.logger:
-                self.logger.log(f"Database tables created/verified successfully ({len(tables)} tables)", tag="database")
-        except Exception as e:
-            if self.logger:
-                self.logger.log(f"Error creating database tables: {e}", level="ERROR", tag="database")
+        if logger:
+            logger.log("DbManager module started", tag="database")
 
-        if self.logger:
-            self.logger.log("DbManager module started successfully", tag="database")
+        if database_service:
+            db_manager = AppDatabaseManager(database_service, logger)
+            context.services.set("app_db_service", db_manager)
+
+            if database_types:
+                tables = get_app_tables(database_types)
+                
+                try:
+                    for table_def in tables:
+                        await db_manager.create_table(table_def)
+                    if logger:
+                        logger.log(f"Database tables created/verified successfully ({len(tables)} tables)", tag="database")
+                except Exception as e:
+                    if logger:
+                        logger.log(f"Error creating database tables: {e}", level="ERROR", tag="database")
+        else:
+            if logger:
+                logger.log("Required services not available, cannot start db_manager", 
+                              level="ERROR", tag="database")
 
     async def stop(self, context: ModuleContext):
         """Cleanup resources."""
-        if self.logger:
-            self.logger.log("DbManager module stopped", tag="database")
+        logger = context.services.get("core_logger")
+        if logger:
+            logger.log("DbManager module stopped", tag="database")

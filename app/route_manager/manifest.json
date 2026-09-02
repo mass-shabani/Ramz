@@ -1,7 +1,6 @@
 {
   "name": "route_manager",
   "version": "1.0.0",
-  "type": "application",
   "entrypoint": "RouteManagerModule",
   "description": "Central route management infrastructure. Provides routing helpers and delegates error handling to message_view.",
   "requires": ["core_logger", "http_api", "message_service"],

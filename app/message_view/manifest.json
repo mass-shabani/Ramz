@@ -1,7 +1,6 @@
 {
   "name": "message_view",
   "version": "1.0.0",
-  "type": "application",
   "entrypoint": "MessageViewModule",
   "description": "Manages and serves message views (errors, alerts, notifications) for the web application.",
   "requires": ["core_logger", "http_api", "template_service"],

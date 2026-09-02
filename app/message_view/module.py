@@ -14,45 +14,35 @@ class MessageViewModule(IModule):
     Provides message_service for rendering messages and registers message routes.
     """
 
-    def __init__(self):
-        self.logger = None
-        self.http_api = None
-        self.template_service = None
-        self.message_service = None
-
-    async def load(self, context: ModuleContext):
-        """Get services from context."""
-        self.logger = context.services.get("core_logger")
-        self.http_api = context.services.get("http_api")
-        self.template_service = context.services.get("template_service")
-        
-        if self.logger:
-            self.logger.log("MessageView module loaded", tag="messages")
-
-        # Initialize service and REGISTER in LOAD phase
-        if self.template_service:
-            self.message_service = MessageService(self.template_service, self.logger)
-            context.services.set("message_service", self.message_service)
-
     async def start(self, context: ModuleContext):
-        """Register template directory and routes."""
-        if not self.http_api or not self.template_service:
-            if self.logger:
-                self.logger.log("Required services not available, cannot start message_view", 
+        """Get services, initialize service, register template directory and routes."""
+        logger = context.services.get("core_logger")
+        http_api = context.services.get("http_api")
+        template_service = context.services.get("template_service")
+        
+        if logger:
+            logger.log("MessageView module started", tag="messages")
+
+        if template_service:
+            message_service = MessageService(template_service, logger)
+            context.services.set("message_service", message_service)
+
+        if not http_api or not template_service:
+            if logger:
+                logger.log("Required services not available, cannot start message_view", 
                               level="ERROR", tag="messages")
             return
 
-        # Register template directory
         templates_dir = str(Path(__file__).parent / "templates")
-        self.template_service.register_template_directory(templates_dir, "message_view")
+        template_service.register_template_directory(templates_dir, "message_view")
 
-        # Register routes
-        register_routes(self.http_api, self.message_service, self.logger)
+        register_routes(http_api, message_service, logger)
         
-        if self.logger:
-            self.logger.log("MessageView module started successfully", tag="messages")
+        if logger:
+            logger.log("MessageView module started successfully", tag="messages")
 
     async def stop(self, context: ModuleContext):
         """Cleanup resources."""
-        if self.logger:
-            self.logger.log("MessageView module stopped", tag="messages")
+        logger = context.services.get("core_logger")
+        if logger:
+            logger.log("MessageView module stopped", tag="messages")
