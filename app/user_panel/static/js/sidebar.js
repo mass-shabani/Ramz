@@ -1,8 +1,9 @@
 /**
  * App Sidebar - A collapsible sidebar web component built with Lit.
  * Receives menu items as a property and renders them dynamically.
+ * Uses locally hosted Lit library.
  */
-import { LitElement, html, css } from 'https://cdn.jsdelivr.net/gh/lit/dist@2/all/lit-all.min.js';
+import { LitElement, html, css } from '/static/js/vendor/lit-all.min.js';
 
 class AppSidebar extends LitElement {
     static properties = {
