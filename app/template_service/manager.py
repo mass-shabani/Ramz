@@ -48,6 +48,7 @@ class TemplateManager:
         self.global_css: List[str] = []
         self.global_js: List[str] = []
         self.module_assets: Dict[str, Dict[str, List[str]]] = {}
+        self.module_static_dirs: Dict[str, str] = {}
         
         self.env = self._create_jinja_env()
         self._register_default_assets()
@@ -96,6 +97,19 @@ class TemplateManager:
                 if js not in self.module_assets[module_name]["js"]:
                     self.module_assets[module_name]["js"].append(js)
 
+    def register_module_static_directory(self, module_name: str, directory: str):
+        """Register a static directory for a module and mount it at /static/{module_name}."""
+        dir_path = Path(directory).resolve()
+        self.module_static_dirs[module_name] = str(dir_path)
+
+    def get_module_static_url(self, module_name: str, relative_path: str = "") -> str:
+        """Get the public URL for a module's static file."""
+        if module_name not in self.module_static_dirs:
+            return ""
+        if relative_path:
+            return f"/static/{module_name}/{relative_path.lstrip('/')}"
+        return f"/static/{module_name}/"
+
     def register_global_css(self, css_path: str):
         """Register a global CSS file to be loaded on every page."""
         if css_path not in self.global_css:
@@ -140,53 +154,6 @@ class TemplateManager:
 
 
 class MenuManager:
-    """
-    Manages menu items (navigation bar, sidebar, user panel) for the application.
-    """
-    
-    def __init__(self, logger):
-        self.logger = logger
-        self.menu_items: Dict[str, List[Dict[str, Any]]] = {
-            "main_nav": [],
-            "sidebar": [],
-            "user_panel": [],
-            "footer": []
-        }
-
-    def register_menu_item(self, menu_id: str, item_id: str, label: str, url: str, 
-                          icon: str = None, tooltip: str = None, order: int = 100,
-                          required_permission: str = None, badge: str = None):
-        """Register a menu item to a specific menu area."""
-        if menu_id not in self.menu_items:
-            self.menu_items[menu_id] = []
-        
-        item_data = {
-            "id": item_id, "label": label, "url": url, "icon": icon,
-            "tooltip": tooltip, "order": order, "required_permission": required_permission, "badge": badge
-        }
-        
-        for i, item in enumerate(self.menu_items[menu_id]):
-            if item["id"] == item_id:
-                self.menu_items[menu_id][i] = item_data
-                self._sort_menu(menu_id)
-                return
-        
-        self.menu_items[menu_id].append(item_data)
-        self._sort_menu(menu_id)
-
-    def unregister_menu_item(self, menu_id: str, item_id: str):
-        """Remove a menu item from a specific menu area."""
-        if menu_id in self.menu_items:
-            self.menu_items[menu_id] = [item for item in self.menu_items[menu_id] if item["id"] != item_id]
-
-    def _sort_menu(self, menu_id: str):
-        """Sort menu items by their order value."""
-        if menu_id in self.menu_items:
-            self.menu_items[menu_id].sort(key=lambda x: x["order"])
-
-    def get_menu_items(self, menu_id: str) -> List[Dict[str, Any]]:
-        """Get all menu items for a specific menu area."""
-        return self.menu_items.get(menu_id, [])
     """
     Manages menu items (navigation bar, sidebar, user panel) for the application.
     Other modules register their menu items here to appear in the UI.

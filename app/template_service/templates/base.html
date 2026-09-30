@@ -44,7 +44,11 @@
     {% if module_name %}
         {% set assets = get_module_assets(module_name) %}
         {% for js in assets.js %}
-            <script src="{{ js }}" defer></script>
+            {% if js.endswith('.js') and not js.startswith('/static/js/theme') %}
+                <script type="module" src="{{ js }}"></script>
+            {% else %}
+                <script src="{{ js }}" defer></script>
+            {% endif %}
         {% endfor %}
     {% endif %}
 

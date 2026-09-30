@@ -37,9 +37,13 @@ class UserPanelModule(IModule):
         templates_dir = str(Path(__file__).parent / "templates")
         template_service.register_template_directory(templates_dir, "user_panel")
 
+        static_dir = str(Path(__file__).parent / "static")
+        if hasattr(template_service, 'register_module_static_directory'):
+            template_service.register_module_static_directory("user_panel", static_dir)
+
         template_service.register_module_assets(
             "user_panel",
-            js_files=["/static/js/sidebar.js"]
+            js_files=["/static/user_panel/js/sidebar.js"]
         )
 
         menu_manager.register_menu_item(

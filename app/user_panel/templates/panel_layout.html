@@ -31,8 +31,13 @@
     document.addEventListener('DOMContentLoaded', () => {
         const sidebar = document.getElementById('sidebar');
         const dataScript = document.getElementById('sidebar-data');
-        if (sidebar) {
-            sidebar.items = dataScript;
+        if (sidebar && dataScript && dataScript.textContent) {
+            try {
+                sidebar.items = JSON.parse(dataScript.textContent);
+            } catch (e) {
+                console.error('Failed to parse sidebar data:', e);
+                sidebar.items = [];
+            }
         }
     });
 </script>

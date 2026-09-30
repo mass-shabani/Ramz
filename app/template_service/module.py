@@ -4,6 +4,7 @@ static asset mounting, and menu registry.
 """
 from pathlib import Path
 from massir.core.interfaces import IModule, ModuleContext
+from massir.core.hook_types import SystemHook
 from .manager import TemplateManager, MenuManager, AssetService
 
 
@@ -42,12 +43,49 @@ class TemplateServiceModule(IModule):
 
         try:
             if hasattr(http_api, 'app') and hasattr(http_api, 'StaticFiles'):
-                http_api.app.mount(
-                    "/static", 
-                    http_api.StaticFiles(directory=str(static_dir)), 
-                )
-                if logger:
-                    logger.log("Static files mounted at /static", tag="template")
+                # Provide per-module static directory registration capability.
+                # These mounts are registered immediately when other modules call them,
+                # so they take precedence over the generic /static fallback.
+                def register_module_static_directory(module_name: str, directory: str):
+                    dir_path = Path(directory).resolve()
+                    url_prefix = f"/static/{module_name}"
+                    try:
+                        http_api.app.mount(
+                            url_prefix,
+                            http_api.StaticFiles(directory=str(dir_path)),
+                            name=f"{module_name}_static"
+                        )
+                        template_manager.module_static_dirs[module_name] = str(dir_path)
+                        if logger:
+                            logger.log(f"Module static mounted at {url_prefix} (module: {module_name})", tag="template")
+                    except Exception as e:
+                        if logger:
+                            logger.log(f"Error mounting static for module '{module_name}': {e}", level="ERROR", tag="template")
+                
+                template_manager.register_module_static_directory = register_module_static_directory
+
+                # Defer mounting the catch-all /static until after all modules have started.
+                # In Starlette/FastAPI, mounts are checked in registration order and the
+                # first prefix match wins, so specific paths like /static/user_panel must
+                # be registered before the generic /static fallback.
+                def _mount_fallback_static():
+                    try:
+                        http_api.app.mount(
+                            "/static", 
+                            http_api.StaticFiles(directory=str(static_dir)), 
+                            name="template_service_static"
+                        )
+                        if logger:
+                            logger.log("Static files mounted at /static", tag="template")
+                    except Exception as e:
+                        if logger:
+                            logger.log(f"Error mounting fallback static files: {e}", level="ERROR", tag="template")
+
+                app = context.get_app()
+                if app:
+                    app.register_hook(SystemHook.ON_ALL_MODULES_STARTED, _mount_fallback_static)
+                else:
+                    _mount_fallback_static()
             else:
                 if logger:
                     logger.log("http_api does not expose app or StaticFiles for mounting", 
