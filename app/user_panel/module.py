@@ -45,6 +45,8 @@ class UserPanelModule(IModule):
             "user_panel",
             js_files=[
                 "/static/user_panel/js/sidebar-menu-item.js",
+                "/static/user_panel/js/user-dropdown.js",
+                "/static/user_panel/js/panel-container.js",
                 "/static/user_panel/js/sidebar.js"
             ]
         )
