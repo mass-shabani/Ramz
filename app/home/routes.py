@@ -10,7 +10,7 @@ def register_routes(http_api: Any, template_service: Any, logger: Any):
     """
     
     @http_api.get("/", response_class=http_api.HTMLResponse)
-    async def home_page():
+    async def home_page(request: http_api.Request):
         """Render the home page."""
         try:
             context = {
@@ -18,7 +18,8 @@ def register_routes(http_api: Any, template_service: Any, logger: Any):
                 "page_title": "Welcome to Crypto Services",
                 "page_subtitle": "Your gateway to cryptocurrency management",
                 "login_url": "/login",
-                "module_name": "home"
+                "module_name": "home",
+                "request": request
             }
             
             html_content = await template_service.render("index.html", context)

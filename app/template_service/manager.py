@@ -140,6 +140,14 @@ class TemplateManager:
             # CORRECTION: get_template is synchronous, do NOT use await here
             template = self.env.get_template(template_name)
             
+            # Inject current_user from request session if not already provided
+            if context and 'request' in context:
+                request = context.get('request')
+                if request and hasattr(request, 'session'):
+                    current_user = request.session.get("user")
+                    if 'current_user' not in context:
+                        context['current_user'] = current_user
+            
             # render_async is the actual asynchronous method
             return await template.render_async(context or {})
             

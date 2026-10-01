@@ -76,6 +76,19 @@ a:hover { color: var(--accent-hover); }
 .nav-item:hover { color: var(--text-primary); }
 .nav-item::after { content: ''; position: absolute; bottom: -2px; left: 0; width: 0; height: 2px; background: var(--accent); transition: width 0.3s ease; }
 .nav-item:hover::after { width: 100%; }
+.navbar-actions { display: flex; align-items: center; gap: 1rem; }
+.user-dropdown { position: relative; }
+.user-trigger { background: var(--surface-bg); border: 1px solid var(--border-color); border-radius: 50px; padding: 0.5rem 1rem; color: var(--text-primary); cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s ease; }
+.user-trigger:hover { background: var(--accent); color: var(--primary-bg); }
+.user-avatar { font-size: 1.25rem; }
+.user-name { font-size: 0.9rem; font-weight: 500; }
+.dropdown-icon { font-size: 0.7rem; transition: transform 0.2s ease; }
+.user-dropdown.open .dropdown-icon { transform: rotate(180deg); }
+.user-menu { position: absolute; top: 100%; right: 0; background: var(--surface-bg); border: 1px solid var(--border-color); border-radius: var(--border-radius); min-width: 200px; padding: 0.5rem 0; opacity: 0; visibility: hidden; transform: translateY(-10px); transition: all 0.2s ease; z-index: 1000; }
+.user-dropdown.open .user-menu { opacity: 1; visibility: visible; transform: translateY(0); }
+.user-menu-item { display: block; padding: 0.5rem 1rem; color: var(--text-secondary); font-size: 0.9rem; transition: all 0.2s ease; }
+.user-menu-item:hover { background: var(--accent); color: var(--primary-bg); }
+.user-menu-divider { border: none; border-top: 1px solid var(--border-color); margin: 0.25rem 0; }
 
 .main-footer { background: var(--secondary-bg); border-top: 1px solid var(--border-color); padding: 2rem 0; margin-top: auto; }
 .footer-container { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; }

@@ -28,7 +28,8 @@
     }
   ],
   "system": {
-    "auto_shutdown": false
+    "auto_shutdown": true,
+    "auto_shutdown_delay": 100.00
   },
   "database": {
     "connections": [

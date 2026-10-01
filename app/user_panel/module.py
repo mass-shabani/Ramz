@@ -43,7 +43,10 @@ class UserPanelModule(IModule):
 
         template_service.register_module_assets(
             "user_panel",
-            js_files=["/static/user_panel/js/sidebar.js"]
+            js_files=[
+                "/static/user_panel/js/sidebar-menu-item.js",
+                "/static/user_panel/js/sidebar.js"
+            ]
         )
 
         menu_manager.register_menu_item(

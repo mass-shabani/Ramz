@@ -6,7 +6,7 @@
 <div class="panel-container">
     <!-- Lit Web Component for Sidebar -->
     <app-sidebar id="sidebar"></app-sidebar>
-    
+
     <main class="panel-content">
         <div class="panel-header">
             <h2 class="panel-title">{% block panel_title %}Dashboard{% endblock %}</h2>
@@ -15,7 +15,7 @@
                 <span class="user-name">{{ current_user.username }}</span>
             </div>
         </div>
-        
+
         <div class="panel-body">
             {% block panel_content %}{% endblock %}
         </div>
@@ -26,14 +26,34 @@
     {{ sidebar_items | tojson | safe }}
 </script>
 
-<script>
+<script type="module">
     // Pass sidebar items from Jinja context to the Lit Web Component
+    // Convert simple URL-based items into action-based items
     document.addEventListener('DOMContentLoaded', () => {
         const sidebar = document.getElementById('sidebar');
         const dataScript = document.getElementById('sidebar-data');
         if (sidebar && dataScript && dataScript.textContent) {
             try {
-                sidebar.items = JSON.parse(dataScript.textContent);
+                const rawItems = JSON.parse(dataScript.textContent);
+                // Convert simple items to action-based items
+                sidebar.items = rawItems.map(item => ({
+                    id: item.id || item.item_id,
+                    label: item.label,
+                    icon: item.icon || '🔗',
+                    tooltip: item.tooltip || item.label,
+                    active: item.active || false,
+                    action: {
+                        url: item.url,
+                        on_action: (event, menuItem) => {
+                            if (menuItem.action && menuItem.action.url) {
+                                window.location.href = menuItem.action.url;
+                            }
+                        },
+                        on_over_action: (event, menuItem) => {
+                            // Optional: highlight on hover
+                        }
+                    }
+                }));
             } catch (e) {
                 console.error('Failed to parse sidebar data:', e);
                 sidebar.items = [];

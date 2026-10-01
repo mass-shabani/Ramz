@@ -37,6 +37,7 @@ class PanelService:
             "current_user": current_user,
             "sidebar_items": sidebar_items,
             "module_name": context.get("module_name", "user_panel"),
+            "request": request,
             **context
         }
         
