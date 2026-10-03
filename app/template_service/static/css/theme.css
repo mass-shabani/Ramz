@@ -138,7 +138,7 @@ a:hover { color: var(--accent-hover); }
 .auth-text { color: var(--text-secondary); font-size: 0.9rem; }
 
 /* --- 6. USER PANEL MODULE --- */
-.panel-container { display: flex; min-height: calc(100vh - 140px); direction: rtl; background: var(--primary-bg); }
+.panel-container { display: flex; min-height: calc(100vh - 140px); direction: ltr; background: var(--primary-bg); }
 .panel-content { flex: 1; padding: 2rem; overflow-y: auto; }
 .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.5rem; }
 .panel-title { font-size: 1.75rem; font-weight: 600; color: var(--text-primary); margin: 0; }

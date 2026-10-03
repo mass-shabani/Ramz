@@ -37,7 +37,7 @@ class AppSidebar extends LitElement {
             width: 260px;
             transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             background: var(--secondary-bg, #111827);
-            border-left: 1px solid var(--border-color, #374151);
+            border-right: 1px solid var(--border-color, #374151);
             height: 100vh;
             position: sticky;
             top: 0;
@@ -52,7 +52,6 @@ class AppSidebar extends LitElement {
 
         .sidebar-header {
             display: flex;
-            justify-content: center;
             align-items: center;
             padding: 1.5rem 1rem;
             border-bottom: 1px solid var(--border-color, #374151);
@@ -67,6 +66,7 @@ class AppSidebar extends LitElement {
             padding: 0.5rem;
             border-radius: 8px;
             transition: background 0.2s;
+            margin-right: auto;
         }
 
         .toggle-btn:hover {

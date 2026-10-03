@@ -42,14 +42,13 @@ class SidebarMenuItem extends LitElement {
         }
 
         :host(:hover) {
-            background: var(--surface-bg, #1F2937);
             color: var(--text-primary, #F9FAFB);
         }
 
         :host([active]) {
             background: rgba(245, 158, 11, 0.1);
             color: var(--accent, #F59E0B);
-            border-right: 3px solid var(--accent, #F59E0B);
+            border-left: 3px solid var(--accent, #F59E0B);
         }
 
         .icon {
@@ -99,6 +98,20 @@ class SidebarMenuItem extends LitElement {
         :host([collapsed]):hover .tooltip {
             opacity: 1;
             visibility: visible;
+        }
+
+        .menu-item {
+            background: transparent;
+            border: none;
+            padding: 0;
+            margin: 0;
+            width: 100%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            color: inherit;
+            font: inherit;
         }
     `;
 
