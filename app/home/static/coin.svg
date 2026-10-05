@@ -1,0 +1,129 @@
+<svg class="coin-svg" viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <defs>
+    <!-- Main gold gradient (radial for metallic face) -->
+    <radialGradient id="coinGrad" cx="34%" cy="28%" r="75%">
+      <stop offset="0%"   stop-color="#FFFCE8"/>
+      <stop offset="18%"  stop-color="#FEF3C7"/>
+      <stop offset="42%"  stop-color="#FCD34D"/>
+      <stop offset="68%"  stop-color="#F59E0B"/>
+      <stop offset="88%"  stop-color="#B45309"/>
+      <stop offset="100%" stop-color="#78350F"/>
+    </radialGradient>
+
+    <!-- Inner face gradient -->
+    <radialGradient id="innerGrad" cx="42%" cy="35%" r="70%">
+      <stop offset="0%"   stop-color="#FEF9C3"/>
+      <stop offset="45%"  stop-color="#FCD34D"/>
+      <stop offset="85%"  stop-color="#D97706"/>
+      <stop offset="100%" stop-color="#92400E"/>
+    </radialGradient>
+
+    <!-- Letter gradient (embossed gold) -->
+    <linearGradient id="letterGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#B45309"/>
+      <stop offset="45%"  stop-color="#78350F"/>
+      <stop offset="100%" stop-color="#451A03"/>
+    </linearGradient>
+
+    <!-- Glow behind coin -->
+    <radialGradient id="glowGrad">
+      <stop offset="0%"   stop-color="#FCD34D" stop-opacity="0.75"/>
+      <stop offset="55%"  stop-color="#F59E0B" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#F59E0B" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Shine sweep -->
+    <linearGradient id="shineGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="35%"  stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="50%"  stop-color="#ffffff" stop-opacity="0.75"/>
+      <stop offset="65%"  stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Glow filter for electrons -->
+    <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="3.5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Ambient glow -->
+  <circle class="coin-pulse" cx="160" cy="160" r="150" fill="url(#glowGrad)"/>
+
+  <!-- Orbital rings + electrons -->
+  <g class="coin-orbit-1">
+    <ellipse cx="160" cy="160" rx="148" ry="46" fill="none" stroke="#FCD34D" stroke-width="0.9" opacity="0.35"/>
+    <circle cx="308" cy="160" r="4.5" fill="#FEF3C7" filter="url(#softGlow)"/>
+    <circle cx="12"  cy="160" r="2.8" fill="#FCD34D" opacity="0.65"/>
+  </g>
+
+  <g class="coin-orbit-2">
+    <ellipse cx="160" cy="160" rx="46" ry="148" fill="none" stroke="#FCD34D" stroke-width="0.9" opacity="0.35"/>
+    <circle cx="160" cy="12"  r="4.5" fill="#FEF3C7" filter="url(#softGlow)"/>
+    <circle cx="160" cy="308" r="2.8" fill="#FCD34D" opacity="0.65"/>
+  </g>
+
+  <!-- Dashed rotating outer ring -->
+  <circle class="coin-dash" cx="160" cy="160" r="128" fill="none"
+          stroke="#FBBF24" stroke-width="1.4" stroke-dasharray="3 11" opacity="0.55"/>
+
+  <!-- Main coin body -->
+  <g class="coin-body">
+    <!-- Outer rim (shadow) -->
+    <circle cx="160" cy="162" r="106" fill="#451A03" opacity="0.55"/>
+    <circle cx="160" cy="160" r="105" fill="#78350F"/>
+    <circle cx="160" cy="158" r="103" fill="#92400E"/>
+
+    <!-- Main gold face -->
+    <circle cx="160" cy="158" r="100" fill="url(#coinGrad)"/>
+
+    <!-- Circuit traces (electronics theme) -->
+    <g stroke="#78350F" stroke-width="1.4" fill="none" opacity="0.38">
+      <path d="M 160 62 L 160 90"/>
+      <path d="M 160 226 L 160 254"/>
+      <path d="M 62 158 L 90 158"/>
+      <path d="M 226 158 L 254 158"/>
+      <path d="M 92 92 L 108 108"/>
+      <path d="M 228 92 L 212 108"/>
+      <path d="M 92 224 L 108 208"/>
+      <path d="M 228 224 L 212 208"/>
+    </g>
+    <g fill="#78350F" opacity="0.5">
+      <circle class="coin-node" cx="160" cy="90"  r="2.6"/>
+      <circle class="coin-node" cx="160" cy="226" r="2.6"/>
+      <circle class="coin-node" cx="90"  cy="158" r="2.6"/>
+      <circle class="coin-node" cx="230" cy="158" r="2.6"/>
+      <circle class="coin-node" cx="108" cy="108" r="2.2"/>
+      <circle class="coin-node" cx="212" cy="108" r="2.2"/>
+      <circle class="coin-node" cx="108" cy="208" r="2.2"/>
+      <circle class="coin-node" cx="212" cy="208" r="2.2"/>
+    </g>
+
+    <!-- Inner ring -->
+    <circle cx="160" cy="158" r="78" fill="none" stroke="#B45309" stroke-width="2" opacity="0.55"/>
+    <circle cx="160" cy="158" r="72" fill="url(#innerGrad)"/>
+    <circle cx="160" cy="158" r="66" fill="none" stroke="#92400E" stroke-width="1" opacity="0.4"/>
+
+    <!-- Embossed R -->
+    <text x="160" y="192" text-anchor="middle"
+          font-family="Georgia, 'Times New Roman', serif"
+          font-size="92" font-weight="900"
+          fill="#451A03" opacity="0.55">R</text>
+    <text x="160" y="189" text-anchor="middle"
+          font-family="Georgia, 'Times New Roman', serif"
+          font-size="92" font-weight="900"
+          fill="url(#letterGrad)">R</text>
+
+    <!-- Highlight arc (top-left light) -->
+    <path d="M 90 118 A 85 85 0 0 1 210 100"
+          fill="none" stroke="#FEF9C3" stroke-width="2.5"
+          stroke-linecap="round" opacity="0.4"/>
+
+    <!-- Shine sweep -->
+    <circle class="coin-shine" cx="160" cy="158" r="100" fill="url(#shineGrad)" opacity="0.3"/>
+  </g>
+</svg>

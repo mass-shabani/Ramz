@@ -14,9 +14,7 @@ def register_routes(http_api: Any, template_service: Any, logger: Any):
         """Render the home page."""
         try:
             context = {
-                "title": "Home - Crypto Services",
-                "page_title": "Welcome to Crypto Services",
-                "page_subtitle": "Your gateway to cryptocurrency management",
+                "title": "Ramz — AI Crypto Intelligence",
                 "login_url": "/login",
                 "module_name": "home",
                 "request": request

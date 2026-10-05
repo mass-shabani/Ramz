@@ -2,49 +2,45 @@
 
 {% block title %}{{ title }}{% endblock %}
 
+{% block body_class %}page-landing{% endblock %}
+
 {% block content %}
-<div class="hero-section">
-    <div class="hero-container">
-        <div class="hero-content">
-            <h1 class="hero-title">{{ page_title }}</h1>
-            <p class="hero-subtitle">{{ page_subtitle }}</p>
-            
-            <div class="hero-actions">
-                <a href="{{ login_url }}" class="btn btn-primary btn-lg">
-                    <span class="btn-icon">🔐</span>
-                    <span class="btn-text">Login to Dashboard</span>
-                </a>
-            </div>
-            
-            <div class="hero-features">
-                <div class="feature-item">
-                    <div class="feature-icon">📊</div>
-                    <h3 class="feature-title">Real-time Analytics</h3>
-                    <p class="feature-desc">Track your crypto portfolio with live data</p>
-                </div>
-                
-                <div class="feature-item">
-                    <div class="feature-icon">🔒</div>
-                    <h3 class="feature-title">Secure Storage</h3>
-                    <p class="feature-desc">Advanced security for your digital assets</p>
-                </div>
-                
-                <div class="feature-item">
-                    <div class="feature-icon">⚡</div>
-                    <h3 class="feature-title">Fast Transactions</h3>
-                    <p class="feature-desc">Quick and reliable crypto operations</p>
-                </div>
-            </div>
-        </div>
-        
-        <div class="hero-visual">
-            <div class="visual-graphic">
-                <div class="crypto-icon">₿</div>
-                <div class="orbit orbit-1"></div>
-                <div class="orbit orbit-2"></div>
-                <div class="orbit orbit-3"></div>
-            </div>
-        </div>
+<!-- Decorative orbs -->
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+
+<main class="landing">
+  <div class="landing-content">
+
+    <!-- ==================== ANIMATED COIN ==================== -->
+    <div class="coin-wrap" id="coin-container">
+      <!-- SVG will be injected here by JavaScript for animation support -->
     </div>
-</div>
+
+    <!-- ==================== TEXT ==================== -->
+    <h1 class="landing-title">
+      The <span class="grad">AI edge</span> for<br>
+      crypto markets.
+    </h1>
+
+    <p class="landing-text">
+      Ramz is an AI-powered intelligence layer for crypto — real-time signals,
+      predictive analytics, and on-chain insights, engineered for traders who
+      demand precision.
+    </p>
+
+    <!-- ==================== CTA ==================== -->
+    <a href="{{ login_url }}" class="landing-btn">
+      Enter Platform
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5 12h14"/>
+        <path d="m13 6 6 6-6 6"/>
+      </svg>
+    </a>
+
+    <div class="landing-foot">Built for traders · Trusted worldwide</div>
+
+  </div>
+</main>
 {% endblock %}

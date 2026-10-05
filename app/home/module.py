@@ -30,6 +30,10 @@ class HomeModule(IModule):
         templates_dir = str(Path(__file__).parent / "templates")
         template_service.register_template_directory(templates_dir, "home")
         
+        static_dir = str(Path(__file__).parent / "static")
+        template_service.register_module_static_directory("home", static_dir)
+        template_service.register_module_assets("home", js_files=["/static/home/js/landing.js"])
+        
         register_routes(http_api, template_service, logger)
         
         if logger:
