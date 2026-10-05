@@ -70,7 +70,7 @@ class AppUserDropdown extends LitElement {
         .user-menu {
             position: absolute;
             top: calc(100% + 5px);
-            right: 0;
+            left: 0;
             background: var(--surface-bg, #1F2937);
             border: 1px solid var(--border-color, #374151);
             border-radius: var(--border-radius, 8px);

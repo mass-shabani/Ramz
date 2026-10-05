@@ -46,12 +46,12 @@
             toast.style.cssText = `
                 position: fixed;
                 bottom: 2rem;
-                right: 2rem;
+                left: 2rem;
                 background: var(--surface-bg);
                 color: var(--text-primary);
                 padding: 1rem 1.5rem;
                 border-radius: var(--border-radius);
-                border-left: 4px solid var(--${type});
+                border-right: 4px solid var(--${type});
                 box-shadow: var(--shadow-lg);
                 z-index: 9999;
                 animation: slideIn 0.3s ease;

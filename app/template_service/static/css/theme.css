@@ -84,7 +84,7 @@ a:hover { color: var(--accent-hover); }
 .user-name { font-size: 0.9rem; font-weight: 500; }
 .dropdown-icon { font-size: 0.7rem; transition: transform 0.2s ease; }
 .user-dropdown.open .dropdown-icon { transform: rotate(180deg); }
-.user-menu { position: absolute; top: 100%; right: 0; background: var(--surface-bg); border: 1px solid var(--border-color); border-radius: var(--border-radius); min-width: 200px; padding: 0.5rem 0; opacity: 0; visibility: hidden; transform: translateY(-10px); transition: all 0.2s ease; z-index: 1000; }
+.user-menu { position: absolute; top: 100%; left: 0; background: var(--surface-bg); border: 1px solid var(--border-color); border-radius: var(--border-radius); min-width: 200px; padding: 0.5rem 0; opacity: 0; visibility: hidden; transform: translateY(-10px); transition: all 0.2s ease; z-index: 1000; }
 .user-dropdown.open .user-menu { opacity: 1; visibility: visible; transform: translateY(0); }
 .user-menu-item { display: block; padding: 0.5rem 1rem; color: var(--text-secondary); font-size: 0.9rem; transition: all 0.2s ease; }
 .user-menu-item:hover { background: var(--accent); color: var(--primary-bg); }

@@ -33,12 +33,12 @@ class SidebarMenuItem extends LitElement {
             white-space: nowrap;
             overflow: hidden;
             cursor: pointer;
-            direction: rtl;
+            direction: ltr;
             position: relative;
             border: none;
             background: none;
             width: 100%;
-            text-align: right;
+            text-align: left;
         }
 
         :host(:hover) {
@@ -48,7 +48,7 @@ class SidebarMenuItem extends LitElement {
         :host([active]) {
             background: rgba(245, 158, 11, 0.1);
             color: var(--accent, #F59E0B);
-            border-left: 3px solid var(--accent, #F59E0B);
+            border-right: 3px solid var(--accent, #F59E0B);
         }
 
         .icon {
@@ -78,7 +78,7 @@ class SidebarMenuItem extends LitElement {
 
         .tooltip {
             position: absolute;
-            left: 100%;
+            right: 100%;
             top: 50%;
             transform: translateY(-50%);
             background: var(--surface-bg, #1F2937);

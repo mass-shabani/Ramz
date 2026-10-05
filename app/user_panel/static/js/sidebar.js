@@ -37,13 +37,13 @@ class AppSidebar extends LitElement {
             width: 260px;
             transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             background: var(--secondary-bg, #111827);
-            border-right: 1px solid var(--border-color, #374151);
+            border-left: 1px solid var(--border-color, #374151);
             height: 100vh;
             position: sticky;
             top: 0;
             overflow-y: auto;
             overflow-x: hidden;
-            direction: rtl;
+            direction: ltr;
         }
 
         :host([collapsed]) {
@@ -66,7 +66,7 @@ class AppSidebar extends LitElement {
             padding: 0.5rem;
             border-radius: 8px;
             transition: background 0.2s;
-            margin-right: auto;
+            margin-left: auto;
         }
 
         .toggle-btn:hover {
