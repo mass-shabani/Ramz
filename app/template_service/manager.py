@@ -19,7 +19,7 @@ class AssetService:
         self._assets = {
             "favicon": "/static/assets/favicon.svg",
             "logo": "/static/images/logo.svg",
-            "theme_css": "/static/css/theme.css",
+            "theme_css": "/static/css/style.css",
             "theme_js": "/static/js/theme.js"
         }
 
@@ -128,7 +128,7 @@ class TemplateManager:
 
     def _register_default_assets(self):
         """Register the default global assets from template_service itself."""
-        self.global_css = ["/static/css/theme.css"]
+        self.global_css = ["/static/css/style.css"]
         self.global_js = ["/static/js/theme.js"]
 
     async def render(self, template_name: str, context: Dict[str, Any] = None) -> str:
