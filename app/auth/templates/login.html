@@ -342,8 +342,8 @@
       firstInvalid = firstInvalid || passwordEl;
       hasError = true;
       shake(passwordEl.closest('.input-wrap'));
-    } else if (password.length < 6){
-      setFieldError(passwordEl, passwordErr, 'Password must be at least 6 characters');
+    } else if (password.length < 4){
+      setFieldError(passwordEl, passwordErr, 'Password must be at least 4 characters');
       firstInvalid = firstInvalid || passwordEl;
       hasError = true;
       shake(passwordEl.closest('.input-wrap'));

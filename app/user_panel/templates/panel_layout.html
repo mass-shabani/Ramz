@@ -1,776 +1,117 @@
 {% extends "base.html" %}
 
-{% block title %}Ramz — Dashboard{% endblock %}
-
 {% block body_class %}page-dashboard{% endblock %}
 
 {% block content %}
 <div class="app">
 
-  <!-- ============ SIDEBAR ============ -->
-  <aside class="sidebar" id="sidebar">
-    <div class="brand">
-      <div class="brand-logo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 2 3 7v10l9 5 9-5V7z"/>
-          <path d="M12 22V12"/>
-          <path d="m3 7 9 5 9-5"/>
+  <!-- ==================== SIDEBAR ==================== -->
+  <nebula-sidebar id="sidebar">
+
+    <nebula-brand slot="brand"
+                  name="Ramz"
+                  subtitle="CRYPTO INTELLIGENCE"></nebula-brand>
+
+    <sidebar-menu-group label="Overview">
+
+      <sidebar-menu-item label="Dashboard"
+                         href="/panel"
+                         endpoint="/panel/dashboard"
+                         active>
+        <svg slot="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="9" rx="2"/>
+          <rect x="14" y="3" width="7" height="5" rx="2"/>
+          <rect x="14" y="12" width="7" height="9" rx="2"/>
+          <rect x="3" y="16" width="7" height="5" rx="2"/>
         </svg>
-      </div>
-      <div class="brand-text">
-        <span class="brand-name">Ramz</span>
-        <span class="brand-sub">CRYPTO INTELLIGENCE</span>
-      </div>
-    </div>
+      </sidebar-menu-item>
 
-    <nav class="nav">
-      {% for item in sidebar_items %}
-      <a class="nav-item{% if item.active %} active{% endif %}" 
-         href="{{ item.url|default('#') }}" 
-         title="{{ item.tooltip or item.label }}">
-        <span class="nav-icon">
-          {% if item.icon %}{{ item.icon }}{% endif %}
-        </span>
-        <span class="nav-text">{{ item.label }}</span>
-        {% if item.badge %}<span class="nav-badge{% if item.badge in ['danger','error'] %} danger{% endif %}">{{ item.badge }}</span>{% endif %}
-      </a>
-      {% endfor %}
-    </nav>
-
-    <div class="promo">
-      <h4>Upgrade to Pro</h4>
-      <p>Unlock advanced AI predictions, unlimited alerts and priority support.</p>
-      <button type="button">Upgrade Now</button>
-    </div>
-
-    <div class="sidebar-footer">
-      <button class="collapse-btn" id="collapseBtn" type="button" aria-label="Toggle sidebar">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M11 17l-5-5 5-5"/>
-          <path d="M18 17l-5-5 5-5"/>
+      <sidebar-menu-item label="Analytics" href="#" endpoint="/panel/analytics">
+        <svg slot="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 3v18h18"/>
+          <path d="m7 15 4-5 3 3 5-7"/>
         </svg>
-        <span class="collapse-text">Collapse Menu</span>
-      </button>
-    </div>
-  </aside>
+      </sidebar-menu-item>
 
-  <!-- ============ MAIN ============ -->
+      <sidebar-menu-item label="Predictions" href="#" endpoint="/panel/predictions"
+                         badge="New">
+        <svg slot="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 3v18h18"/>
+          <path d="m7 15 4-5 3 3 5-7"/>
+        </svg>
+      </sidebar-menu-item>
+
+      <sidebar-menu-item label="Markets" href="#" endpoint="/panel/markets">
+        <svg slot="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9"/>
+          <path d="M12 7v5l3 2"/>
+        </svg>
+      </sidebar-menu-item>
+
+    </sidebar-menu-group>
+
+    <sidebar-menu-group label="Management">
+
+      <sidebar-menu-item label="Portfolio" href="#" endpoint="/panel/portfolio">
+        <svg slot="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="7" width="18" height="13" rx="3"/>
+          <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+        </svg>
+      </sidebar-menu-item>
+
+      <sidebar-menu-item label="Alerts" href="#" endpoint="/panel/alerts"
+                         badge="5" badge-variant="danger">
+        <svg slot="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z"/>
+        </svg>
+      </sidebar-menu-item>
+
+      <sidebar-menu-item label="Settings" href="#" endpoint="/panel/settings">
+        <svg slot="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7.9 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 4 13.9H4a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 5.3 7.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 10.9 4V4a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1.3z"/>
+        </svg>
+      </sidebar-menu-item>
+
+    </sidebar-menu-group>
+
+    <nebula-promo slot="promo"></nebula-promo>
+    <collapse-button slot="footer"></collapse-button>
+
+  </nebula-sidebar>
+
+  <!-- ==================== MAIN ==================== -->
   <div class="main">
 
     <header class="topbar">
-      <span class="panel-title-text">{% block panel_title %}Dashboard{% endblock %}</span>
-
-      <button class="hamburger-btn" id="hamburger" type="button" aria-label="Open menu">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 7h16"/>
-          <path d="M4 12h10"/>
-          <path d="M4 17h16"/>
-        </svg>
-      </button>
-
-      <!-- ========== INLINE SEARCH + ATTACHED DROPDOWN (desktop) ========== -->
-      <div class="search" id="searchWrap">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-          <circle cx="11" cy="11" r="7"/>
-          <path d="m20 20-3.2-3.2"/>
-        </svg>
-        <input
-          type="text"
-          id="searchInputDesktop"
-          placeholder="Search markets, coins, alerts..."
-          autocomplete="off"
-          aria-haspopup="listbox"
-          aria-expanded="false"
-        />
-        <kbd>⌘K</kbd>
-
-        <!-- Attached search dropdown -->
-        <div class="search-dropdown" id="searchDropdown" role="listbox">
-          <div class="search-panel-body">
-
-            <div class="search-group">
-              <div class="search-group-title">Recent</div>
-
-              <div class="search-row" data-searchable="BTC Prediction — Q4" tabindex="-1">
-                <span class="ico icon-soft--indigo">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="9"/>
-                    <path d="M12 7v5l3 2"/>
-                  </svg>
-                </span>
-                <div class="row-main">BTC Prediction — Q4</div>
-                <span class="row-arrow">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M5 12h14M13 6l6 6-6 6"/>
-                  </svg>
-                </span>
-              </div>
-
-              <div class="search-row" data-searchable="ETH Volatility Alert" tabindex="-1">
-                <span class="ico icon-soft--green">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="m6 15 6-6 6 6"/>
-                  </svg>
-                </span>
-                <div class="row-main">ETH Volatility Alert</div>
-                <span class="row-arrow">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M5 12h14M13 6l6 6-6 6"/>
-                  </svg>
-                </span>
-              </div>
-
-              <div class="search-row" data-searchable="SOL Momentum Model" tabindex="-1">
-                <span class="ico icon-soft--amber">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 2v20"/>
-                    <path d="M17 6.5c0-1.9-2.2-3-5-3s-5 1.1-5 3 2.2 2.7 5 3 5 1.1 5 3-2.2 3-5 3-5-1.1-5-3"/>
-                  </svg>
-                </span>
-                <div class="row-main">SOL Momentum Model</div>
-                <span class="row-arrow">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M5 12h14M13 6l6 6-6 6"/>
-                  </svg>
-                </span>
-              </div>
-            </div>
-
-            <div class="search-group">
-              <div class="search-group-title">Quick Filters</div>
-              <div class="search-chips">
-                <span class="search-chip">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h10M4 17h16"/></svg>
-                  All
-                </span>
-                <span class="search-chip">Coins</span>
-                <span class="search-chip">Signals</span>
-                <span class="search-chip">Alerts</span>
-                <span class="search-chip">Models</span>
-              </div>
-            </div>
-
-            <div class="search-group">
-              <div class="search-group-title">Suggestions</div>
-
-              <div class="search-row" data-searchable="Market Overview" tabindex="-1">
-                <span class="ico icon-soft--violet">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M3 3v18h18"/>
-                    <path d="m7 15 4-5 3 3 5-7"/>
-                  </svg>
-                </span>
-                <div class="row-main">
-                  Market Overview
-                  <div class="row-sub">Live top-50 performance</div>
-                </div>
-              </div>
-
-              <div class="search-row" data-searchable="Open Alerts" tabindex="-1">
-                <span class="ico icon-soft--rose">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z"/>
-                  </svg>
-                </span>
-                <div class="row-main">
-                  Open Alerts
-                  <div class="row-sub">32 unresolved signals</div>
-                </div>
-              </div>
-
-              <div class="search-row" data-searchable="Portfolio Performance" tabindex="-1">
-                <span class="ico icon-soft--sky">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="7" width="18" height="13" rx="3"/>
-                    <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                  </svg>
-                </span>
-                <div class="row-main">
-                  Portfolio Performance
-                  <div class="row-sub">Weekly analytics</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Empty state -->
-            <div class="search-empty" id="searchEmpty">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="7"/>
-                <path d="m20 20-3.2-3.2"/>
-                <path d="M9 9h4"/>
-              </svg>
-              No results found. Try a different search term.
-            </div>
-
-          </div>
-        </div>
-      </div>
-
-      <!-- Mobile search button -->
-      <button class="search-btn" id="searchBtn" type="button" aria-label="Open search">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-          <circle cx="11" cy="11" r="7"/>
-          <path d="m20 20-3.2-3.2"/>
-        </svg>
-      </button>
+      <hamburger-button></hamburger-button>
+      <nebula-search></nebula-search>
 
       <div class="topbar-actions">
-        {% set user_name = current_user.full_name or current_user.username or 'User' %}
-        {% set user_email = current_user.email_address or '' %}
-        {% set initials = user_name[:2].upper() %}
+        <nebula-notification-panel></nebula-notification-panel>
 
-        <div class="dropdown-wrap">
-          <button class="icon-btn" id="bellBtn" type="button" data-dropdown="notifPanel" aria-haspopup="true" aria-expanded="false" aria-label="Notifications">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M18 8.5a6 6 0 1 0-12 0c0 6-2.5 7.5-2.5 7.5h17S18 14.5 18 8.5z"/>
-              <path d="M10.3 20a2 2 0 0 0 3.4 0"/>
-            </svg>
-            <span class="dot"></span>
-          </button>
-
-          <div class="dropdown notif" id="notifPanel" role="menu">
-            <div class="dropdown-head">
-              <h3>Notifications</h3>
-              <span class="pill">4 new</span>
-              <button type="button">Mark all read</button>
-            </div>
-
-            <div class="notif-list">
-              <a class="notif-item unread" href="#">
-                <span class="notif-ico icon-soft--indigo">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z"/>
-                  </svg>
-                </span>
-                <span class="notif-body">
-                  <p><b>BTC</b> prediction updated — 72% bullish confidence.</p>
-                  <span class="notif-time">2 minutes ago</span>
-                </span>
-              </a>
-
-              <a class="notif-item unread" href="#">
-                <span class="notif-ico icon-soft--green">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="m6 15 6-6 6 6"/>
-                  </svg>
-                </span>
-                <span class="notif-body">
-                  <p><b>ETH</b> crossed your target of <b>$3,200</b>.</p>
-                  <span class="notif-time">18 minutes ago</span>
-                </span>
-              </a>
-
-              <a class="notif-item unread" href="#">
-                <span class="notif-ico icon-soft--amber">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 9v4"/>
-                    <path d="M12 17h.01"/>
-                    <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>
-                  </svg>
-                </span>
-                <span class="notif-body">
-                  <p>Unusual volatility detected on <b>SOL/USDT</b>.</p>
-                  <span class="notif-time">1 hour ago</span>
-                </span>
-              </a>
-
-              <a class="notif-item unread" href="#">
-                <span class="notif-ico icon-soft--rose">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="2" y="5" width="20" height="14" rx="3"/>
-                    <path d="M2 10h20"/>
-                  </svg>
-                </span>
-                <span class="notif-body">
-                  <p>Weekly AI report is ready — <b>+18.4%</b> signal accuracy.</p>
-                  <span class="notif-time">3 hours ago</span>
-                </span>
-              </a>
-            </div>
-
-            <div class="dropdown-foot">
-              <a href="#">View all notifications</a>
-            </div>
-          </div>
-        </div>
-
-        <div class="dropdown-wrap">
-          <button class="user-chip" id="userBtn" type="button" data-dropdown="userPanel" aria-haspopup="true" aria-expanded="false">
-            <span class="avatar avatar--indigo">{{ initials }}</span>
-            <span class="user-name">{{ user_name }}</span>
-            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="m6 9 6 6 6-6"/>
-            </svg>
-          </button>
-
-          <div class="dropdown user-menu" id="userPanel" role="menu">
-            <div class="um-head">
-              <span class="avatar avatar--indigo">{{ initials }}</span>
-              <div class="um-info">
-                <div class="um-name">{{ user_name }}</div>
-                <div class="um-mail">{{ user_email }}</div>
-              </div>
-            </div>
-
-            <a class="um-item" href="#">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="8" r="3.6"/>
-                <path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>
-              </svg>
-              My Profile
-            </a>
-
-            <a class="um-item" href="#">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="3"/>
-                <path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7.9 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 4 13.9H4a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 5.3 7.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 10.9 4V4a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1.3z"/>
-              </svg>
-              Account Settings
-              <span class="kbd">⌘,</span>
-            </a>
-
-            <a class="um-item" href="#">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="2" y="5" width="20" height="14" rx="3"/>
-                <path d="M2 10h20"/>
-              </svg>
-              Billing &amp; Plans
-            </a>
-
-            <a class="um-item" href="#">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="9"/>
-                <path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.3"/>
-                <path d="M12 17h.01"/>
-              </svg>
-              Help &amp; Support
-            </a>
-
-            <div class="um-divider"></div>
-
-            <a class="um-item logout" href="login.html">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M9 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3"/>
-                <path d="M16 17l5-5-5-5"/>
-                <path d="M21 12H9"/>
-              </svg>
-              Log Out
-            </a>
-          </div>
-        </div>
-
+        <nebula-user-menu
+          user-name="{{ current_user.full_name or current_user.username or 'User' }}"
+          user-email="{{ current_user.email_address or '' }}"
+          user-initials="{{ (current_user.full_name or current_user.username or 'U')[:2].upper() }}">
+        </nebula-user-menu>
       </div>
     </header>
 
     <main class="content">
-      {% block panel_content %}{% endblock %}
+      <content-container initial-endpoint="/panel/dashboard"></content-container>
     </main>
+
   </div>
 </div>
 
-<!-- Mobile overlay -->
 <div class="overlay" id="overlay"></div>
-
-<!-- Floating Search Modal (mobile only) -->
-<div class="search-modal" id="searchModal" role="dialog" aria-modal="true" aria-label="Search">
-  <div class="search-modal-backdrop" id="searchBackdrop"></div>
-  <div class="search-panel">
-    <div class="search-panel-input">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-        <circle cx="11" cy="11" r="7"/>
-        <path d="m20 20-3.2-3.2"/>
-      </svg>
-      <input type="text" id="searchInputMobile" placeholder="Search coins, alerts, models..." autocomplete="off" />
-      <span class="esc" id="searchEsc">ESC</span>
-    </div>
-
-    <div class="search-panel-body" id="mobileSearchBody">
-      <div class="search-group">
-        <div class="search-group-title">Recent</div>
-
-        <div class="search-row" data-searchable="BTC Prediction — Q4">
-          <span class="ico icon-soft--indigo">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="9"/>
-              <path d="M12 7v5l3 2"/>
-            </svg>
-          </span>
-          <div class="row-main">BTC Prediction — Q4</div>
-          <span class="row-arrow">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M5 12h14M13 6l6 6-6 6"/>
-            </svg>
-          </span>
-        </div>
-
-        <div class="search-row" data-searchable="ETH Volatility Alert">
-          <span class="ico icon-soft--green">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="m6 15 6-6 6 6"/>
-            </svg>
-          </span>
-          <div class="row-main">ETH Volatility Alert</div>
-          <span class="row-arrow">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M5 12h14M13 6l6 6-6 6"/>
-            </svg>
-          </span>
-        </div>
-      </div>
-
-      <div class="search-group">
-        <div class="search-group-title">Quick Filters</div>
-        <div class="search-chips">
-          <span class="search-chip">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h10M4 17h16"/></svg>
-            All
-          </span>
-          <span class="search-chip">Coins</span>
-          <span class="search-chip">Signals</span>
-          <span class="search-chip">Alerts</span>
-          <span class="search-chip">Models</span>
-        </div>
-      </div>
-
-      <div class="search-group">
-        <div class="search-group-title">Suggestions</div>
-
-        <div class="search-row" data-searchable="Market Overview">
-          <span class="ico icon-soft--violet">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 3v18h18"/>
-              <path d="m7 15 4-5 3 3 5-7"/>
-            </svg>
-          </span>
-          <div class="row-main">
-            Market Overview
-            <div class="row-sub">Live top-50 performance</div>
-          </div>
-        </div>
-
-        <div class="search-row" data-searchable="Open Alerts">
-          <span class="ico icon-soft--rose">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z"/>
-            </svg>
-          </span>
-          <div class="row-main">
-            Open Alerts
-            <div class="row-sub">32 unresolved signals</div>
-          </div>
-        </div>
-
-        <div class="search-row" data-searchable="Portfolio Performance">
-          <span class="ico icon-soft--sky">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="7" width="18" height="13" rx="3"/>
-              <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-            </svg>
-          </span>
-          <div class="row-main">
-            Portfolio Performance
-            <div class="row-sub">Weekly analytics</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="search-empty" id="searchEmptyMobile">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="11" cy="11" r="7"/>
-          <path d="m20 20-3.2-3.2"/>
-          <path d="M9 9h4"/>
-        </svg>
-        No results found. Try a different search term.
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-(function () {
-  'use strict';
-
-  const sidebar     = document.getElementById('sidebar');
-  const overlay     = document.getElementById('overlay');
-  const collapseBtn = document.getElementById('collapseBtn');
-  const hamburger   = document.getElementById('hamburger');
-
-  /* ============================================================
-     DROPDOWNS (bell + user)
-     ============================================================ */
-  const dropdownWraps = document.querySelectorAll('.dropdown-wrap');
-
-  function closeAllDropdowns() {
-    document.querySelectorAll('.dropdown.open').forEach(d => d.classList.remove('open'));
-    dropdownWraps.forEach(w => w.classList.remove('active'));
-    document.querySelectorAll('[data-dropdown]').forEach(b => b.setAttribute('aria-expanded', 'false'));
-  }
-
-  document.querySelectorAll('[data-dropdown]').forEach(btn => {
-    btn.addEventListener('click', function (e) {
-      e.stopPropagation();
-      const panel = document.getElementById(this.dataset.dropdown);
-      const wrap  = this.closest('.dropdown-wrap');
-      if (!panel) return;
-      const wasOpen = panel.classList.contains('open');
-      closeAllDropdowns();
-      if (!wasOpen) {
-        panel.classList.add('open');
-        wrap.classList.add('active');
-        this.setAttribute('aria-expanded', 'true');
-      }
-    });
-  });
-
-  document.addEventListener('click', e => {
-    if (!e.target.closest('.dropdown-wrap')) closeAllDropdowns();
-  });
-
-  /* ============================================================
-     DESKTOP SEARCH DROPDOWN (attached below input)
-     ============================================================ */
-  const searchWrap      = document.getElementById('searchWrap');
-  const searchInput     = document.getElementById('searchInputDesktop');
-  const searchDropdown  = document.getElementById('searchDropdown');
-  const searchEmpty     = document.getElementById('searchEmpty');
-
-  function openSearchDropdown() {
-    if (window.innerWidth <= 860) return;
-    searchDropdown.classList.add('open');
-    searchWrap.classList.add('open');
-    searchInput.setAttribute('aria-expanded', 'true');
-  }
-
-  function closeSearchDropdown() {
-    searchDropdown.classList.remove('open');
-    searchWrap.classList.remove('open');
-    searchInput.setAttribute('aria-expanded', 'false');
-  }
-
-  function filterSearch(container, query, emptyEl) {
-    const q = (query || '').trim().toLowerCase();
-    const rows = container.querySelectorAll('.search-row');
-    const groups = container.querySelectorAll('.search-group');
-    let totalVisible = 0;
-
-    if (!q) {
-      rows.forEach(r => r.style.display = '');
-      groups.forEach(g => g.style.display = '');
-      if (emptyEl) emptyEl.classList.remove('show');
-      return;
-    }
-
-    groups.forEach(group => {
-      const hasChips = !!group.querySelector('.search-chips');
-      if (hasChips) { group.style.display = 'none'; return; }
-
-      let anyVisible = false;
-      group.querySelectorAll('.search-row').forEach(row => {
-        const hay = (row.dataset.searchable || row.textContent).toLowerCase();
-        const match = hay.includes(q);
-        row.style.display = match ? '' : 'none';
-        if (match) { anyVisible = true; totalVisible++; }
-      });
-      group.style.display = anyVisible ? '' : 'none';
-    });
-
-    if (emptyEl) emptyEl.classList.toggle('show', totalVisible === 0);
-  }
-
-  searchInput.addEventListener('focus', openSearchDropdown);
-  searchInput.addEventListener('click', openSearchDropdown);
-
-  searchInput.addEventListener('input', function () {
-    filterSearch(searchDropdown, this.value, searchEmpty);
-    openSearchDropdown();
-  });
-
-  searchInput.addEventListener('keydown', function (e) {
-    const rows = [...searchDropdown.querySelectorAll('.search-row')]
-      .filter(r => r.style.display !== 'none');
-    if (!rows.length) return;
-
-    let idx = rows.findIndex(r => r.classList.contains('active'));
-
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      idx = (idx + 1) % rows.length;
-      rows.forEach(r => r.classList.remove('active'));
-      rows[idx].classList.add('active');
-      rows[idx].scrollIntoView({ block: 'nearest' });
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      idx = idx <= 0 ? rows.length - 1 : idx - 1;
-      rows.forEach(r => r.classList.remove('active'));
-      rows[idx].classList.add('active');
-      rows[idx].scrollIntoView({ block: 'nearest' });
-    } else if (e.key === 'Enter') {
-      if (idx >= 0) {
-        e.preventDefault();
-        rows[idx].click();
-      }
-    } else if (e.key === 'Escape') {
-      closeSearchDropdown();
-      searchInput.blur();
-    }
-  });
-
-  document.addEventListener('click', e => {
-    if (!e.target.closest('#searchWrap')) closeSearchDropdown();
-  });
-
-  searchDropdown.querySelectorAll('.search-row').forEach(row => {
-    row.addEventListener('click', () => {
-      const label = row.dataset.searchable || row.textContent.trim();
-      searchInput.value = label;
-      closeSearchDropdown();
-      searchInput.blur();
-    });
-  });
-
-  searchDropdown.querySelectorAll('.search-chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      const val = chip.textContent.trim();
-      searchInput.value = val === 'All' ? '' : val;
-      searchInput.focus();
-      filterSearch(searchDropdown, searchInput.value, searchEmpty);
-    });
-  });
-
-  /* ============================================================
-     MOBILE SEARCH MODAL
-     ============================================================ */
-  const searchBtn        = document.getElementById('searchBtn');
-  const searchModal      = document.getElementById('searchModal');
-  const searchBackdrop   = document.getElementById('searchBackdrop');
-  const searchInputMobile= document.getElementById('searchInputMobile');
-  const mobileSearchBody = document.getElementById('mobileSearchBody');
-  const searchEmptyMobile= document.getElementById('searchEmptyMobile');
-  const searchEsc        = document.getElementById('searchEsc');
-
-  function openSearch() {
-    searchModal.classList.add('open');
-    document.body.classList.add('no-scroll');
-    closeAllDropdowns();
-    closeSearchDropdown();
-    setTimeout(() => searchInputMobile && searchInputMobile.focus(), 180);
-  }
-  function closeSearch() {
-    searchModal.classList.remove('open');
-    document.body.classList.remove('no-scroll');
-    searchInputMobile.value = '';
-    filterSearch(mobileSearchBody, '', searchEmptyMobile);
-  }
-
-  searchBtn.addEventListener('click', e => { e.stopPropagation(); openSearch(); });
-  searchBackdrop.addEventListener('click', closeSearch);
-  searchEsc.addEventListener('click', closeSearch);
-
-  searchInputMobile.addEventListener('input', function () {
-    filterSearch(mobileSearchBody, this.value, searchEmptyMobile);
-  });
-
-  mobileSearchBody.querySelectorAll('.search-row').forEach(row => {
-    row.addEventListener('click', () => closeSearch());
-  });
-
-  mobileSearchBody.querySelectorAll('.search-chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      const val = chip.textContent.trim();
-      searchInputMobile.value = val === 'All' ? '' : val;
-      searchInputMobile.focus();
-      filterSearch(mobileSearchBody, searchInputMobile.value, searchEmptyMobile);
-    });
-  });
-
-  /* ============================================================
-     MOBILE DRAWER
-     ============================================================ */
-  const isMobile = () => window.innerWidth < 1024;
-
-  function openMobile() {
-    sidebar.classList.add('mobile-open');
-    overlay.classList.add('show');
-    document.body.classList.add('no-scroll');
-  }
-  function closeMobile() {
-    sidebar.classList.remove('mobile-open');
-    overlay.classList.remove('show');
-    document.body.classList.remove('no-scroll');
-  }
-
-  hamburger.addEventListener('click', e => {
-    e.stopPropagation();
-    closeAllDropdowns();
-    closeSearchDropdown();
-    sidebar.classList.contains('mobile-open') ? closeMobile() : openMobile();
-  });
-
-  overlay.addEventListener('click', () => { closeMobile(); closeAllDropdowns(); });
-
-  document.querySelectorAll('.nav-item').forEach(item => {
-    item.addEventListener('click', function () {
-      document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-      this.classList.add('active');
-      if (isMobile()) closeMobile();
-    });
-  });
-
-  /* ============================================================
-     COLLAPSE
-     ============================================================ */
-  collapseBtn.addEventListener('click', function () {
-    if (isMobile()) {
-      closeMobile();
-    } else {
-      sidebar.classList.toggle('collapsed');
-      const collapsed = sidebar.classList.contains('collapsed');
-      this.querySelector('.collapse-text').textContent = collapsed ? 'Expand Menu' : 'Collapse Menu';
-    }
-  });
-
-  /* ============================================================
-     KEYBOARD SHORTCUTS
-     ============================================================ */
-  document.addEventListener('keydown', e => {
-    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-      e.preventDefault();
-      if (window.innerWidth <= 860) {
-        openSearch();
-      } else {
-        searchInput.focus();
-        openSearchDropdown();
-      }
-    }
-    if (e.key === 'Escape') {
-      if (searchModal.classList.contains('open')) closeSearch();
-      else {
-        closeAllDropdowns();
-        closeSearchDropdown();
-        if (isMobile()) closeMobile();
-      }
-    }
-  });
-
-  /* ============================================================
-     RESIZE
-     ============================================================ */
-  let lastMobile = isMobile();
-  window.addEventListener('resize', () => {
-    const nowMobile = isMobile();
-    if (nowMobile !== lastMobile) {
-      lastMobile = nowMobile;
-      closeMobile();
-      closeAllDropdowns();
-      closeSearch();
-      closeSearchDropdown();
-      if (!nowMobile) {
-        const collapsed = sidebar.classList.contains('collapsed');
-        collapseBtn.querySelector('.collapse-text').textContent = collapsed ? 'Expand Menu' : 'Collapse Menu';
-      }
-    }
-  });
-
-})();
-</script>
 {% endblock %}
+

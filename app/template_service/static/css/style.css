@@ -790,6 +790,7 @@ svg{ display: block; }
   font-size: 14px;
   font-weight: 500;
   white-space: nowrap;
+  text-decoration: none;
   transition: background .18s, color .18s;
 }
 .nav-item:hover{ background: rgba(255,255,255,.05); color: var(--text); }
@@ -1803,7 +1804,7 @@ tbody tr:hover{ background: rgba(255,255,255,.035); }
 }
 
 /* ==========================================================================
-   10. ERROR PAGE (minimal, low-cost)
+   ERROR PAGE (minimal, low-cost)
    ========================================================================== */
 .page-error{
   min-height: 100vh;
@@ -1948,7 +1949,7 @@ tbody tr:hover{ background: rgba(255,255,255,.035); }
 }
 
 /* ==========================================================================
-   10. AUTH ERROR STATES (login page)
+   AUTH ERROR STATES (login page)
    ========================================================================== */
 
 /* --- General auth alert (banner above form) --- */
@@ -2074,7 +2075,43 @@ tbody tr:hover{ background: rgba(255,255,255,.035); }
 @keyframes spin{ to { transform: rotate(360deg); } }
 
 /* ==========================================================================
-   8. RESPONSIVE
+   LIT COMPONENT HOOKS
+   ========================================================================== */
+
+/* Transparent hosts — children participate in parent layout directly */
+nebula-brand,
+nebula-promo,
+nebula-sidebar,
+sidebar-menu-group,
+sidebar-menu-item,
+collapse-button,
+hamburger-button,
+nebula-search,
+nebula-notification-panel,
+nebula-user-menu,
+nebula-card,
+nebula-card-stat,
+nebula-card-content,
+nebula-coin-watchlist {
+  display: contents;
+}
+
+/* Content container: block-level flex child of <main> */
+content-container {
+  display: block;
+}
+
+/* Sidebar host carries .sidebar class — make it a flex column container */
+nebula-sidebar.sidebar {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Overlay is a separate top-level element */
+.overlay { z-index: 80; }
+
+/* ==========================================================================
+   RESPONSIVE
    ========================================================================== */
 
 /* --- Login responsive --- */
