@@ -371,6 +371,7 @@ svg{ display: block; }
   display: flex;
   align-items: center;
   gap: 12px;
+  width: fit-content;
 }
 .brand-logo{
   width: 44px; height: 44px;
@@ -1945,6 +1946,132 @@ tbody tr:hover{ background: rgba(255,255,255,.035); }
   color: var(--muted);
   opacity: .8;
 }
+
+/* ==========================================================================
+   10. AUTH ERROR STATES (login page)
+   ========================================================================== */
+
+/* --- General auth alert (banner above form) --- */
+.auth-alert{
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 0 16px;
+  margin-bottom: 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(244, 63, 94, 0.14), rgba(244, 63, 94, 0.06));
+  border: 1px solid rgba(244, 63, 94, 0.28);
+  color: #fecdd3;
+  font-size: 12.5px;
+  line-height: 1.55;
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  transition:
+    opacity .28s ease,
+    max-height .34s ease,
+    padding .28s ease,
+    margin .28s ease;
+}
+.auth-alert.show{
+  opacity: 1;
+  max-height: 160px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+.auth-alert-icon{
+  width: 34px; height: 34px;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  display: grid; place-items: center;
+  background: rgba(244, 63, 94, 0.18);
+  color: #fb7185;
+  margin-top: -1px;
+}
+.auth-alert-icon svg{ width: 17px; height: 17px; }
+.auth-alert-body{ min-width: 0; flex: 1; }
+.auth-alert-title{
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 3px;
+  letter-spacing: -.1px;
+}
+.auth-alert-text{ color: #fda4af; }
+
+/* --- Inline field error --- */
+.field-error{
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #fb7185;
+  padding: 0 4px;
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  transition:
+    opacity .22s ease,
+    max-height .28s ease,
+    margin-top .22s ease;
+}
+.field-error.show{
+  opacity: 1;
+  max-height: 44px;
+  margin-top: 8px;
+}
+.field-error svg{
+  width: 14px; height: 14px;
+  flex: 0 0 auto;
+  margin-top: 1.5px;
+}
+.field-error-text{
+  flex: 1;
+  min-width: 0;
+  line-height: 1.45;
+}
+
+/* --- Input error state --- */
+.input-wrap input.is-invalid{
+  background: rgba(52, 22, 34, 0.55);
+  border-color: rgba(244, 63, 94, 0.55);
+  box-shadow: 0 0 0 4px rgba(244, 63, 94, 0.10);
+}
+.input-wrap input.is-invalid:hover{
+  border-color: rgba(244, 63, 94, 0.7);
+}
+.input-wrap input.is-invalid:focus{
+  background: rgba(58, 25, 38, 0.75);
+  border-color: rgba(244, 63, 94, 0.85);
+  box-shadow: 0 0 0 4px rgba(244, 63, 94, 0.16);
+}
+.input-wrap input.is-invalid ~ .lead-icon{ color: #fb7185; }
+
+/* --- Shake animation on invalid submit --- */
+@keyframes auth-shake{
+  0%, 100% { transform: translateX(0); }
+  18%      { transform: translateX(-6px); }
+  36%      { transform: translateX(6px); }
+  54%      { transform: translateX(-4px); }
+  72%      { transform: translateX(4px); }
+  90%      { transform: translateX(-2px); }
+}
+.shake{ animation: auth-shake .42s cubic-bezier(.36,.07,.19,.97); }
+
+/* --- Submit loading spinner --- */
+.submit .spinner{
+  width: 15px; height: 15px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.35);
+  border-top-color: #fff;
+  animation: spin .7s linear infinite;
+  display: none;
+}
+.submit.is-loading .spinner{ display: block; }
+.submit.is-loading > svg{ display: none; }
+@keyframes spin{ to { transform: rotate(360deg); } }
 
 /* ==========================================================================
    8. RESPONSIVE
