@@ -1,26 +1,349 @@
 {% extends "panel_layout.html" %}
 
-{% block panel_title %}Dashboard{% endblock %}
-
 {% block panel_content %}
-<div class="dashboard-welcome">
-    <h3>Welcome, {{ current_user.get('full_name') or current_user.get('username') }}!</h3>
-    <p>This is your user panel dashboard. Various widgets with drag-and-drop capability will be displayed here in the future.</p>
+<div class="page-head">
+  <div>
+    <h1>Welcome back, {{ current_user.full_name or current_user.username }} 👋</h1>
+    <p>Here's what's moving in your markets today.</p>
+  </div>
+  <button class="btn-primary" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+      <path d="M12 5v14M5 12h14"/>
+    </svg>
+    New Prediction
+  </button>
 </div>
 
-<div class="widgets-grid">
-    <!-- Placeholder for future Lit widgets -->
-    <div class="widget-placeholder">
-        <span class="widget-icon">📊</span>
-        <p>Portfolio Statistics Widget</p>
+<section class="stats">
+  <div class="card stat">
+    <div class="stat-top">
+      <span class="stat-icon icon-soft--indigo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9"/>
+          <path d="M12 7v5l3 2"/>
+        </svg>
+      </span>
+      <span class="stat-label">Active Signals</span>
     </div>
-    <div class="widget-placeholder">
-        <span class="widget-icon">💰</span>
-        <p>Wallet Balance Widget</p>
+    <div class="stat-value">248</div>
+    <div class="trend up">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg>
+      12.4% <span>vs last week</span>
     </div>
-    <div class="widget-placeholder">
-        <span class="widget-icon">📈</span>
-        <p>Price Chart Widget</p>
+  </div>
+
+  <div class="card stat">
+    <div class="stat-top">
+      <span class="stat-icon icon-soft--green">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m6 15 6-6 6 6"/>
+          <path d="M6 9h12"/>
+        </svg>
+      </span>
+      <span class="stat-label">Prediction Accuracy</span>
     </div>
-</div>
+    <div class="stat-value">84.2%</div>
+    <div class="trend up">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg>
+      3.1% <span>vs last week</span>
+    </div>
+  </div>
+
+  <div class="card stat">
+    <div class="stat-top">
+      <span class="stat-icon icon-soft--amber">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2v20"/>
+          <path d="M17 6.5c0-1.9-2.2-3-5-3s-5 1.1-5 3 2.2 2.7 5 3 5 1.1 5 3-2.2 3-5 3-5-1.1-5-3"/>
+        </svg>
+      </span>
+      <span class="stat-label">Portfolio Value</span>
+    </div>
+    <div class="stat-value">$84.5K</div>
+    <div class="trend up">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg>
+      23.2% <span>vs last week</span>
+    </div>
+  </div>
+
+  <div class="card stat">
+    <div class="stat-top">
+      <span class="stat-icon icon-soft--rose">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z"/>
+        </svg>
+      </span>
+      <span class="stat-label">Open Alerts</span>
+    </div>
+    <div class="stat-value">32</div>
+    <div class="trend down">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+      5.3% <span>vs last week</span>
+    </div>
+  </div>
+</section>
+
+<section class="panels">
+
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">Portfolio Performance</div>
+        <div class="card-sub">Weekly comparison</div>
+      </div>
+      <div class="legend">
+        <span><i style="background:linear-gradient(180deg,#a5b4fc,#6366f1)"></i> This week</span>
+        <span><i style="background:rgba(148,163,184,.35)"></i> Last week</span>
+      </div>
+    </div>
+
+    <div class="chart-body">
+      <div class="y-axis">
+        <span>100</span><span>75</span><span>50</span><span>25</span><span>0</span>
+      </div>
+
+      <div class="chart-area">
+        <div class="chart-lines">
+          <span></span><span></span><span></span><span></span><span></span>
+        </div>
+
+        <div class="chart-bars">
+          <div class="bar-group">
+            <div class="bars">
+              <div class="bar b1" style="--h:45%"></div>
+              <div class="bar b2" style="--h:30%"></div>
+            </div>
+            <div class="bar-label">Mon</div>
+          </div>
+          <div class="bar-group">
+            <div class="bars">
+              <div class="bar b1" style="--h:62%"></div>
+              <div class="bar b2" style="--h:45%"></div>
+            </div>
+            <div class="bar-label">Tue</div>
+          </div>
+          <div class="bar-group">
+            <div class="bars">
+              <div class="bar b1" style="--h:38%"></div>
+              <div class="bar b2" style="--h:28%"></div>
+            </div>
+            <div class="bar-label">Wed</div>
+          </div>
+          <div class="bar-group">
+            <div class="bars">
+              <div class="bar b1" style="--h:78%"></div>
+              <div class="bar b2" style="--h:55%"></div>
+            </div>
+            <div class="bar-label">Thu</div>
+          </div>
+          <div class="bar-group">
+            <div class="bars">
+              <div class="bar b1" style="--h:55%"></div>
+              <div class="bar b2" style="--h:40%"></div>
+            </div>
+            <div class="bar-label">Fri</div>
+          </div>
+          <div class="bar-group">
+            <div class="bars">
+              <div class="bar b1" style="--h:92%"></div>
+              <div class="bar b2" style="--h:66%"></div>
+            </div>
+            <div class="bar-label">Sat</div>
+          </div>
+          <div class="bar-group">
+            <div class="bars">
+              <div class="bar b1" style="--h:70%"></div>
+              <div class="bar b2" style="--h:50%"></div>
+            </div>
+            <div class="bar-label">Sun</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">Recent Activity</div>
+        <div class="card-sub">Live from your workspace</div>
+      </div>
+    </div>
+
+    <div class="activity">
+      <div class="act-item">
+        <span class="act-avatar avatar--indigo">SM</span>
+        <div class="act-body">
+          <div class="act-top">
+            <span class="act-name">Sarah Mitchell</span>
+            <span class="act-time">2m</span>
+          </div>
+          <div class="act-text">Updated BTC prediction model</div>
+        </div>
+      </div>
+
+      <div class="act-item">
+        <span class="act-avatar avatar--green">AT</span>
+        <div class="act-body">
+          <div class="act-top">
+            <span class="act-name">Alex Turner</span>
+            <span class="act-time">18m</span>
+          </div>
+          <div class="act-text">Created alert on ETH/USDT</div>
+        </div>
+      </div>
+
+      <div class="act-item">
+        <span class="act-avatar avatar--amber">MK</span>
+        <div class="act-body">
+          <div class="act-top">
+            <span class="act-name">Maya Kapoor</span>
+            <span class="act-time">1h</span>
+          </div>
+          <div class="act-text">Exported portfolio snapshot</div>
+        </div>
+      </div>
+
+      <div class="act-item">
+        <span class="act-avatar avatar--pink">RA</span>
+        <div class="act-body">
+          <div class="act-top">
+            <span class="act-name">Reza Ahmadi</span>
+            <span class="act-time">3h</span>
+          </div>
+          <div class="act-text">Closed signal #4821</div>
+        </div>
+      </div>
+
+      <div class="act-item">
+        <span class="act-avatar avatar--sky">NT</span>
+        <div class="act-body">
+          <div class="act-top">
+            <span class="act-name">Nina Torres</span>
+            <span class="act-time">5h</span>
+          </div>
+          <div class="act-text">Published market report</div>
+        </div>
+      </div>
+
+      <div class="act-item">
+        <span class="act-avatar avatar--violet">AH</span>
+        <div class="act-body">
+          <div class="act-top">
+            <span class="act-name">Amir Hosseini</span>
+            <span class="act-time">1d</span>
+          </div>
+          <div class="act-text">Merged backtest results</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <div>
+      <div class="card-title">Watchlist</div>
+      <div class="card-sub">Coins you're tracking in real time</div>
+    </div>
+    <button class="btn-primary" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>
+      Add Coin
+    </button>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Coin</th>
+          <th>Signal</th>
+          <th>Confidence</th>
+          <th>Price</th>
+          <th>24h</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <div class="cell-user">
+              <span class="avatar avatar--amber">₿</span>
+              <div>
+                <div class="cu-name">Bitcoin</div>
+                <div class="cu-mail">BTC / USDT</div>
+              </div>
+            </div>
+          </td>
+          <td>Bullish</td>
+          <td><span class="status active">72% up</span></td>
+          <td class="amount">$63,480</td>
+          <td class="amount" style="color:#34d399">+2.4%</td>
+        </tr>
+        <tr>
+          <td>
+            <div class="cell-user">
+              <span class="avatar avatar--violet">Ξ</span>
+              <div>
+                <div class="cu-name">Ethereum</div>
+                <div class="cu-mail">ETH / USDT</div>
+              </div>
+            </div>
+          </td>
+          <td>Neutral</td>
+          <td><span class="status pending">48% up</span></td>
+          <td class="amount">$3,180</td>
+          <td class="amount" style="color:#34d399">+0.9%</td>
+        </tr>
+        <tr>
+          <td>
+            <div class="cell-user">
+              <span class="avatar avatar--indigo">◎</span>
+              <div>
+                <div class="cu-name">Solana</div>
+                <div class="cu-mail">SOL / USDT</div>
+              </div>
+            </div>
+          </td>
+          <td>Bullish</td>
+          <td><span class="status active">81% up</span></td>
+          <td class="amount">$152.40</td>
+          <td class="amount" style="color:#34d399">+5.1%</td>
+        </tr>
+        <tr>
+          <td>
+            <div class="cell-user">
+              <span class="avatar avatar--green">₮</span>
+              <div>
+                <div class="cu-name">Cardano</div>
+                <div class="cu-mail">ADA / USDT</div>
+              </div>
+            </div>
+          </td>
+          <td>Bearish</td>
+          <td><span class="status idle">28% up</span></td>
+          <td class="amount">$0.482</td>
+          <td class="amount" style="color:#fb7185">−1.2%</td>
+        </tr>
+        <tr>
+          <td>
+            <div class="cell-user">
+              <span class="avatar avatar--sky">✕</span>
+              <div>
+                <div class="cu-name">Ripple</div>
+                <div class="cu-mail">XRP / USDT</div>
+              </div>
+            </div>
+          </td>
+          <td>Bullish</td>
+          <td><span class="status active">68% up</span></td>
+          <td class="amount">$0.612</td>
+          <td class="amount" style="color:#34d399">+3.6%</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
 {% endblock %}

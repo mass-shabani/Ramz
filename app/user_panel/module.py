@@ -41,15 +41,10 @@ class UserPanelModule(IModule):
         if hasattr(template_service, 'register_module_static_directory'):
             template_service.register_module_static_directory("user_panel", static_dir)
 
-        template_service.register_module_assets(
-            "user_panel",
-            js_files=[
-                "/static/user_panel/js/sidebar-menu-item.js",
-                "/static/user_panel/js/user-dropdown.js",
-                "/static/user_panel/js/panel-container.js",
-                "/static/user_panel/js/sidebar.js"
-            ]
-        )
+        # NOTE: Legacy Lit component JS files (sidebar.js, sidebar-menu-item.js,
+        # panel-container.js, user-dropdown.js) were removed from registration
+        # because the panel layout no longer uses Lit web components.
+        # Re-register here if new dashboard JS needs are added later.
 
         menu_manager.register_menu_item(
             menu_id="sidebar",
