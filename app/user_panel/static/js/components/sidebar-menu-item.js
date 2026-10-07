@@ -18,7 +18,10 @@ export class SidebarMenuItem extends LitElement {
     this.badgeVariant = '';
   }
 
-  static styles = css`
+  createRenderRoot() { return this; }
+
+  /* static styles commented out — managed globally in style.css */
+  /* static styles = css`
     :host {
       display: block;
     }
@@ -96,7 +99,7 @@ export class SidebarMenuItem extends LitElement {
       background: rgba(244,63,94,.2);
       color: #fda4af;
     }
-  `;
+  `; */
 
   render() {
     const normalizedVariant = (this.badgeVariant || '').toLowerCase();

@@ -15,7 +15,10 @@ export class NebulaCardStat extends LitElement {
     this.trend = '';
   }
 
-  static styles = css`
+  createRenderRoot() { return this; }
+
+  /* static styles commented out — managed globally in style.css */
+  /* static styles = css`
     :host {
       display: block;
     }
@@ -124,7 +127,7 @@ export class NebulaCardStat extends LitElement {
       color: var(--muted);
       font-weight: 500;
     }
-  `;
+  `; */
 
   render() {
     return html`

@@ -11,7 +11,10 @@ export class NebulaSidebar extends LitElement {
     this._mobileOpen = false;
   }
 
-  static styles = css`
+  createRenderRoot() { return this; }
+
+  /* static styles commented out — managed globally in style.css */
+  /* static styles = css`
     :host {
       display: block;
     }
@@ -153,7 +156,7 @@ export class NebulaSidebar extends LitElement {
       white-space: nowrap;
       transition: opacity .2s;
     }
-  `;
+  `; */
 
   connectedCallback() {
     super.connectedCallback();

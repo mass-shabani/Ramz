@@ -10,7 +10,10 @@ export class SidebarMenuGroup extends LitElement {
     this.label = '';
   }
 
-  static styles = css`
+  createRenderRoot() { return this; }
+
+  /* static styles commented out — managed globally in style.css */
+  /* static styles = css`
     :host { display: block; }
     .nav-section {
       font-size: 10px;
@@ -21,7 +24,7 @@ export class SidebarMenuGroup extends LitElement {
       padding: 16px 12px 8px;
       white-space: nowrap;
     }
-  `;
+  `; */
 
   render() {
     return html`

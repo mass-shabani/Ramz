@@ -16,7 +16,10 @@ export class NebulaUserMenu extends LitElement {
     this._open = false;
   }
 
-  static styles = css`
+  createRenderRoot() { return this; }
+
+  /* static styles commented out — managed globally in style.css */
+  /* static styles = css`
     :host { display: block; }
 
     .dropdown-wrap { position: relative; }
@@ -207,7 +210,7 @@ export class NebulaUserMenu extends LitElement {
       color: #fecdd3;
     }
     .um-item.logout:hover svg { color: #fecdd3; }
-  `;
+  `; */
 
   connectedCallback() {
     super.connectedCallback();

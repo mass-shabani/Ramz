@@ -28,7 +28,8 @@ export class NebulaNotificationPanel extends LitElement {
 
   createRenderRoot() { return this; }
 
-  static styles = css`
+  /* static styles commented out — managed globally in style.css */
+  /* static styles = css`
     :host { display: block; }
 
     .dropdown-wrap { position: relative; }
@@ -143,7 +144,7 @@ export class NebulaNotificationPanel extends LitElement {
     }
 
     .dropdown-foot a:hover { color: #c7d2fe; }
-  `;
+  `; */
 
   connectedCallback() {
     super.connectedCallback();

@@ -7,9 +7,10 @@ export class ContentContainer extends LitElement {
     _error: { state: true }
   };
 
-  static styles = css`
+  /* static styles commented out — managed globally in style.css */
+  /* static styles = css`
     :host { display: block; }
-  `;
+  `; */
 
   createRenderRoot() { return this; }
 

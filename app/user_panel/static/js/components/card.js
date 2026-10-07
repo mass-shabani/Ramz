@@ -1,7 +1,10 @@
 import { LitElement, html, css } from '../lit-import.js';
 
 export class NebulaCard extends LitElement {
-  static styles = css`
+  createRenderRoot() { return this; }
+
+  /* static styles commented out — managed globally in style.css */
+  /* static styles = css`
     :host { display: block; }
     .card {
       position: relative;
@@ -21,7 +24,7 @@ export class NebulaCard extends LitElement {
         inset 0 1px 0 rgba(255, 255, 255, 0.1),
         inset 0 -1px 0 rgba(0, 0, 0, 0.15);
     }
-  `;
+  `; */
 
   render() {
     return html`<div class="card"><slot></slot></div>`;

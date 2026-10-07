@@ -12,7 +12,10 @@ export class NebulaCardContent extends LitElement {
     this.subtitle = '';
   }
 
-  static styles = css`
+  createRenderRoot() { return this; }
+
+  /* static styles commented out — managed globally in style.css */
+  /* static styles = css`
     :host {
       display: block;
     }
@@ -56,7 +59,7 @@ export class NebulaCardContent extends LitElement {
       color: var(--muted);
       margin-top: 5px;
     }
-  `;
+  `; */
 
   render() {
     const hasHeader = this.title || this.subtitle;
