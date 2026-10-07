@@ -1,4 +1,4 @@
-import { LitElement, html } from '../lit-import.js';
+import { LitElement, html, css } from '../lit-import.js';
 
 export class NebulaUserMenu extends LitElement {
   static properties = {
@@ -8,8 +8,6 @@ export class NebulaUserMenu extends LitElement {
     _open:        { state: true }
   };
 
-  createRenderRoot() { return this; }
-
   constructor() {
     super();
     this.userName = 'User';
@@ -17,6 +15,199 @@ export class NebulaUserMenu extends LitElement {
     this.userInitials = 'U';
     this._open = false;
   }
+
+  static styles = css`
+    :host { display: block; }
+
+    .dropdown-wrap { position: relative; }
+
+    .user-chip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      height: 44px;
+      padding: 0 12px 0 6px;
+      border-radius: 13px;
+      cursor: pointer;
+      color: var(--text);
+      background: rgba(30, 41, 66, 0.6);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      transition: background .18s, border-color .18s;
+    }
+
+    .user-chip:hover {
+      background: rgba(40, 54, 84, 0.85);
+      border-color: rgba(129,140,248,.45);
+    }
+
+    .user-chip .avatar {
+      position: relative;
+    }
+
+    .user-chip .avatar::after {
+      content: '';
+      position: absolute;
+      right: -2px;
+      bottom: -2px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--success);
+      border: 2px solid #1a2540;
+    }
+
+    .user-name { font-size: 13px; font-weight: 600; white-space: nowrap; }
+
+    .user-chip .chev {
+      width: 15px;
+      height: 15px;
+      color: var(--muted);
+      transition: transform .28s;
+    }
+
+    .dropdown-wrap.active .user-chip .chev { transform: rotate(180deg); }
+    .dropdown-wrap.active .user-chip {
+      background: rgba(48, 63, 96, 0.9);
+      border-color: rgba(129,140,248,.55);
+    }
+
+    .dropdown {
+      position: absolute;
+      top: calc(100% + 12px);
+      right: 0;
+      z-index: 60;
+      border-radius: 18px;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-10px) scale(.97);
+      transform-origin: top right;
+      transition: opacity .22s ease, transform .22s cubic-bezier(.34,1.3,.64,1), visibility .22s;
+    }
+
+    .dropdown.open {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0) scale(1);
+    }
+
+    .user-menu {
+      width: min(260px, calc(100vw - 28px));
+      padding: 10px;
+      background: linear-gradient(180deg, rgba(58, 74, 112, 0.98) 0%, rgba(42, 56, 88, 0.98) 100%);
+      backdrop-filter: blur(26px) saturate(160%);
+      -webkit-backdrop-filter: blur(26px) saturate(160%);
+      border: 1px solid rgba(129, 140, 248, 0.35);
+      box-shadow:
+        0 28px 70px -18px rgba(0, 0, 0, 0.95),
+        0 0 0 1px rgba(129, 140, 248, 0.12),
+        0 0 40px -10px rgba(99, 102, 241, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    }
+
+    .user-menu::before {
+      content: '';
+      position: absolute;
+      top: -6px;
+      right: 26px;
+      width: 12px;
+      height: 12px;
+      background: rgba(58, 74, 112, 0.98);
+      border-left: 1px solid rgba(129, 140, 248, 0.35);
+      border-top: 1px solid rgba(129, 140, 248, 0.35);
+      transform: rotate(45deg);
+      border-radius: 2px 0 0 0;
+    }
+
+    .um-head {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 12px 10px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+      margin-bottom: 8px;
+    }
+
+    .um-head .avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 13px;
+      font-size: 14px;
+    }
+
+    .um-info { min-width: 0; }
+
+    .um-name {
+      font-size: 14px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .um-mail {
+      font-size: 11.5px;
+      color: #b9c4dc;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 2px;
+    }
+
+    .um-item {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      height: 42px;
+      padding: 0 11px;
+      border-radius: 11px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #dde5f4;
+      text-decoration: none;
+      transition: background .16s, color .16s;
+    }
+
+    .um-item:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+
+    .um-item svg {
+      width: 17px;
+      height: 17px;
+      flex: 0 0 auto;
+      color: #a5b4fc;
+    }
+
+    .um-item:hover svg { color: #c7d2fe; }
+
+    .um-item .kbd {
+      margin-left: auto;
+      font-size: 10px;
+      font-weight: 600;
+      color: #b9c4dc;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 2px 6px;
+      border-radius: 5px;
+    }
+
+    .um-divider {
+      height: 1px;
+      background: rgba(255, 255, 255, 0.09);
+      margin: 8px 4px;
+    }
+
+    .um-item.logout { color: #fb7185; }
+    .um-item.logout svg { color: #fb7185; }
+    .um-item.logout:hover {
+      background: rgba(244, 63, 94, 0.16);
+      color: #fecdd3;
+    }
+    .um-item.logout:hover svg { color: #fecdd3; }
+  `;
 
   connectedCallback() {
     super.connectedCallback();
@@ -77,15 +268,15 @@ export class NebulaUserMenu extends LitElement {
             My Profile
           </a>
 
-          <a class="um-item" href="#">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7.9 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 4 13.9H4a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 5.3 7.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 10.9 4V4a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1.3z"/>
-            </svg>
-            Account Settings
-            <span class="kbd">⌘,</span>
-          </a>
+           <a class="um-item" href="#">
+             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+               <circle cx="12" cy="12" r="3"/>
+               <path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1.5-1.3l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 2.7-1.1V14a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1.5 1.3l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21"/>
+             </svg>
+             Account Settings
+             <span class="kbd">⌘,</span>
+           </a>
 
           <a class="um-item" href="#">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"

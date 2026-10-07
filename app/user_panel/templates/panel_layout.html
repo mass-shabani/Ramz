@@ -99,7 +99,7 @@
 
         <nebula-user-menu
           user-name="{{ current_user.full_name or current_user.username or 'User' }}"
-          user-email="{{ current_user.email_address or '' }}"
+          user-email="{{ current_user.email or '' }}"
           user-initials="{{ (current_user.full_name or current_user.username or 'U')[:2].upper() }}">
         </nebula-user-menu>
       </div>
