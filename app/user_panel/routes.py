@@ -66,7 +66,7 @@ def _initials(name: str) -> str:
 # ============================================================
 # Route registration
 # ============================================================
-def register_routes(http_api: Any, panel_service: Any, logger: Any):
+def register_routes(http_api: Any, panel_service: Any, message_service: Any, logger: Any):
     """
     Register user panel routes with the HTTP API.
 
@@ -106,6 +106,14 @@ def register_routes(http_api: Any, panel_service: Any, logger: Any):
         except Exception as e:
             if logger:
                 logger.log(f"Error rendering panel shell: {e}", level="ERROR", tag="panel")
+            if message_service:
+                error_html = await message_service.render_message(
+                    status_code=500,
+                    title="Internal Server Error",
+                    message="Failed to load panel. Please try again later.",
+                    message_type="error"
+                )
+                return http_api.HTMLResponse(content=error_html, status_code=500)
             return http_api.HTMLResponse(
                 content="<h1>500 — Internal Server Error</h1><p>Failed to load panel.</p>",
                 status_code=500,
@@ -133,6 +141,14 @@ def register_routes(http_api: Any, panel_service: Any, logger: Any):
         # --- Look up the partial template ---
         template_name = VIEW_TEMPLATES.get(view)
         if not template_name:
+            if message_service:
+                error_html = await message_service.render_message(
+                    status_code=404,
+                    title="Page Not Found",
+                    message="The page you are looking for does not exist.",
+                    message_type="error"
+                )
+                return http_api.HTMLResponse(content=error_html, status_code=404)
             return http_api.HTMLResponse(
                 content="<div class='card'><p>Page not available yet.</p></div>",
                 status_code=404,
@@ -157,6 +173,14 @@ def register_routes(http_api: Any, panel_service: Any, logger: Any):
                     level="ERROR",
                     tag="panel",
                 )
+            if message_service:
+                error_html = await message_service.render_message(
+                    status_code=500,
+                    title="Internal Server Error",
+                    message="Failed to load content. Please try again later.",
+                    message_type="error"
+                )
+                return http_api.HTMLResponse(content=error_html, status_code=500)
             return http_api.HTMLResponse(
                 content="<div class='card'><p>Failed to load content.</p></div>",
                 status_code=500,

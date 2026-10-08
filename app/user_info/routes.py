@@ -4,7 +4,7 @@ User Info Routes - Defines HTTP endpoints for profile management.
 from typing import Any
 
 
-def register_routes(http_api: Any, panel_service: Any, user_info_service: Any, logger: Any):
+def register_routes(http_api: Any, panel_service: Any, message_service: Any, user_info_service: Any, logger: Any):
     """
     Register user info routes with the HTTP API.
     """
@@ -37,6 +37,14 @@ def register_routes(http_api: Any, panel_service: Any, user_info_service: Any, l
         except Exception as e:
             if logger:
                 logger.log(f"Error rendering profile page: {e}", level="ERROR", tag="user_info")
+            if message_service:
+                error_html = await message_service.render_message(
+                    status_code=500,
+                    title="Internal Server Error",
+                    message="Failed to load profile. Please try again later.",
+                    message_type="error"
+                )
+                return http_api.HTMLResponse(content=error_html, status_code=500)
             return http_api.HTMLResponse(
                 content="<h1>500 - Internal Server Error</h1><p>Failed to load profile.</p>",
                 status_code=500
@@ -81,6 +89,14 @@ def register_routes(http_api: Any, panel_service: Any, user_info_service: Any, l
         except Exception as e:
             if logger:
                 logger.log(f"Error processing profile update: {e}", level="ERROR", tag="user_info")
+            if message_service:
+                error_html = await message_service.render_message(
+                    status_code=500,
+                    title="Internal Server Error",
+                    message="Failed to update profile. Please try again later.",
+                    message_type="error"
+                )
+                return http_api.HTMLResponse(content=error_html, status_code=500)
             return http_api.HTMLResponse(
                 content="<h1>500 - Internal Server Error</h1><p>Failed to update profile.</p>",
                 status_code=500

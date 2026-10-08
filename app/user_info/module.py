@@ -21,6 +21,7 @@ class UserInfoModule(IModule):
         template_service = context.services.get("template_service")
         menu_manager = context.services.get("menu_manager")
         panel_service = context.services.get("panel_service")
+        message_service = context.services.get("message_service")
         app_db_service = context.services.get("app_db_service")
         
         if logger:
@@ -29,7 +30,7 @@ class UserInfoModule(IModule):
         if not all([http_api, panel_service, app_db_service, menu_manager]):
             if logger:
                 logger.log("Required services not available, cannot start user_info", 
-                              level="ERROR", tag="user_info")
+                               level="ERROR", tag="user_info")
             return
 
         user_info_service = UserInfoService(app_db_service, logger)
@@ -51,6 +52,7 @@ class UserInfoModule(IModule):
         register_routes(
             http_api, 
             panel_service, 
+            message_service,
             user_info_service, 
             logger
         )

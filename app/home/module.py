@@ -16,6 +16,7 @@ class HomeModule(IModule):
         logger = context.services.get("core_logger")
         http_api = context.services.get("http_api")
         template_service = context.services.get("template_service")
+        message_service = context.services.get("message_service")
         
         if logger:
             logger.log("Home module started", tag="home")
@@ -23,7 +24,7 @@ class HomeModule(IModule):
         if not http_api or not template_service:
             if logger:
                 logger.log("Required services not available, cannot start home module", 
-                              level="ERROR", tag="home")
+                               level="ERROR", tag="home")
             return
 
         from pathlib import Path
@@ -34,7 +35,7 @@ class HomeModule(IModule):
         template_service.register_module_static_directory("home", static_dir)
         template_service.register_module_assets("home", js_files=["/static/home/js/landing.js"])
         
-        register_routes(http_api, template_service, logger)
+        register_routes(http_api, template_service, message_service, logger)
         
         if logger:
             logger.log("Home module started successfully", tag="home")

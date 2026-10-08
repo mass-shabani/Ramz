@@ -31,6 +31,8 @@ class UserPanelModule(IModule):
         menu_manager     = context.services.get("menu_manager")
         asset_service    = context.services.get("asset_service")
 
+        message_service  = context.services.get("message_service")
+
         if logger:
             logger.log("UserPanel module starting…", tag="panel")
 
@@ -104,7 +106,7 @@ class UserPanelModule(IModule):
         # ------------------------------------------------------------
         # Routes
         # ------------------------------------------------------------
-        register_routes(http_api, panel_service, logger)
+        register_routes(http_api, panel_service, message_service, logger)
 
         if logger:
             logger.log("UserPanel module started successfully", tag="panel")

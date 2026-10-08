@@ -27,4 +27,17 @@ def register_routes(http_api: Any, message_service: Any, logger: Any):
         except Exception as e:
             if logger:
                 logger.log(f"Error in view_message route: {e}", level="ERROR", tag="messages")
+            if message_service:
+                try:
+                    return http_api.HTMLResponse(
+                        content=await message_service.render_message(
+                            status_code=500,
+                            title="Internal Server Error",
+                            message="Something went wrong. Please try again.",
+                            message_type="error"
+                        ),
+                        status_code=500
+                    )
+                except Exception:
+                    pass
             return http_api.HTMLResponse(content=f"<h1>Error</h1><p>{e}</p>", status_code=500)

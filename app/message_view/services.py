@@ -16,12 +16,12 @@ class MessageService:
 
     async def render_message(self, status_code: int, title: str, message: str, message_type: str = "info") -> str:
         """
-        Render a message template with the given context.
+        Render an error/message template with the given context.
         
         Args:
             status_code: HTTP status code (e.g., 404, 500)
-            title: Title of the message
-            message: Detailed message content
+            title: Title of the message (maps to error_title in template)
+            message: Detailed message content (maps to error_message in template)
             message_type: Type of message (error, warning, success, info)
             
         Returns:
@@ -29,14 +29,15 @@ class MessageService:
         """
         context = {
             "status_code": status_code,
-            "title": title,
-            "message": message,
-            "type": message_type,
+            "error_title": title,
+            "error_message": message,
+            "message_type": message_type,
+            "home_url": "/",
             "module_name": "message_view"
         }
         
         try:
-            return await self.template_service.render("message.html", context)
+            return await self.template_service.render("error.html", context)
         except Exception as e:
             if self.logger:
                 self.logger.log(f"Error rendering message template: {e}", level="ERROR", tag="messages")
