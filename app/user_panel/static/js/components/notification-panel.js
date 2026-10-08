@@ -1,12 +1,8 @@
-import { LitElement, html, css } from '../lit-import.js';
+import { defineComponent, emit } from '../_base.js';
 
-const DEFAULT_NOTIFICATIONS = [
-  { unread: true,  title: 'BTC prediction updated',   text: '72% bullish confidence.',           time: '2 minutes ago',  iconClass: 'icon-soft--indigo', icon: 'chat' },
-  { unread: true,  title: 'ETH crossed target',       text: 'Crossed your target of $3,200.',   time: '18 minutes ago', iconClass: 'icon-soft--green',  icon: 'trend' },
-  { unread: true,  title: 'Volatility detected',      text: 'Unusual volatility on SOL/USDT.',  time: '1 hour ago',     iconClass: 'icon-soft--amber',  icon: 'alert' },
-  { unread: true,  title: 'Weekly AI report ready',   text: '+18.4% signal accuracy.',          time: '3 hours ago',    iconClass: 'icon-soft--rose',   icon: 'card'  }
-];
-
+/* --------------------------------------------------------------
+   Inline SVG icons (kept as constants to avoid repetition)
+   -------------------------------------------------------------- */
 const ICONS = {
   chat:  `<path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z"/>`,
   trend: `<path d="m6 15 6-6 6 6"/>`,
@@ -14,217 +10,137 @@ const ICONS = {
   card:  `<rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/>`
 };
 
-export class NebulaNotificationPanel extends LitElement {
-  static properties = {
-    notifications: { type: Array },
-    _open:         { state: true }
-  };
+const ICON_WRAPPER = (path) => `
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    ${path}
+  </svg>`;
 
-  constructor() {
-    super();
-    this.notifications = DEFAULT_NOTIFICATIONS;
-    this._open = false;
+/* --------------------------------------------------------------
+   Default demo data — replace with real data via setNotifications()
+   -------------------------------------------------------------- */
+const DEFAULT_NOTIFICATIONS = [
+  {
+    unread: true,
+    icon: 'chat',
+    iconClass: 'icon-soft--indigo',
+    title: 'BTC prediction updated',
+    text: '— 72% bullish confidence.',
+    time: '2 minutes ago'
+  },
+  {
+    unread: true,
+    icon: 'trend',
+    iconClass: 'icon-soft--green',
+    title: 'ETH crossed target',
+    text: '— crossed your target of $3,200.',
+    time: '18 minutes ago'
+  },
+  {
+    unread: true,
+    icon: 'alert',
+    iconClass: 'icon-soft--amber',
+    title: 'Volatility detected',
+    text: '— unusual volatility on SOL/USDT.',
+    time: '1 hour ago'
+  },
+  {
+    unread: true,
+    icon: 'card',
+    iconClass: 'icon-soft--rose',
+    title: 'Weekly AI report ready',
+    text: '— +18.4% signal accuracy.',
+    time: '3 hours ago'
   }
+];
 
-  createRenderRoot() { return this; }
-
-  /* static styles commented out — managed globally in style.css */
-  /* static styles = css`
-    :host { display: block; }
-
-    .dropdown-wrap { position: relative; }
-
-    .dropdown {
-      position: absolute;
-      top: calc(100% + 12px);
-      right: 0;
-      z-index: 60;
-      border-radius: 18px;
-      opacity: 0;
-      visibility: hidden;
-      transform: translateY(-10px) scale(.97);
-      transform-origin: top right;
-      transition: opacity .22s ease, transform .22s cubic-bezier(.34,1.3,.64,1), visibility .22s;
-    }
-
-    .dropdown.open {
-      opacity: 1;
-      visibility: visible;
-      transform: translateY(0) scale(1);
-    }
-
-    .notif {
-      width: min(360px, calc(100vw - 28px));
-      background: linear-gradient(180deg, rgba(40, 54, 84, 0.92) 0%, rgba(28, 40, 66, 0.92) 100%);
-      backdrop-filter: blur(24px) saturate(160%);
-      -webkit-backdrop-filter: blur(24px) saturate(160%);
-      border: 1px solid rgba(129, 140, 248, 0.18);
-      box-shadow:
-        0 28px 70px -18px rgba(0, 0, 0, 0.9),
-        0 0 0 1px rgba(255, 255, 255, 0.03),
-        inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    }
-
-    .dropdown-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      padding: 16px 18px 13px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.09);
-    }
-
-    .dropdown-head h3 { font-size: 14px; font-weight: 700; }
-
-    .dropdown-head .pill {
-      font-size: 10.5px;
-      font-weight: 700;
-      padding: 3px 9px;
-      border-radius: 999px;
-      background: rgba(99,102,241,.24);
-      color: #a5b4fc;
-    }
-
-    .dropdown-head button {
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-size: 11.5px;
-      font-weight: 600;
-      color: var(--primary-light);
-      transition: color .18s;
-    }
-
-    .dropdown-head button:hover { color: #c7d2fe; }
-
-    .notif-list { max-height: 330px; overflow-y: auto; padding: 8px; }
-
-    .notif-item {
-      display: flex;
-      gap: 12px;
-      padding: 11px 10px;
-      border-radius: 13px;
-      transition: background .18s;
-      text-decoration: none;
-      color: inherit;
-    }
-
-    .notif-item:hover { background: rgba(255,255,255,.06); }
-    .notif-item.unread { background: rgba(99,102,241,.1); }
-    .notif-item.unread:hover { background: rgba(99,102,241,.16); }
-
-    .notif-ico {
-      width: 38px;
-      height: 38px;
-      flex: 0 0 auto;
-      border-radius: 12px;
-      display: grid;
-      place-items: center;
-    }
-
-    .notif-ico svg { width: 18px; height: 18px; }
-
-    .notif-body { min-width: 0; flex: 1; }
-    .notif-body p { font-size: 12.5px; line-height: 1.45; color: var(--text-dim); }
-    .notif-body p b { color: var(--text); font-weight: 600; }
-    .notif-time { font-size: 10.5px; color: var(--muted); margin-top: 4px; display: block; }
-
-    .dropdown-foot {
-      padding: 12px;
-      border-top: 1px solid rgba(255, 255, 255, 0.09);
-      text-align: center;
-    }
-
-    .dropdown-foot a {
-      font-size: 12.5px;
-      font-weight: 600;
-      color: var(--primary-light);
-      text-decoration: none;
-      transition: color .18s;
-    }
-
-    .dropdown-foot a:hover { color: #c7d2fe; }
-  `; */
+/**
+ * <ramz-notifications>
+ *
+ * Bell button + notification dropdown.
+ *
+ * Public API:
+ *   • open()               — open the dropdown
+ *   • close()              — close the dropdown
+ *   • toggle()             — toggle the dropdown
+ *   • setNotifications(l)  — replace the list of notifications
+ *
+ * Emits:
+ *   • ramz:notifications-read-all — when the "Mark all read" button is clicked
+ */
+class RamzNotifications extends HTMLElement {
+  #open = false;
+  #notifications = [];
+  #refs = {};
 
   connectedCallback() {
-    super.connectedCallback();
-    document.addEventListener('click', this._onDocClick);
-    window.addEventListener('nebula:close-dropdowns', this._onGlobalClose);
+    if (this.#notifications.length === 0) {
+      this.#notifications = DEFAULT_NOTIFICATIONS.slice();
+    }
+
+    this._render();
+    this._cacheRefs();
+    this._attachListeners();
+    this._renderContent();
   }
 
   disconnectedCallback() {
-    document.removeEventListener('click', this._onDocClick);
-    window.removeEventListener('nebula:close-dropdowns', this._onGlobalClose);
-    super.disconnectedCallback();
+    this._detachListeners();
   }
 
-  _onDocClick = (e) => { if (!this.contains(e.target)) this._open = false; };
-  _onGlobalClose = (e) => { if (e.detail?.except !== 'notifications') this._open = false; };
+  /* --------------------------------------------------------------
+     Public API
+     -------------------------------------------------------------- */
+  open() {
+    if (this.#open) return;
+    this.#open = true;
+    this._sync();
 
-  _toggle(e) {
-    e.stopPropagation();
-    this._open = !this._open;
-    if (this._open) {
-      window.dispatchEvent(new CustomEvent('nebula:close-dropdowns', {
-        detail: { except: 'notifications' }
-      }));
-    }
+    // Tell other dropdowns to close
+    emit(this, 'ramz:close-dropdowns', { except: 'notifications' });
   }
 
-  close() { this._open = false; }
-
-  _unreadCount() { return this.notifications.filter(n => n.unread).length; }
-
-  _svg(key) {
-    const t = document.createElement('template');
-    t.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg">${ICONS[key] || ''}</svg>`;
-    const svg = t.content.querySelector('svg');
-    return svg ? Array.from(svg.children).map(n => {
-      const w = document.createElement('template');
-      w.innerHTML = n.outerHTML;
-      return w.content;
-    }) : '';
+  close() {
+    if (!this.#open) return;
+    this.#open = false;
+    this._sync();
   }
 
-  render() {
-    const unread = this._unreadCount();
-    return html`
-      <div class="dropdown-wrap ${this._open ? 'active' : ''}">
-        <button class="icon-btn" type="button" aria-label="Notifications"
-                aria-haspopup="true" aria-expanded="${this._open}"
-                @click=${this._toggle}>
+  toggle() {
+    this.#open ? this.close() : this.open();
+  }
+
+  setNotifications(list) {
+    if (!Array.isArray(list)) return;
+    this.#notifications = list.slice();
+    this._renderContent();
+  }
+
+  /* --------------------------------------------------------------
+     Rendering
+     -------------------------------------------------------------- */
+  _render() {
+    this.innerHTML = `
+      <div class="dropdown-wrap">
+        <button class="icon-btn" type="button"
+                aria-label="Notifications"
+                aria-haspopup="true"
+                aria-expanded="false">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
                stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
             <path d="M18 8.5a6 6 0 1 0-12 0c0 6-2.5 7.5-2.5 7.5h17S18 14.5 18 8.5z"/>
             <path d="M10.3 20a2 2 0 0 0 3.4 0"/>
           </svg>
-          ${unread > 0 ? html`<span class="dot"></span>` : ''}
+          <span class="dot" hidden></span>
         </button>
 
-        <div class="dropdown notif ${this._open ? 'open' : ''}" role="menu">
+        <div class="dropdown notif" role="menu">
           <div class="dropdown-head">
             <h3>Notifications</h3>
-            <span class="pill">${unread} new</span>
-            <button type="button">Mark all read</button>
+            <span class="pill">0 new</span>
+            <button type="button" data-action="mark-all-read">Mark all read</button>
           </div>
-
-          <div class="notif-list">
-            ${this.notifications.map(n => html`
-              <a class="notif-item ${n.unread ? 'unread' : ''}" href="#">
-                <span class="notif-ico ${n.iconClass}">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                       stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    ${this._svg(n.icon)}
-                  </svg>
-                </span>
-                <span class="notif-body">
-                  <p><b>${n.title}</b> ${n.text}</p>
-                  <span class="notif-time">${n.time}</span>
-                </span>
-              </a>
-            `)}
-          </div>
-
+          <div class="notif-list"></div>
           <div class="dropdown-foot">
             <a href="#">View all notifications</a>
           </div>
@@ -232,6 +148,110 @@ export class NebulaNotificationPanel extends LitElement {
       </div>
     `;
   }
+
+  _cacheRefs() {
+    const root = this.querySelector('.dropdown-wrap');
+    this.#refs = {
+      root,
+      trigger: root.querySelector('.icon-btn'),
+      dot:     root.querySelector('.dot'),
+      panel:   root.querySelector('.dropdown'),
+      pill:    root.querySelector('.pill'),
+      list:    root.querySelector('.notif-list'),
+      markAll: root.querySelector('[data-action="mark-all-read"]')
+    };
+  }
+
+  _renderContent() {
+    const { list, pill, dot } = this.#refs;
+    if (!list) return;
+
+    /* ---- list ---- */
+    if (this.#notifications.length === 0) {
+      list.innerHTML = `
+        <div style="padding:32px 16px;text-align:center;color:var(--muted);font-size:13px;">
+          You're all caught up.
+        </div>`;
+    } else {
+      list.innerHTML = this.#notifications.map(n => `
+        <a class="notif-item ${n.unread ? 'unread' : ''}" href="#">
+          <span class="notif-ico ${n.iconClass || ''}">
+            ${ICON_WRAPPER(ICONS[n.icon] || '')}
+          </span>
+          <span class="notif-body">
+            <p><b>${n.title}</b> ${n.text || ''}</p>
+            <span class="notif-time">${n.time || ''}</span>
+          </span>
+        </a>
+      `).join('');
+    }
+
+    /* ---- pill + dot ---- */
+    const unread = this.#notifications.filter(n => n.unread).length;
+    pill.textContent = `${unread} new`;
+
+    if (dot) dot.hidden = unread === 0;
+
+    /* ---- disable mark-all when nothing unread ---- */
+    if (this.#refs.markAll) {
+      this.#refs.markAll.disabled = unread === 0;
+      this.#refs.markAll.style.opacity = unread === 0 ? '.4' : '';
+      this.#refs.markAll.style.pointerEvents = unread === 0 ? 'none' : '';
+    }
+  }
+
+  _sync() {
+    const { root, panel, trigger } = this.#refs;
+    root.classList.toggle('active', this.#open);
+    panel.classList.toggle('open', this.#open);
+    trigger.setAttribute('aria-expanded', String(this.#open));
+  }
+
+  /* --------------------------------------------------------------
+     Listeners
+     -------------------------------------------------------------- */
+  _attachListeners() {
+    this.addEventListener('click', this._onClick);
+    document.addEventListener('click', this._onDocumentClick);
+    window.addEventListener('ramz:close-dropdowns', this._onGlobalClose);
+  }
+
+  _detachListeners() {
+    this.removeEventListener('click', this._onClick);
+    document.removeEventListener('click', this._onDocumentClick);
+    window.removeEventListener('ramz:close-dropdowns', this._onGlobalClose);
+  }
+
+  _onClick = (e) => {
+    /* Toggle button */
+    const trigger = e.target.closest('.icon-btn');
+    if (trigger && this.contains(trigger)) {
+      e.stopPropagation();
+      this.toggle();
+      return;
+    }
+
+    /* Mark-all-read */
+    const markAll = e.target.closest('[data-action="mark-all-read"]');
+    if (markAll && this.contains(markAll)) {
+      this._markAllRead();
+      return;
+    }
+  };
+
+  _onDocumentClick = (e) => {
+    if (!this.contains(e.target)) this.close();
+  };
+
+  _onGlobalClose = (e) => {
+    if (e.detail?.except !== 'notifications') this.close();
+  };
+
+  _markAllRead() {
+    this.#notifications = this.#notifications.map(n => ({ ...n, unread: false }));
+    this._renderContent();
+    emit(this, 'ramz:notifications-read-all');
+  }
 }
 
-customElements.define('nebula-notification-panel', NebulaNotificationPanel);
+defineComponent('ramz-notifications', RamzNotifications);

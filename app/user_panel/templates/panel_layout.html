@@ -5,103 +5,101 @@
 {% block content %}
 <div class="app">
 
-  <!-- ==================== SIDEBAR ==================== -->
-  <nebula-sidebar id="sidebar">
+  <ramz-sidebar id="sidebar" class="sidebar">
 
-    <nebula-brand slot="brand"
-                  name="Ramz"
-                  subtitle="CRYPTO INTELLIGENCE"></nebula-brand>
+    <ramz-brand name="Nebula" subtitle="Admin Suite"></ramz-brand>
 
-    <sidebar-menu-group label="Overview">
+    <nav class="nav">
 
-      <sidebar-menu-item label="Dashboard"
-                         href="/panel"
-                         endpoint="/panel/dashboard"
-                         active>
-        <svg slot="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="3" width="7" height="9" rx="2"/>
-          <rect x="14" y="3" width="7" height="5" rx="2"/>
-          <rect x="14" y="12" width="7" height="9" rx="2"/>
-          <rect x="3" y="16" width="7" height="5" rx="2"/>
-        </svg>
-      </sidebar-menu-item>
+      <ramz-menu-group label="Overview">
 
-      <sidebar-menu-item label="Analytics" href="#" endpoint="/panel/analytics">
-        <svg slot="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 3v18h18"/>
-          <path d="m7 15 4-5 3 3 5-7"/>
-        </svg>
-      </sidebar-menu-item>
+        <ramz-menu-item label="Dashboard" href="/panel" endpoint="/panel/dashboard" active>
+          <svg slot="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="9" rx="2"/>
+            <rect x="14" y="3" width="7" height="5" rx="2"/>
+            <rect x="14" y="12" width="7" height="9" rx="2"/>
+            <rect x="3" y="16" width="7" height="5" rx="2"/>
+          </svg>
+        </ramz-menu-item>
 
-      <sidebar-menu-item label="Predictions" href="#" endpoint="/panel/predictions"
-                         badge="New">
-        <svg slot="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 3v18h18"/>
-          <path d="m7 15 4-5 3 3 5-7"/>
-        </svg>
-      </sidebar-menu-item>
+        <ramz-menu-item label="Analytics" href="#" endpoint="/panel/analytics">
+          <svg slot="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 3v18h18"/>
+            <path d="m7 15 4-5 3 3 5-7"/>
+          </svg>
+        </ramz-menu-item>
 
-      <sidebar-menu-item label="Markets" href="#" endpoint="/panel/markets">
-        <svg slot="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="9"/>
-          <path d="M12 7v5l3 2"/>
-        </svg>
-      </sidebar-menu-item>
+        <ramz-menu-item label="Predictions" href="#" endpoint="/panel/predictions" badge="New">
+          <svg slot="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 3v18h18"/>
+            <path d="m7 15 4-5 3 3 5-7"/>
+          </svg>
+        </ramz-menu-item>
 
-    </sidebar-menu-group>
+        <ramz-menu-item label="Markets" href="#" endpoint="/panel/markets">
+          <svg slot="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"/>
+            <path d="M12 7v5l3 2"/>
+          </svg>
+        </ramz-menu-item>
 
-    <sidebar-menu-group label="Management">
+      </ramz-menu-group>
 
-      <sidebar-menu-item label="Portfolio" href="#" endpoint="/panel/portfolio">
-        <svg slot="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="7" width="18" height="13" rx="3"/>
-          <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-        </svg>
-      </sidebar-menu-item>
+      <ramz-menu-group label="Management">
 
-      <sidebar-menu-item label="Alerts" href="#" endpoint="/panel/alerts"
-                         badge="5" badge-variant="danger">
-        <svg slot="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z"/>
-        </svg>
-      </sidebar-menu-item>
+        <ramz-menu-item label="Portfolio" href="#" endpoint="/panel/portfolio">
+          <svg slot="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="7" width="18" height="13" rx="3"/>
+            <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
+        </ramz-menu-item>
 
-      <sidebar-menu-item label="Settings" href="#" endpoint="/panel/settings">
-        <svg slot="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7.9 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 4 13.9H4a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 5.3 7.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 10.9 4V4a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1.3z"/>
-        </svg>
-      </sidebar-menu-item>
+        <ramz-menu-item label="Alerts" href="#" endpoint="/panel/alerts"
+                        badge="5" badge-variant="danger">
+          <svg slot="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z"/>
+          </svg>
+        </ramz-menu-item>
 
-    </sidebar-menu-group>
+        <ramz-menu-item label="Settings" href="#" endpoint="/panel/settings">
+          <svg slot="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7.9 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 4 13.9H4a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 5.3 7.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 10.9 4V4a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1.3z"/>
+          </svg>
+        </ramz-menu-item>
 
-    <nebula-promo slot="promo"></nebula-promo>
-    <collapse-button slot="footer"></collapse-button>
+      </ramz-menu-group>
 
-  </nebula-sidebar>
+    </nav>
+
+    <ramz-promo></ramz-promo>
+
+    <ramz-collapse-btn></ramz-collapse-btn>
+
+  </ramz-sidebar>
 
   <!-- ==================== MAIN ==================== -->
   <div class="main">
 
     <header class="topbar">
-      <hamburger-button></hamburger-button>
-      <nebula-search></nebula-search>
+      <ramz-hamburger-btn></ramz-hamburger-btn>
+      <ramz-search></ramz-search>
 
       <div class="topbar-actions">
-        <nebula-notification-panel></nebula-notification-panel>
+        <ramz-notifications></ramz-notifications>
 
-        <nebula-user-menu
+        <ramz-user-menu
           user-name="{{ current_user.full_name or current_user.username or 'User' }}"
           user-email="{{ current_user.email or '' }}"
           user-initials="{{ (current_user.full_name or current_user.username or 'U')[:2].upper() }}">
-        </nebula-user-menu>
+        </ramz-user-menu>
       </div>
     </header>
 

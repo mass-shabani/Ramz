@@ -1,21 +1,35 @@
-import { LitElement, html } from '../lit-import.js';
+import { defineComponent, attr } from '../_base.js';
 
-export class NebulaBrand extends LitElement {
-  static properties = {
-    name:     { type: String },
-    subtitle: { type: String }
-  };
-
-  createRenderRoot() { return this; }
-
-  constructor() {
-    super();
-    this.name = 'Ramz';
-    this.subtitle = 'CRYPTO INTELLIGENCE';
+/**
+ * <ramz-brand>
+ *
+ * Attributes:
+ *   • name      — brand name (default: "Nebula")
+ *   • subtitle  — brand subtitle (default: "Admin Suite")
+ *
+ * Renders the standard brand block used in the sidebar and login card.
+ * The logo SVG is embedded as a string and rendered once at connect time.
+ */
+class RamzBrand extends HTMLElement {
+  static get observedAttributes() {
+    return ['name', 'subtitle'];
   }
 
-  render() {
-    return html`
+  connectedCallback() {
+    this._render();
+  }
+
+  attributeChangedCallback(name, oldVal, newVal) {
+    if (oldVal !== newVal && this.isConnected) {
+      this._render();
+    }
+  }
+
+  _render() {
+    const name     = attr(this, 'name', 'Nebula');
+    const subtitle = attr(this, 'subtitle', 'Admin Suite');
+
+    this.innerHTML = `
       <div class="brand">
         <div class="brand-logo">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -26,12 +40,12 @@ export class NebulaBrand extends LitElement {
           </svg>
         </div>
         <div class="brand-text">
-          <span class="brand-name">${this.name}</span>
-          <span class="brand-sub">${this.subtitle}</span>
+          <span class="brand-name">${name}</span>
+          <span class="brand-sub">${subtitle}</span>
         </div>
       </div>
     `;
   }
 }
 
-customElements.define('nebula-brand', NebulaBrand);
+defineComponent('ramz-brand', RamzBrand);

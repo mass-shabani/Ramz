@@ -1,3 +1,8 @@
+{# ==========================================================================
+   Dashboard Content Fragment
+   Loaded asynchronously into <content-container> via POST /panel/dashboard
+   ========================================================================== #}
+
 <!-- ==================== PAGE HEAD ==================== -->
 <div class="page-head">
   <div>
@@ -16,67 +21,113 @@
 <!-- ==================== STATS ==================== -->
 <section class="stats">
 
-  <nebula-card-stat
-    label="Active Signals"
-    value="248"
-    icon-class="icon-soft--indigo"
-    trend="up"
-    trend-value="12.4%"
-    trend-label="vs last week">
-    <svg slot="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-         stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="9"/>
-      <path d="M12 7v5l3 2"/>
-    </svg>
-  </nebula-card-stat>
+  <!-- Active Signals -->
+  <ramz-card card-class="stat">
+    <div slot="header-actions" class="legend">
+      <span style="font-size: 11pt;">Active Signals</span>
+    </div>
 
-  <nebula-card-stat
-    label="Prediction Accuracy"
-    value="84.2%"
-    icon-class="icon-soft--green"
-    trend="up"
-    trend-value="3.1%"
-    trend-label="vs last week">
-    <svg slot="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-         stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-      <path d="m6 15 6-6 6 6"/>
-      <path d="M6 9h12"/>
-    </svg>
-  </nebula-card-stat>
+    <div slot="icon" class="card-icon icon-soft--indigo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M12 7v5l3 2"/>
+      </svg>
+    </div>
 
-  <nebula-card-stat
-    label="Portfolio Value"
-    value="$84.5K"
-    icon-class="icon-soft--amber"
-    trend="up"
-    trend-value="23.2%"
-    trend-label="vs last week">
-    <svg slot="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-         stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M12 2v20"/>
-      <path d="M17 6.5c0-1.9-2.2-3-5-3s-5 1.1-5 3 2.2 2.7 5 3 5 1.1 5 3-2.2 3-5 3-5-1.1-5-3"/>
-    </svg>
-  </nebula-card-stat>
+    <div class="stat-value">248</div>
 
-  <nebula-card-stat
-    label="Open Alerts"
-    value="32"
-    icon-class="icon-soft--rose"
-    trend="down"
-    trend-value="5.3%"
-    trend-label="vs last week">
-    <svg slot="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-         stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z"/>
-    </svg>
-  </nebula-card-stat>
+    <div slot="footer" class="trend up">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m6 15 6-6 6 6"/>
+      </svg>
+      12.4% <span>vs last week</span>
+    </div>
+  </ramz-card>
+
+  <!-- Prediction Accuracy -->
+  <ramz-card card-class="stat">
+    <div slot="header-actions" class="legend">
+      <span style="font-size: 11pt;">Prediction Accuracy</span>
+    </div>
+
+    <div slot="icon" class="card-icon icon-soft--green">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m6 15 6-6 6 6"/>
+        <path d="M6 9h12"/>
+      </svg>
+    </div>
+
+    <div class="stat-value">84.2%</div>
+
+    <div slot="footer" class="trend up">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m6 15 6-6 6 6"/>
+      </svg>
+      3.1% <span>vs last week</span>
+    </div>
+  </ramz-card>
+
+  <!-- Portfolio Value -->
+  <ramz-card card-class="stat">
+    <div slot="header-actions" class="legend">
+      <span style="font-size: 11pt;">Portfolio Value</span>
+    </div>
+
+    <div slot="icon" class="card-icon icon-soft--amber">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2v20"/>
+        <path d="M17 6.5c0-1.9-2.2-3-5-3s-5 1.1-5 3 2.2 2.7 5 3 5 1.1 5 3-2.2 3-5 3-5-1.1-5-3"/>
+      </svg>
+    </div>
+
+    <div class="stat-value">$84.5K</div>
+
+    <div slot="footer" class="trend up">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m6 15 6-6 6 6"/>
+      </svg>
+      23.2% <span>vs last week</span>
+    </div>
+  </ramz-card>
+
+  <!-- Open Alerts -->
+  <ramz-card card-class="stat">
+    <div slot="header-actions" class="legend">
+      <span style="font-size: 11pt;">Open Alerts</span>
+    </div>
+
+    <div slot="icon" class="card-icon icon-soft--rose">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z"/>
+      </svg>
+    </div>
+
+    <div class="stat-value">32</div>
+
+    <div slot="footer" class="trend down">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m6 9 6 6 6-6"/>
+      </svg>
+      5.3% <span>vs last week</span>
+    </div>
+  </ramz-card>
 
 </section>
 
 <!-- ==================== PANELS ==================== -->
 <section class="panels">
 
-  <nebula-card-content title="Portfolio Performance" subtitle="Weekly comparison">
+  <!-- Portfolio Performance -->
+  <ramz-card title="Portfolio Performance" subtitle="Weekly comparison">
+
     <div slot="header-actions" class="legend">
       <span><i style="background:linear-gradient(180deg,#a5b4fc,#6366f1)"></i> This week</span>
       <span><i style="background:rgba(148,163,184,.35)"></i> Last week</span>
@@ -84,12 +135,20 @@
 
     <div class="chart-body">
       <div class="y-axis">
-        <span>100</span><span>75</span><span>50</span><span>25</span><span>0</span>
+        <span>100</span>
+        <span>75</span>
+        <span>50</span>
+        <span>25</span>
+        <span>0</span>
       </div>
 
       <div class="chart-area">
         <div class="chart-lines">
-          <span></span><span></span><span></span><span></span><span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
         </div>
 
         <div class="chart-bars">
@@ -100,6 +159,7 @@
             </div>
             <div class="bar-label">Mon</div>
           </div>
+
           <div class="bar-group">
             <div class="bars">
               <div class="bar b1" style="--h:62%"></div>
@@ -107,6 +167,7 @@
             </div>
             <div class="bar-label">Tue</div>
           </div>
+
           <div class="bar-group">
             <div class="bars">
               <div class="bar b1" style="--h:38%"></div>
@@ -114,6 +175,7 @@
             </div>
             <div class="bar-label">Wed</div>
           </div>
+
           <div class="bar-group">
             <div class="bars">
               <div class="bar b1" style="--h:78%"></div>
@@ -121,6 +183,7 @@
             </div>
             <div class="bar-label">Thu</div>
           </div>
+
           <div class="bar-group">
             <div class="bars">
               <div class="bar b1" style="--h:55%"></div>
@@ -128,6 +191,7 @@
             </div>
             <div class="bar-label">Fri</div>
           </div>
+
           <div class="bar-group">
             <div class="bars">
               <div class="bar b1" style="--h:92%"></div>
@@ -135,6 +199,7 @@
             </div>
             <div class="bar-label">Sat</div>
           </div>
+
           <div class="bar-group">
             <div class="bars">
               <div class="bar b1" style="--h:70%"></div>
@@ -145,9 +210,11 @@
         </div>
       </div>
     </div>
-  </nebula-card-content>
+  </ramz-card>
 
-  <nebula-card-content title="Recent Activity" subtitle="Live from your workspace">
+  <!-- Recent Activity -->
+  <ramz-card title="Recent Activity" subtitle="Live from your workspace">
+
     <div class="activity">
 
       <div class="act-item">
@@ -217,9 +284,9 @@
       </div>
 
     </div>
-  </nebula-card-content>
+  </ramz-card>
 
 </section>
 
 <!-- ==================== WATCHLIST ==================== -->
-<nebula-coin-watchlist></nebula-coin-watchlist>
+<ramz-coin-watchlist></ramz-coin-watchlist>
