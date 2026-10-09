@@ -58,12 +58,6 @@ class UserPanelModule(IModule):
         templates_dir = str(Path(__file__).parent / "templates")
         template_service.register_template_directory(templates_dir, "user_panel")
 
-        # ------------------------------------------------------------
-        # Static directory
-        # ------------------------------------------------------------
-        static_dir = str(Path(__file__).parent / "static")
-        if hasattr(template_service, "register_module_static_directory"):
-            template_service.register_module_static_directory("user_panel", static_dir)
 
         # ------------------------------------------------------------
         # Component bundle from ui_components

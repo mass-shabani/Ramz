@@ -9,7 +9,7 @@
     "template_service",
     "menu_manager",
     "asset_service",
-    "ui_components"
+    "component_service"
   ],
   "provides": ["panel_service"]
 }
