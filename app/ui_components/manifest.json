@@ -1,0 +1,13 @@
+{
+  "name": "ui_components",
+  "version": "1.0.0",
+  "entrypoint": "UIComponentsModule",
+  "description": "Shared web components library for the Ramz application.",
+  "requires": [
+    "core_logger",
+    "http_api",
+    "template_service",
+    "asset_service"
+  ],
+  "provides": ["component_service"]
+}
