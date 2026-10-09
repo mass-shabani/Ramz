@@ -19,6 +19,7 @@
         "db_manager",
         "message_view",
         "route_manager",
+        "ui_components",
         "user_panel",
         "user_info",
         "auth",

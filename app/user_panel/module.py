@@ -66,19 +66,26 @@ class UserPanelModule(IModule):
             template_service.register_module_static_directory("user_panel", static_dir)
 
         # ------------------------------------------------------------
-        # Lit component bundle
+        # Component bundle from ui_components
         # ------------------------------------------------------------
-        # A single ES module entry point loads every component and wires
-        # up cross-component coordination (global event bus, keyboard
-        # shortcuts, etc.). Individual component files are imported by
-        # main.js using relative paths, so only this entry point needs
-        # to be registered here.
-        template_service.register_module_assets(
-            "user_panel",
-            js_files=[
-                "/static/user_panel/js/main.js",
-            ],
-        )
+        component_service = context.services.get("component_service")
+        if component_service:
+            template_service.register_module_assets(
+                "user_panel",
+                js_files=[component_service.get_bundle_url()],
+            )
+            if logger:
+                logger.log(
+                    f"Panel will load bundle: {component_service.get_bundle_url()}",
+                    tag="panel",
+                )
+        else:
+            if logger:
+                logger.log(
+                    "component_service not available — panel components will not load",
+                    level="ERROR",
+                    tag="panel",
+                )
 
         # ------------------------------------------------------------
         # Sidebar menu item (kept for compatibility — the visual sidebar

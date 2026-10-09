@@ -1,6 +1,6 @@
 {
   "name": "user_panel",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "entrypoint": "UserPanelModule",
   "description": "User panel with Lit-based dashboard, sidebar and topbar components.",
   "requires": [
@@ -8,7 +8,8 @@
     "http_api",
     "template_service",
     "menu_manager",
-    "asset_service"
+    "asset_service",
+    "ui_components"
   ],
   "provides": ["panel_service"]
 }
