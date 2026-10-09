@@ -33,7 +33,8 @@ class ComponentService:
         "search":             "/static/ui_components/js/components/search.js",
         "sidebar":            "/static/ui_components/js/components/sidebar.js",
         "content-container":  "/static/ui_components/js/components/content-container.js",
-        "coin-watchlist":     "/static/ui_components/js/components/coin-watchlist.js",
+        "progress-bar":       "/static/ui_components/js/components/progress-bar.js",
+        "progress-bar":       "/static/ui_components/js/components/progress-bar.js",
     }
 
     # Public URL of the combined bundle. Loads every component at once.

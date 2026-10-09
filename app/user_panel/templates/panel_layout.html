@@ -92,7 +92,7 @@
       <ramz-hamburger-btn></ramz-hamburger-btn>
       <ramz-search></ramz-search>
 
-      <div class="topbar-actions">
+      <ramz-progress-bar></ramz-progress-bar>
         <ramz-notifications></ramz-notifications>
 
         <ramz-user-menu
@@ -101,6 +101,8 @@
           user-initials="{{ (current_user.full_name or current_user.username or 'U')[:2].upper() }}">
         </ramz-user-menu>
       </div>
+
+      <ramz-progress-bar></ramz-progress-bar>
     </header>
 
     <main class="content">

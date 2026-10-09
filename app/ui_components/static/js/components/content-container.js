@@ -67,7 +67,8 @@ class ContentContainer extends HTMLElement {
 
     this.#lastUrl = url;
     this.#loading = true;
-    this._setState('loading');
+    emit(this, 'ramz:content-loading', { url });
+    emit(this, 'ramz:content-loading', { url });
 
     const method = attr(this, 'method', 'POST').toUpperCase();
     const ctrl   = new AbortController();

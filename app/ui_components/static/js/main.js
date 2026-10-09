@@ -9,6 +9,7 @@
 import './components/brand.js';
 import './components/promo.js';
 import './components/menu-group.js';
+import './components/progress-bar.js';
 import './components/collapse-button.js';
 import './components/hamburger-button.js'
 import './components/notification-panel.js';
@@ -17,7 +18,7 @@ import './components/search.js';
 import './components/sidebar.js';
 import './components/menu-item.js';
 import './components/content-container.js';
-import './components/coin-watchlist.js';
+import './components/progress-bar.js';
 import './components/card.js';
 
 

@@ -2305,6 +2305,10 @@ ramz-search,
 ramz-notifications,
 ramz-user-menu,
 ramz-card,
+ramz-coin-watchlist,
+ramz-progress-bar {
+  display: contents;
+}
 
 /* ==========================================================================
    COIN WATCHLIST (loading shimmer)
@@ -2431,6 +2435,79 @@ content-container {
   .y-axis{ font-size: 10px; width: 26px; }
   .bar{ width: 11px; }
   .search-modal{ padding: 66px 12px 12px; }
+}
+
+/* ==========================================================================
+   TOP PROGRESS BAR — AJAX loading indicator
+   ========================================================================== */
+
+.top-progress {
+  position: absolute;
+  bottom: -3px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 1;
+  transition: opacity .25s ease;
+}
+
+.top-progress.is-visible {
+  opacity: 1;
+}
+
+.top-progress-bar {
+  position: relative;
+  height: 100%;
+  width: 0;
+  background: linear-gradient(
+    90deg,
+    #6366f1 0%,
+    #a855f7 30%,
+    #818cf8 50%,
+    #a855f7 70%,
+    #6366f1 100%
+  );
+  background-size: 200% 100%;
+  box-shadow:
+    0 0 12px rgba(129, 140, 248, 0.9),
+    0 0 5px rgba(168, 85, 247, 0.7),
+    0 0 22px rgba(99, 102, 241, 0.45);
+  border-radius: 0 2px 2px 0;
+  transition: width 8s cubic-bezier(.05, .6, .3, .95);
+}
+
+.top-progress.is-running .top-progress-bar {
+  animation: top-progress-shimmer 2.4s linear infinite;
+}
+
+.top-progress-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 80px;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.85) 100%
+  );
+  filter: blur(2px);
+  pointer-events: none;
+}
+
+@keyframes top-progress-shimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .top-progress.is-running .top-progress-bar {
+    animation: none;
+  }
 }
 
 /* ==========================================================================
