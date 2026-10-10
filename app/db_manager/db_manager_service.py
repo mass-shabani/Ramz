@@ -50,6 +50,7 @@ class DbManagerService:
         from .repositories.email_repository import EmailRepository
         from .repositories.phone_repository import PhoneRepository
         from .repositories.address_repository import AddressRepository
+        from .repositories.subscription_repository import SubscriptionRepository
 
         self._user_repo = UserRepository(self, logger)
         self._people_repo = PeopleRepository(self, logger)
@@ -62,6 +63,7 @@ class DbManagerService:
         self._email_repo = EmailRepository(self, logger)
         self._phone_repo = PhoneRepository(self, logger)
         self._address_repo = AddressRepository(self, logger)
+        self._subscription_repo = SubscriptionRepository(self, logger)
 
         # ----------------------------------------------------------
         # Security
@@ -77,6 +79,9 @@ class DbManagerService:
 
         from .workflows.signup_workflow import SignupWorkflow
         self._signup_workflow = SignupWorkflow(self, logger)
+
+        from .workflows.profile_workflow import ProfileWorkflow
+        self._profile_workflow = ProfileWorkflow(self, logger)
 
     # ============================================================
     # Internal helpers
@@ -201,16 +206,33 @@ class DbManagerService:
         return await self._signup_workflow.create_account(data)
 
     # ============================================================
-    # Profile — placeholder
+    # Profile
     # ============================================================
     async def get_full_profile(self, user_id):
-        raise NotImplementedError("get_full_profile — phase 11")
+        """
+        Return the complete profile of a user as a Profile dataclass,
+        or None if the user does not exist.
+        """
+        return await self._profile_workflow.get_full_profile(user_id)
 
     async def update_personal_info(self, user_id, data):
-        raise NotImplementedError("update_personal_info — phase 11")
+        """
+        Update personal information (first_name, last_name,
+        national_code, birth_date, gender).
+        Returns True on success.
+        """
+        return await self._profile_workflow.update_personal_info(
+            user_id, data
+        )
 
     async def update_contact_info(self, user_id, data):
-        raise NotImplementedError("update_contact_info — phase 11")
+        """
+        Update contact information (email, phone, address).
+        Returns True on success.
+        """
+        return await self._profile_workflow.update_contact_info(
+            user_id, data
+        )
 
     # ============================================================
     # Settings — placeholder

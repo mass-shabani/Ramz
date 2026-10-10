@@ -30,6 +30,7 @@ from .contact_repository import ContactRepository
 from .email_repository import EmailRepository
 from .phone_repository import PhoneRepository
 from .address_repository import AddressRepository
+from .subscription_repository import SubscriptionRepository
 
 __all__ = [
     "PeopleRepository",
@@ -43,4 +44,5 @@ __all__ = [
     "EmailRepository",
     "PhoneRepository",
     "AddressRepository",
+    "SubscriptionRepository",
 ]

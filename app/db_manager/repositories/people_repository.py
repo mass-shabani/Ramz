@@ -111,6 +111,31 @@ class PeopleRepository:
         )
         return _extract_last_insert_id(result)
 
+    async def update(self, people_id: int, **fields) -> bool:
+        """
+        Update people fields. Only whitelisted columns are accepted
+        to prevent accidental column injection.
+
+        Returns True if at least one row was updated.
+        """
+        if not people_id:
+            return False
+
+        allowed = {
+            "first_name", "last_name", "national_code",
+            "birth_date", "gender",
+        }
+        values = {k: v for k, v in fields.items() if k in allowed}
+        if not values:
+            return False
+
+        result = await self._conn().update(
+            self.TABLE,
+            where={"people_id": int(people_id)},
+            values=values,
+        )
+        return _update_ok(result)
+
 
 # --------------------------------------------------------------
 # Helper
@@ -128,3 +153,18 @@ def _extract_last_insert_id(result) -> Optional[int]:
             except (TypeError, ValueError):
                 pass
     return None
+
+
+def _update_ok(result) -> bool:
+    """Interpret framework's update() return value."""
+    if result is None:
+        return False
+    if isinstance(result, int):
+        return result > 0
+    for attr in ("affected_rows", "rowcount", "rows_affected"):
+        if hasattr(result, attr):
+            try:
+                return int(getattr(result, attr)) > 0
+            except (TypeError, ValueError):
+                pass
+    return True
