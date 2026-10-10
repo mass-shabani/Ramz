@@ -86,3 +86,29 @@ class FormAccessRepository:
             WHERE fa.role_id = ?
         """
         return await self._conn().fetch_all(sql, (int(role_id),))
+
+    async def get_full_access_one(
+        self, role_id: int, form_id: str
+    ) -> Optional[dict]:
+        """
+        Return a single row from form_access joined with `form` and
+        `condition_of`, filtered by (role_id, form_id), or None.
+
+        Equivalent to get_full_access() but for one specific form.
+        """
+        if not role_id or not form_id:
+            return None
+        sql = """
+            SELECT
+                fa.role_id,
+                fa.form_id,
+                f.form_name,
+                fa.condition_id,
+                c.condition_name
+            FROM form_access fa
+            JOIN form         f ON f.form_id      = fa.form_id
+            JOIN condition_of c ON c.condition_id = fa.condition_id
+            WHERE fa.role_id = ? AND fa.form_id = ?
+            LIMIT 1
+        """
+        return await self._conn().fetch_one(sql, (int(role_id), form_id))

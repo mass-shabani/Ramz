@@ -53,6 +53,12 @@ class DbManagerService:
         self._condition_repo = ConditionRepository(self, logger)
         self._form_access_repo = FormAccessRepository(self, logger)
 
+        # ----------------------------------------------------------
+        # Security
+        # ----------------------------------------------------------
+        from .security.access import AccessChecker
+        self._access = AccessChecker(self, logger)
+
     # ============================================================
     # Internal helpers
     # ============================================================
@@ -155,28 +161,60 @@ class DbManagerService:
         raise NotImplementedError("disable_2fa — phase 12")
 
     # ============================================================
-    # Access Control — placeholder
+    # Access Control
     # ============================================================
-    async def has_access(self, user_id, form_name, required_condition=None):
-        raise NotImplementedError("has_access — phase 6")
+    async def has_access(self, user_id, form_id, required_condition=None):
+        """
+        Return True if the user has access to the given form.
+
+        If required_condition is None, any condition counts as access.
+        Otherwise the user's condition must match exactly.
+        """
+        return await self._access.has_access(
+            user_id, form_id, required_condition=required_condition
+        )
 
     async def get_accessible_forms(self, user_id):
-        raise NotImplementedError("get_accessible_forms — phase 6")
+        """Return the list of form_ids the user can access."""
+        return await self._access.get_accessible_forms(user_id)
 
-    async def get_form_condition(self, user_id, form_name):
-        raise NotImplementedError("get_form_condition — phase 6")
+    async def get_form_condition(self, user_id, form_id):
+        """
+        Return the condition name the user has for the given form, or
+        None. The caller interprets the condition name.
+        """
+        return await self._access.get_form_condition(user_id, form_id)
+
+    async def get_user_role(self, user_id):
+        """Return the user's Role dataclass, or None."""
+        return await self._access.get_user_role(user_id)
 
     async def list_user_roles(self, user_id):
-        raise NotImplementedError("list_user_roles — phase 6")
+        """
+        Return the user's roles as a list.
+
+        The current schema allows exactly one role per user, so the
+        list has zero or one element. The list shape is kept for
+        future multi-role support.
+        """
+        role = await self._access.get_user_role(user_id)
+        return [role] if role else []
 
     async def list_role_forms(self, role_id):
-        raise NotImplementedError("list_role_forms — phase 6")
+        """Return FormAccess objects for the given role."""
+        return await self._access.list_role_forms(role_id)
 
     def invalidate_access_cache(self, user_id=None):
-        raise NotImplementedError("invalidate_access_cache — phase 5")
+        """Clear user-specific caches (enabled + role)."""
+        self._access.invalidate_user(user_id)
 
-    def invalidate_form_cache(self, form_name=None):
-        raise NotImplementedError("invalidate_form_cache — phase 5")
+    def invalidate_form_cache(self, form_id=None):
+        """Clear role-form cache entries for the given form."""
+        self._access.invalidate_form(form_id)
+
+    def invalidate_role_cache(self, role_id=None):
+        """Clear role-form cache entries for the given role."""
+        self._access.invalidate_role(role_id)
 
     # ============================================================
     # Activity — placeholder
