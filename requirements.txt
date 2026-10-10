@@ -9,3 +9,4 @@ aiosqlite>=0.19.0
 
 # Required for MySQL 8+ authentication (sha256_password, caching_sha2_password)
 cryptography>=42.0.0
+bcrypt>=5.0.0
