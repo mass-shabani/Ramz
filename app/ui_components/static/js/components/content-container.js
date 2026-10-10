@@ -67,7 +67,7 @@ class ContentContainer extends HTMLElement {
 
     this.#lastUrl = url;
     this.#loading = true;
-    emit(this, 'ramz:content-loading', { url });
+    this._setState('loading');
     emit(this, 'ramz:content-loading', { url });
 
     const method = attr(this, 'method', 'POST').toUpperCase();

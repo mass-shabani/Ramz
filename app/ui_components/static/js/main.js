@@ -18,7 +18,7 @@ import './components/search.js';
 import './components/sidebar.js';
 import './components/menu-item.js';
 import './components/content-container.js';
-import './components/progress-bar.js';
+import './components/coin-watchlist.js';
 import './components/card.js';
 
 
