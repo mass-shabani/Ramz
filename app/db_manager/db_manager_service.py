@@ -45,6 +45,7 @@ class DbManagerService:
         from .repositories.form_repository import FormRepository
         from .repositories.condition_repository import ConditionRepository
         from .repositories.form_access_repository import FormAccessRepository
+        from .repositories.activity_repository import ActivityRepository
 
         self._user_repo = UserRepository(self, logger)
         self._people_repo = PeopleRepository(self, logger)
@@ -52,6 +53,7 @@ class DbManagerService:
         self._form_repo = FormRepository(self, logger)
         self._condition_repo = ConditionRepository(self, logger)
         self._form_access_repo = FormAccessRepository(self, logger)
+        self._activity_repo = ActivityRepository(self, logger)
 
         # ----------------------------------------------------------
         # Security
@@ -217,13 +219,42 @@ class DbManagerService:
         self._access.invalidate_role(role_id)
 
     # ============================================================
-    # Activity — placeholder
     # ============================================================
-    async def log_activity(self, user_id, activity_type, ip=None, user_agent=None):
-        raise NotImplementedError("log_activity — phase 13")
+    # Activity
+    # ============================================================
+    async def log_activity(
+        self, user_id, activity_type, ip=None, user_agent=None
+    ):
+        """
+        Record a user activity.
+
+        Never raises. Returns True on success, False on any failure.
+        Failures are silently logged.
+        """
+        return await self._activity_repo.log(
+            user_id, activity_type, ip, user_agent
+        )
 
     async def get_user_activities(self, user_id, limit=20, offset=0):
-        raise NotImplementedError("get_user_activities — phase 13")
+        """
+        Return recent activities for the user as Activity dataclasses,
+        newest first.
+        """
+        return await self._activity_repo.get_by_user(
+            user_id, limit=limit, offset=offset
+        )
+
+    async def count_user_activities(self, user_id):
+        """Return the total number of activity rows for the user."""
+        return await self._activity_repo.count_by_user(user_id)
 
     async def get_activity_types(self):
-        raise NotImplementedError("get_activity_types — phase 13")
+        """
+        Return every registered activity type as a list of dicts
+        (activity_type_id, type_name, description).
+        """
+        return await self._activity_repo.list_types()
+
+    def invalidate_activity_type_cache(self):
+        """Clear the activity_type id cache."""
+        self._activity_repo.invalidate_type_cache()

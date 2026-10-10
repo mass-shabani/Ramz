@@ -12,7 +12,8 @@ UserRepository          — `user` table + joins
 RoleRepository          — `role` table
 FormRepository          — `form` table
 ConditionRepository     — `condition_of` table
-FormAccessRepository    — `form_access` table (many-to-many role↔form)
+FormAccessRepository    — `form_access` table
+ActivityRepository      — `user_activity_log` + `activity_type`
 """
 from .people_repository import PeopleRepository
 from .user_repository import UserRepository
@@ -20,6 +21,7 @@ from .role_repository import RoleRepository
 from .form_repository import FormRepository
 from .condition_repository import ConditionRepository
 from .form_access_repository import FormAccessRepository
+from .activity_repository import ActivityRepository
 
 __all__ = [
     "PeopleRepository",
@@ -28,4 +30,5 @@ __all__ = [
     "FormRepository",
     "ConditionRepository",
     "FormAccessRepository",
+    "ActivityRepository",
 ]
