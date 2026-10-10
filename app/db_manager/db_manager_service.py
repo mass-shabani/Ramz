@@ -41,9 +41,17 @@ class DbManagerService:
         # ----------------------------------------------------------
         from .repositories.user_repository import UserRepository
         from .repositories.people_repository import PeopleRepository
+        from .repositories.role_repository import RoleRepository
+        from .repositories.form_repository import FormRepository
+        from .repositories.condition_repository import ConditionRepository
+        from .repositories.form_access_repository import FormAccessRepository
 
         self._user_repo = UserRepository(self, logger)
         self._people_repo = PeopleRepository(self, logger)
+        self._role_repo = RoleRepository(self, logger)
+        self._form_repo = FormRepository(self, logger)
+        self._condition_repo = ConditionRepository(self, logger)
+        self._form_access_repo = FormAccessRepository(self, logger)
 
     # ============================================================
     # Internal helpers
