@@ -1,49 +1,93 @@
 """
-Database Manager Module - Manages application database schema using system database service.
-This module defines tables, creates them via database_service, and exposes app_db_service.
+DB Manager Module
+
+Two services are exposed during the migration to the new architecture:
+
+    • app_db_service      — legacy service (from database.py). Kept for
+                            backward compatibility until all callers are
+                            migrated to the new service.
+
+    • app_db_service_new  — new service (from db_manager_service.py).
+                            Under construction. No caller should use it
+                            directly yet.
+
+At the end of the migration (phase 8) the legacy service will be removed
+and app_db_service will point to the new implementation.
 """
 from massir.core.interfaces import IModule, ModuleContext
-from .database import AppDatabaseManager
-from .models import get_app_tables
 
-class DbManagerModule(IModule):
+
+class DBManagerModule(IModule):
     """
     Database manager module.
-    Provides app_db_service for other modules to interact with application database tables.
+
+    Responsibilities:
+        • Obtain `database_service` from the framework.
+        • Register the legacy `app_db_service` (temporary).
+        • Register the new `app_db_service_new` (under construction).
+        • Log the module startup.
     """
 
     async def start(self, context: ModuleContext):
-        """Get services, initialize manager, register service, and create tables."""
         logger = context.services.get("core_logger")
-        config = context.services.get("core_config")
         database_service = context.services.get("database_service")
-        database_types = context.services.get("database_types")
-        
+
         if logger:
-            logger.log("DbManager module started", tag="database")
+            logger.log("DB Manager module starting…", tag="database")
 
-        if database_service:
-            db_manager = AppDatabaseManager(database_service, logger)
-            context.services.set("app_db_service", db_manager)
-
-            if database_types:
-                tables = get_app_tables(database_types)
-                
-                try:
-                    for table_def in tables:
-                        await db_manager.create_table(table_def)
-                    if logger:
-                        logger.log(f"Database tables created/verified successfully ({len(tables)} tables)", tag="database")
-                except Exception as e:
-                    if logger:
-                        logger.log(f"Error creating database tables: {e}", level="ERROR", tag="database")
-        else:
+        if not database_service:
             if logger:
-                logger.log("Required services not available, cannot start db_manager", 
-                              level="ERROR", tag="database")
+                logger.log(
+                    "database_service is not available — db_manager cannot start",
+                    level="ERROR",
+                    tag="database",
+                )
+            return
+
+        # ------------------------------------------------------------
+        # Legacy service — kept for backward compatibility
+        # ------------------------------------------------------------
+        try:
+            from .database import AppDatabaseManager
+            legacy_service = AppDatabaseManager(database_service, logger)
+            context.services.set("app_db_service", legacy_service)
+            if logger:
+                logger.log(
+                    "Legacy app_db_service registered (temporary)",
+                    tag="database",
+                )
+        except Exception as exc:
+            if logger:
+                logger.log(
+                    f"Failed to register legacy app_db_service: {exc}",
+                    level="ERROR",
+                    tag="database",
+                )
+
+        # ------------------------------------------------------------
+        # New service — under construction
+        # ------------------------------------------------------------
+        try:
+            from .db_manager_service import DbManagerService
+            new_service = DbManagerService(database_service, logger)
+            context.services.set("app_db_service_new", new_service)
+            if logger:
+                logger.log(
+                    "New app_db_service_new registered (under construction)",
+                    tag="database",
+                )
+        except Exception as exc:
+            if logger:
+                logger.log(
+                    f"Failed to register app_db_service_new: {exc}",
+                    level="ERROR",
+                    tag="database",
+                )
+
+        if logger:
+            logger.log("DB Manager module started", tag="database")
 
     async def stop(self, context: ModuleContext):
-        """Cleanup resources."""
         logger = context.services.get("core_logger")
         if logger:
-            logger.log("DbManager module stopped", tag="database")
+            logger.log("DB Manager module stopped", tag="database")
