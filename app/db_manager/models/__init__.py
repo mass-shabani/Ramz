@@ -7,6 +7,7 @@ the application without exposing raw dicts.
 from .user import User
 from .access import Role, Form, Condition, FormAccess
 from .activity import Activity
+from .signup import SignupData
 
 __all__ = [
     "User",
@@ -15,4 +16,5 @@ __all__ = [
     "Condition",
     "FormAccess",
     "Activity",
+    "SignupData",
 ]

@@ -1,16 +1,17 @@
 """
 Workflows sub-package.
 
-Workflows combine multiple repositories to perform business operations
-(login, signup, profile retrieval, password change, …). They are the
-only place where cross-table transactions and multi-step logic live.
-
 Exports
 -------
-LoginWorkflow — authentication flow
+LoginWorkflow   — authentication flow
+SignupWorkflow  — account creation flow
+SignupError     — raised by SignupWorkflow on failure
 """
 from .login_workflow import LoginWorkflow
+from .signup_workflow import SignupWorkflow, SignupError
 
 __all__ = [
     "LoginWorkflow",
+    "SignupWorkflow",
+    "SignupError",
 ]

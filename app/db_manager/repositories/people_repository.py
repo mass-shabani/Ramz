@@ -58,3 +58,73 @@ class PeopleRepository:
             self.TABLE,
             where={"national_code": national_code},
         )
+
+    # ----------------------------------------------------------
+    # Writes
+    # ----------------------------------------------------------
+    async def create(
+        self,
+        contact_id: int,
+        first_name: str,
+        last_name: str,
+        national_code: Optional[str] = None,
+        birth_date: Optional[str] = None,
+        gender: Optional[str] = None,
+    ) -> Optional[int]:
+        """
+        Create a new people row and return its people_id.
+
+        Parameters
+        ----------
+        contact_id : int
+            Must reference an existing contact row.
+        first_name, last_name : str
+            Required.
+        national_code : str, optional
+            Must be unique if provided.
+        birth_date : str, optional
+            ISO format "YYYY-MM-DD".
+        gender : str, optional
+            One of: male, female, other.
+
+        Returns
+        -------
+        int or None
+            The new people_id on success, None on failure.
+        """
+        if not contact_id or not first_name or not last_name:
+            return None
+
+        if gender not in (None, "male", "female", "other"):
+            gender = None
+
+        result = await self._conn().insert(
+            self.TABLE,
+            {
+                "contact_id":    int(contact_id),
+                "first_name":    first_name,
+                "last_name":     last_name,
+                "national_code": national_code,
+                "birth_date":    birth_date,
+                "gender":        gender,
+            },
+        )
+        return _extract_last_insert_id(result)
+
+
+# --------------------------------------------------------------
+# Helper
+# --------------------------------------------------------------
+def _extract_last_insert_id(result) -> Optional[int]:
+    """Extract last_insert_id from framework's insert() return value."""
+    if result is None:
+        return None
+    if isinstance(result, int):
+        return result
+    for attr in ("last_insert_id", "lastrowid", "last_row_id"):
+        if hasattr(result, attr):
+            try:
+                return int(getattr(result, attr))
+            except (TypeError, ValueError):
+                pass
+    return None

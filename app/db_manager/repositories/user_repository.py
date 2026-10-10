@@ -163,6 +163,75 @@ class UserRepository:
         # or a QueryResult. Handle both.
         return _update_ok(result)
 
+    # ----------------------------------------------------------
+    # Writes
+    # ----------------------------------------------------------
+    async def create(
+        self,
+        people_id: int,
+        role_id: int,
+        username: str,
+        password_hash: str,
+        email_id: Optional[int] = None,
+        phone_id: Optional[int] = None,
+        subscription_id: Optional[int] = None,
+    ) -> Optional[int]:
+        """
+        Create a new user row and return its user_id.
+
+        Parameters
+        ----------
+        people_id : int
+            Must reference an existing people row.
+        role_id : int
+            Must reference an existing role row.
+        username : str
+            Must be unique.
+        password_hash : str
+            The bcrypt hash. The caller must hash before calling.
+        email_id, phone_id, subscription_id : int, optional
+            Foreign keys into email, phone, subscription.
+
+        Returns
+        -------
+        int or None
+            The new user_id on success, None on failure.
+        """
+        if not people_id or not role_id or not username or not password_hash:
+            return None
+
+        result = await self._conn().insert(
+            self.TABLE,
+            {
+                "people_id":        int(people_id),
+                "role_id":          int(role_id),
+                "username":         username,
+                "password_hash":    password_hash,
+                "email_id":         int(email_id) if email_id else None,
+                "phone_id":         int(phone_id) if phone_id else None,
+                "subscription_id":  int(subscription_id) if subscription_id else None,
+                "enabled":          1,
+                "xp_points":        0,
+                "two_factor_enabled": 0,
+            },
+        )
+        return _extract_last_insert_id(result)
+
+
+def _extract_last_insert_id(result) -> Optional[int]:
+    """Extract last_insert_id from framework's insert() return value."""
+    if result is None:
+        return None
+    if isinstance(result, int):
+        return result
+    for attr in ("last_insert_id", "lastrowid", "last_row_id"):
+        if hasattr(result, attr):
+            try:
+                return int(getattr(result, attr))
+            except (TypeError, ValueError):
+                pass
+    return None
+
 
 # --------------------------------------------------------------
 # Helper

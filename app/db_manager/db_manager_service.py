@@ -75,6 +75,9 @@ class DbManagerService:
         from .workflows.login_workflow import LoginWorkflow
         self._login_workflow = LoginWorkflow(self, logger)
 
+        from .workflows.signup_workflow import SignupWorkflow
+        self._signup_workflow = SignupWorkflow(self, logger)
+
     # ============================================================
     # Internal helpers
     # ============================================================
@@ -159,16 +162,43 @@ class DbManagerService:
         return await self._user_repo.is_enabled(user_id)
 
     # ============================================================
-    # Sign up — placeholder
+    # Sign up
     # ============================================================
     async def username_exists(self, username):
-        raise NotImplementedError("username_exists — phase 10")
+        """Return True if the username is already taken."""
+        if not username:
+            return False
+        user = await self._user_repo.get_by_username(username)
+        return user is not None
 
     async def email_exists(self, email):
-        raise NotImplementedError("email_exists — phase 10")
+        """Return True if the email is already registered."""
+        if not email:
+            return False
+        row = await self._email_repo.get_by_address(email)
+        return row is not None
 
     async def create_account(self, data):
-        raise NotImplementedError("create_account — phase 10")
+        """
+        Create a new user account.
+
+        Parameters
+        ----------
+        data : SignupData
+
+        Returns
+        -------
+        User or None
+            The newly created user on success.
+
+        Raises
+        ------
+        SignupError
+            If the account cannot be created. Inspect `error.code` for
+            the reason: "username_exists", "email_exists",
+            "role_not_found", "internal_error".
+        """
+        return await self._signup_workflow.create_account(data)
 
     # ============================================================
     # Profile — placeholder
