@@ -38,9 +38,8 @@ class AuthService:
     Provides authentication methods using the app_db_service.
     """
 
-    def __init__(self, db_service, logger, legacy_db=None):
+    def __init__(self, db_service, logger):
         self.db = db_service
-        self.legacy_db = legacy_db
         self.logger = logger
 
     async def login(self, username: str, password: str, request) -> bool:

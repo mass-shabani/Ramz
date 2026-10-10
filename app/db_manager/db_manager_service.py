@@ -6,8 +6,7 @@ service wraps the framework's `database_service` and exposes high-level
 operations that combine multiple tables (authentication, profile,
 settings, access control, activity logging).
 
-This service is registered as `app_db_service_new` during the migration
-and will become `app_db_service` in phase 8.
+This service is registered as `app_db_service`.
 
 Layer structure:
     DbManagerService

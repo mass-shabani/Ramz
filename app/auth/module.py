@@ -20,16 +20,13 @@ class AuthModule(IModule):
         template_service = context.services.get("template_service")
         menu_manager = context.services.get("menu_manager")
 
-        # Legacy service (kept for backward compatibility)
-        legacy_db = context.services.get("app_db_service")
-
-        # New service — used for login/logout
-        new_db = context.services.get("app_db_service_new")
+        # Central database service
+        db_service = context.services.get("app_db_service")
 
         if logger:
             logger.log("Auth module started", tag="auth")
 
-        if not all([http_api, template_service, menu_manager, new_db]):
+        if not all([http_api, template_service, menu_manager, db_service]):
             if logger:
                 logger.log(
                     "Required services not available, cannot start auth module",
@@ -38,7 +35,7 @@ class AuthModule(IModule):
                 )
             return
 
-        auth_service = AuthService(new_db, logger, legacy_db=legacy_db)
+        auth_service = AuthService(db_service, logger)
         context.services.set("auth_service", auth_service)
 
         templates_dir = str(Path(__file__).parent / "templates")
