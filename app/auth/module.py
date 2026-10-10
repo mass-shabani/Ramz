@@ -2,6 +2,7 @@
 Auth Module - Handles user authentication, login, logout, and session management.
 """
 from pathlib import Path
+
 from massir.core.interfaces import IModule, ModuleContext
 from .services import AuthService
 
@@ -30,8 +31,11 @@ class AuthModule(IModule):
 
         if not all([http_api, template_service, menu_manager, new_db]):
             if logger:
-                logger.log("Required services not available, cannot start auth module", 
-                              level="ERROR", tag="auth")
+                logger.log(
+                    "Required services not available, cannot start auth module",
+                    level="ERROR",
+                    tag="auth",
+                )
             return
 
         auth_service = AuthService(new_db, logger, legacy_db=legacy_db)
@@ -45,30 +49,34 @@ class AuthModule(IModule):
             item_id="auth_login",
             label="Login",
             url="/login",
-            order=900
+            order=900,
         )
         menu_manager.register_menu_item(
             menu_id="main_nav",
             item_id="auth_logout",
             label="Logout",
             url="/logout",
-            order=999
+            order=999,
         )
 
         @http_api.get("/login", response_class=http_api.HTMLResponse)
         async def login_page(request: http_api.Request):
             """Display the login page."""
-            current_user = request.session.get("user") if hasattr(request, "session") else None
+            current_user = (
+                request.session.get("user")
+                if hasattr(request, "session")
+                else None
+            )
             if current_user:
                 return http_api.RedirectResponse(url="/panel", status_code=302)
-            
+
             html = await template_service.render(
                 "login.html",
                 context={
                     "current_user": None,
                     "error": None,
-                    "module_name": "auth"
-                }
+                    "module_name": "auth",
+                },
             )
             return http_api.HTMLResponse(content=html)
 
@@ -80,23 +88,27 @@ class AuthModule(IModule):
             password = form_data.get("password", "")
 
             success = await auth_service.login(username, password, request)
-
             if success:
                 if logger:
-                    logger.log(f"User '{username}' logged in successfully", tag="auth")
-
+                    logger.log(
+                        f"User '{username}' logged in successfully",
+                        tag="auth",
+                    )
                 return http_api.RedirectResponse(url="/panel", status_code=302)
             else:
                 if logger:
-                    logger.log(f"Failed login attempt for '{username}'", level="WARNING", tag="auth")
-
+                    logger.log(
+                        f"Failed login attempt for '{username}'",
+                        level="WARNING",
+                        tag="auth",
+                    )
                 html = await template_service.render(
                     "login.html",
                     context={
                         "current_user": None,
                         "error": "Invalid username or password.",
-                        "module_name": "auth"
-                    }
+                        "module_name": "auth",
+                    },
                 )
                 return http_api.HTMLResponse(content=html)
 
@@ -104,9 +116,6 @@ class AuthModule(IModule):
         async def logout(request: http_api.Request):
             """Clear user session and redirect to home."""
             await auth_service.logout(request)
-            if logger:
-                user = request.session.get("user") if hasattr(request, "session") else None
-                # session already cleared inside logout, log after
             return http_api.RedirectResponse(url="/", status_code=302)
 
         if logger:

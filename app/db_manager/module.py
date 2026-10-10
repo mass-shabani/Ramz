@@ -17,7 +17,7 @@ and app_db_service will point to the new implementation.
 from massir.core.interfaces import IModule, ModuleContext
 
 
-class DBManagerModule(IModule):
+class DbManagerModule(IModule):
     """
     Database manager module.
 
