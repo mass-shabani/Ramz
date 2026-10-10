@@ -137,3 +137,55 @@ class UserRepository:
             return False
         # SQLite stores booleans as 0/1.
         return bool(row.get("enabled", 0))
+
+    # ----------------------------------------------------------
+    # Password updates (internal — used by login and settings)
+    # ----------------------------------------------------------
+    async def update_password_hash(
+        self, user_id: int, password_hash: str
+    ) -> bool:
+        """
+        Update the stored password hash for a user.
+
+        Returns True if a row was updated, False otherwise.
+        The caller is responsible for hashing the plaintext password
+        before calling this method.
+        """
+        if not user_id or not password_hash:
+            return False
+
+        result = await self._conn().update(
+            self.TABLE,
+            where={"user_id": int(user_id)},
+            values={"password_hash": password_hash},
+        )
+        # The framework's update() returns the number of affected rows,
+        # or a QueryResult. Handle both.
+        return _update_ok(result)
+
+
+# --------------------------------------------------------------
+# Helper
+# --------------------------------------------------------------
+def _update_ok(result) -> bool:
+    """
+    Interpret the return value of framework's update().
+
+    Some framework versions return an int (affected rows), others
+    return a QueryResult object with an 'affected_rows' or 'rowcount'
+    attribute. This helper accepts any of them.
+    """
+    if result is None:
+        return False
+    if isinstance(result, int):
+        return result > 0
+
+    for attr in ("affected_rows", "rowcount", "rows_affected"):
+        if hasattr(result, attr):
+            try:
+                return int(getattr(result, attr)) > 0
+            except (TypeError, ValueError):
+                pass
+    # If we can't tell, assume success (safer than breaking the flow).
+    return True
+

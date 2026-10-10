@@ -61,6 +61,12 @@ class DbManagerService:
         from .security.access import AccessChecker
         self._access = AccessChecker(self, logger)
 
+        # ----------------------------------------------------------
+        # Workflows
+        # ----------------------------------------------------------
+        from .workflows.login_workflow import LoginWorkflow
+        self._login_workflow = LoginWorkflow(self, logger)
+
     # ============================================================
     # Internal helpers
     # ============================================================
@@ -94,10 +100,34 @@ class DbManagerService:
         return self._db.get_connection(name or self.DEFAULT_CONNECTION)
 
     # ============================================================
-    # Authentication — placeholder
+    # Authentication
     # ============================================================
     async def authenticate(self, username, password, ip=None, user_agent=None):
-        raise NotImplementedError("authenticate — to be implemented in phase 7")
+        """
+        Attempt to authenticate a user.
+
+        Returns a User object (without password_hash) on success, or
+        None on any failure. See LoginWorkflow.login for details.
+        """
+        return await self._login_workflow.login(
+            username=username,
+            password=password,
+            ip=ip,
+            user_agent=user_agent,
+        )
+
+    async def log_failed_login(self, username, ip=None, user_agent=None):
+        """
+        Record a failed login attempt for an existing user.
+
+        Returns True if the activity was recorded, False otherwise.
+        Safe to call — never raises.
+        """
+        return await self._login_workflow.log_failed_login(
+            username=username,
+            ip=ip,
+            user_agent=user_agent,
+        )
 
     async def get_user_by_username(self, username):
         """
