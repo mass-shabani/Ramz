@@ -28,7 +28,7 @@ class RamzProgressBar extends HTMLElement {
   #track  = null;
   #timer  = null;
   #resetTimer = null;
-  #autoMode   = true;
+  #autoMode   = null;
 
   /* --------------------------------------------------------------
      Lifecycle
