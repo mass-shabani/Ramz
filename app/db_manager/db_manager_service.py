@@ -36,6 +36,15 @@ class DbManagerService:
         self._db = database_service
         self._logger = logger
 
+        # ----------------------------------------------------------
+        # Repositories
+        # ----------------------------------------------------------
+        from .repositories.user_repository import UserRepository
+        from .repositories.people_repository import PeopleRepository
+
+        self._user_repo = UserRepository(self, logger)
+        self._people_repo = PeopleRepository(self, logger)
+
     # ============================================================
     # Internal helpers
     # ============================================================
@@ -47,19 +56,26 @@ class DbManagerService:
             except Exception:
                 pass
 
-    def _conn(self):
+    def connection(self, name: str = None):
         """
-        Return the default database connection.
+        Return a database connection.
 
-        The connection object is provided by the framework's
-        database_service and implements the standard connection API
-        (find_one, find_many, insert, update, delete, transaction, …).
+        Parameters
+        ----------
+        name : str, optional
+            Connection name as declared in app_settings.json.
+            Defaults to DEFAULT_CONNECTION ("default").
+
+        Returns
+        -------
+        Connection
+            A connection object implementing the standard framework API.
         """
         if not self._db:
             raise RuntimeError(
                 "database_service is not available — cannot obtain connection"
             )
-        return self._db.get_connection(self.DEFAULT_CONNECTION)
+        return self._db.get_connection(name or self.DEFAULT_CONNECTION)
 
     # ============================================================
     # Authentication — placeholder
@@ -68,13 +84,25 @@ class DbManagerService:
         raise NotImplementedError("authenticate — to be implemented in phase 7")
 
     async def get_user_by_username(self, username):
-        raise NotImplementedError("get_user_by_username — phase 3")
+        """
+        Return a fully populated User by username, or None.
+        Does not include password_hash.
+        """
+        return await self._user_repo.get_by_username(username)
 
     async def get_user_by_id(self, user_id):
-        raise NotImplementedError("get_user_by_id — phase 3")
+        """
+        Return a fully populated User by user_id, or None.
+        Does not include password_hash.
+        """
+        return await self._user_repo.get_by_id(user_id)
 
     async def is_user_enabled(self, user_id):
-        raise NotImplementedError("is_user_enabled — phase 7")
+        """
+        Return True if the user is currently enabled.
+        Used by access control to invalidate sessions of disabled users.
+        """
+        return await self._user_repo.is_enabled(user_id)
 
     # ============================================================
     # Sign up — placeholder
