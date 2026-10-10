@@ -46,6 +46,10 @@ class DbManagerService:
         from .repositories.condition_repository import ConditionRepository
         from .repositories.form_access_repository import FormAccessRepository
         from .repositories.activity_repository import ActivityRepository
+        from .repositories.contact_repository import ContactRepository
+        from .repositories.email_repository import EmailRepository
+        from .repositories.phone_repository import PhoneRepository
+        from .repositories.address_repository import AddressRepository
 
         self._user_repo = UserRepository(self, logger)
         self._people_repo = PeopleRepository(self, logger)
@@ -54,6 +58,10 @@ class DbManagerService:
         self._condition_repo = ConditionRepository(self, logger)
         self._form_access_repo = FormAccessRepository(self, logger)
         self._activity_repo = ActivityRepository(self, logger)
+        self._contact_repo = ContactRepository(self, logger)
+        self._email_repo = EmailRepository(self, logger)
+        self._phone_repo = PhoneRepository(self, logger)
+        self._address_repo = AddressRepository(self, logger)
 
         # ----------------------------------------------------------
         # Security

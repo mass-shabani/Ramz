@@ -14,6 +14,10 @@ FormRepository          — `form` table
 ConditionRepository     — `condition_of` table
 FormAccessRepository    — `form_access` table
 ActivityRepository      — `user_activity_log` + `activity_type`
+ContactRepository       — `contact` hub
+EmailRepository         — `email` table
+PhoneRepository         — `phone` table
+AddressRepository       — `post_address` table
 """
 from .people_repository import PeopleRepository
 from .user_repository import UserRepository
@@ -22,6 +26,10 @@ from .form_repository import FormRepository
 from .condition_repository import ConditionRepository
 from .form_access_repository import FormAccessRepository
 from .activity_repository import ActivityRepository
+from .contact_repository import ContactRepository
+from .email_repository import EmailRepository
+from .phone_repository import PhoneRepository
+from .address_repository import AddressRepository
 
 __all__ = [
     "PeopleRepository",
@@ -31,4 +39,8 @@ __all__ = [
     "ConditionRepository",
     "FormAccessRepository",
     "ActivityRepository",
+    "ContactRepository",
+    "EmailRepository",
+    "PhoneRepository",
+    "AddressRepository",
 ]
