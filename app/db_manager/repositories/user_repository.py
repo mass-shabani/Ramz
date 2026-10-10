@@ -163,6 +163,86 @@ class UserRepository:
         # or a QueryResult. Handle both.
         return _update_ok(result)
 
+    async def update_email_id(
+        self, user_id: int, email_id: Optional[int]
+    ) -> bool:
+        """Update the primary email_id pointer for a user."""
+        if not user_id:
+            return False
+        result = await self._conn().update(
+            self.TABLE,
+            where={"user_id": int(user_id)},
+            values={"email_id": int(email_id) if email_id else None},
+        )
+        return _update_ok(result)
+
+    async def update_phone_id(
+        self, user_id: int, phone_id: Optional[int]
+    ) -> bool:
+        """Update the primary phone_id pointer for a user."""
+        if not user_id:
+            return False
+        result = await self._conn().update(
+            self.TABLE,
+            where={"user_id": int(user_id)},
+            values={"phone_id": int(phone_id) if phone_id else None},
+        )
+        return _update_ok(result)
+
+    async def set_2fa(
+        self,
+        user_id: int,
+        enabled: bool,
+        secret: Optional[str] = None,
+        backup_codes: Optional[str] = None,
+    ) -> bool:
+        """
+        Enable or disable two-factor authentication.
+
+        Parameters
+        ----------
+        user_id : int
+        enabled : bool
+        secret : str, optional
+            The TOTP secret (base32). Required when enabling.
+        backup_codes : str, optional
+            A JSON-encoded string of backup codes.
+            Required when enabling.
+        """
+        if not user_id:
+            return False
+
+        values = {"two_factor_enabled": 1 if enabled else 0}
+
+        if enabled:
+            if not secret or not backup_codes:
+                return False
+            values["two_factor_secret"] = secret
+            values["two_factor_backup_codes"] = backup_codes
+        else:
+            values["two_factor_secret"] = None
+            values["two_factor_backup_codes"] = None
+
+        result = await self._conn().update(
+            self.TABLE,
+            where={"user_id": int(user_id)},
+            values=values,
+        )
+        return _update_ok(result)
+
+    async def get_2fa_data(self, user_id: int) -> Optional[dict]:
+        """
+        Return the two_factor_secret and two_factor_backup_codes for
+        a user. Returns None if the user does not exist.
+        """
+        if not user_id:
+            return None
+        return await self._conn().fetch_one(
+            "SELECT two_factor_enabled, two_factor_secret, two_factor_backup_codes "
+            "FROM user WHERE user_id = ? LIMIT 1",
+            (int(user_id),),
+        )
+
     # ----------------------------------------------------------
     # Writes
     # ----------------------------------------------------------

@@ -83,6 +83,9 @@ class DbManagerService:
         from .workflows.profile_workflow import ProfileWorkflow
         self._profile_workflow = ProfileWorkflow(self, logger)
 
+        from .workflows.settings_workflow import SettingsWorkflow
+        self._settings_workflow = SettingsWorkflow(self, logger)
+
     # ============================================================
     # Internal helpers
     # ============================================================
@@ -235,22 +238,76 @@ class DbManagerService:
         )
 
     # ============================================================
-    # Settings — placeholder
+    # Settings
     # ============================================================
-    async def change_password(self, user_id, current, new):
-        raise NotImplementedError("change_password — phase 12")
+    async def change_password(
+        self, user_id, current_password, new_password,
+        ip=None, user_agent=None,
+    ):
+        """
+        Change the user's password.
 
-    async def update_email(self, user_id, new_email):
-        raise NotImplementedError("update_email — phase 12")
+        Raises SettingsError with codes:
+            invalid_password, weak_password, same_password,
+            user_not_found, internal_error
+        """
+        return await self._settings_workflow.change_password(
+            user_id, current_password, new_password, ip, user_agent
+        )
 
-    async def update_phone(self, user_id, new_phone):
-        raise NotImplementedError("update_phone — phase 12")
+    async def update_email(
+        self, user_id, new_email, ip=None, user_agent=None
+    ):
+        """
+        Change the primary email.
 
-    async def enable_2fa(self, user_id, secret, backup_codes):
-        raise NotImplementedError("enable_2fa — phase 12")
+        Raises SettingsError with codes:
+            invalid_data, user_not_found, email_exists, internal_error
+        """
+        return await self._settings_workflow.update_email(
+            user_id, new_email, ip, user_agent
+        )
 
-    async def disable_2fa(self, user_id):
-        raise NotImplementedError("disable_2fa — phase 12")
+    async def update_phone(
+        self, user_id, new_phone, ip=None, user_agent=None
+    ):
+        """
+        Change the primary phone.
+
+        Raises SettingsError with codes:
+            invalid_data, user_not_found, phone_exists, internal_error
+        """
+        return await self._settings_workflow.update_phone(
+            user_id, new_phone, ip, user_agent
+        )
+
+    async def enable_2fa(
+        self, user_id, secret, backup_codes,
+        ip=None, user_agent=None,
+    ):
+        """
+        Enable two-factor authentication.
+
+        Raises SettingsError with codes:
+            invalid_data, user_not_found, 2fa_already_enabled,
+            internal_error
+        """
+        return await self._settings_workflow.enable_2fa(
+            user_id, secret, backup_codes, ip, user_agent
+        )
+
+    async def disable_2fa(
+        self, user_id, ip=None, user_agent=None
+    ):
+        """
+        Disable two-factor authentication and clear its data.
+
+        Raises SettingsError with codes:
+            invalid_data, user_not_found, 2fa_not_enabled, internal_error
+        """
+        return await self._settings_workflow.disable_2fa(
+            user_id, ip, user_agent
+        )
 
     # ============================================================
     # Access Control
