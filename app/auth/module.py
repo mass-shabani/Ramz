@@ -18,18 +18,23 @@ class AuthModule(IModule):
         http_api = context.services.get("http_api")
         template_service = context.services.get("template_service")
         menu_manager = context.services.get("menu_manager")
-        app_db_service = context.services.get("app_db_service")
-        
+
+        # Legacy service (kept for backward compatibility)
+        legacy_db = context.services.get("app_db_service")
+
+        # New service — used for login/logout
+        new_db = context.services.get("app_db_service_new")
+
         if logger:
             logger.log("Auth module started", tag="auth")
 
-        if not all([http_api, template_service, menu_manager, app_db_service]):
+        if not all([http_api, template_service, menu_manager, new_db]):
             if logger:
                 logger.log("Required services not available, cannot start auth module", 
                               level="ERROR", tag="auth")
             return
 
-        auth_service = AuthService(app_db_service, logger)
+        auth_service = AuthService(new_db, logger, legacy_db=legacy_db)
         context.services.set("auth_service", auth_service)
 
         templates_dir = str(Path(__file__).parent / "templates")
@@ -74,31 +79,17 @@ class AuthModule(IModule):
             username = form_data.get("username", "")
             password = form_data.get("password", "")
 
-            user = await auth_service.authenticate(username, password)
+            success = await auth_service.login(username, password, request)
 
-            if user:
-                if hasattr(request, "session"):
-                    request.session["user"] = {
-                        "id": user["user_id"],
-                        "username": user["username"],
-                        "email": user.get("email_address", ""),
-                        "people_id": user.get("people_id"),
-                        "email_id": user.get("email_id"),
-                        "phone_id": user.get("phone_id"),
-                        "role_id": user.get("role_id"),
-                        "first_name": user.get("first_name", ""),
-                        "last_name": user.get("last_name", ""),
-                        "full_name": f"{user.get('first_name', '')} {user.get('last_name', '')}".strip(),
-                    }
-                
+            if success:
                 if logger:
                     logger.log(f"User '{username}' logged in successfully", tag="auth")
-                
+
                 return http_api.RedirectResponse(url="/panel", status_code=302)
             else:
                 if logger:
                     logger.log(f"Failed login attempt for '{username}'", level="WARNING", tag="auth")
-                
+
                 html = await template_service.render(
                     "login.html",
                     context={
@@ -112,12 +103,10 @@ class AuthModule(IModule):
         @http_api.get("/logout")
         async def logout(request: http_api.Request):
             """Clear user session and redirect to home."""
-            if hasattr(request, "session"):
-                user = request.session.get("user")
-                if user and logger:
-                    logger.log(f"User '{user.get('username')}' logged out", tag="auth")
-                request.session.clear()
-            
+            await auth_service.logout(request)
+            if logger:
+                user = request.session.get("user") if hasattr(request, "session") else None
+                # session already cleared inside logout, log after
             return http_api.RedirectResponse(url="/", status_code=302)
 
         if logger:
