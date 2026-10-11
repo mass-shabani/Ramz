@@ -1,16 +1,17 @@
 """
 User repository.
 
-Handles reads for the `user` table. Because almost every caller needs
-user data joined with `people`, `role`, `subscription`, `email` and
-`phone`, the main read methods use a single JOIN query and return a
-fully populated `User` object.
-
-Writes (create / update / password change) will be added in later phases.
+Handles reads and writes for the `user` table.
 """
 from typing import Optional
 
 from ..models.user import User
+from ._helpers import (
+    db_insert,
+    db_update,
+    result_ok,
+    result_last_id,
+)
 
 
 class UserRepository:
@@ -25,15 +26,9 @@ class UserRepository:
         return self._db.connection()
 
     # ----------------------------------------------------------
-    # Internal SQL builder
+    # SQL builder
     # ----------------------------------------------------------
     def _select_user_sql(self, include_password: bool = False) -> str:
-        """
-        Build the SELECT statement used by both read methods.
-
-        The joins are LEFT JOIN so a user without an email, phone or
-        subscription still appears in the result.
-        """
         password_col = "u.password_hash," if include_password else ""
 
         return f"""
@@ -70,11 +65,12 @@ class UserRepository:
             LIMIT 1
         """
 
-    async def _find_one_user(self, where_clause: str, params: tuple,
-                             include_password: bool = False) -> Optional[User]:
-        """
-        Run the JOIN query with the given WHERE clause and return a User.
-        """
+    async def _find_one_user(
+        self,
+        where_clause: str,
+        params: tuple,
+        include_password: bool = False,
+    ) -> Optional[User]:
         sql = self._select_user_sql(include_password=include_password) \
             .replace("{{ where_clause }}", where_clause)
 
@@ -86,20 +82,9 @@ class UserRepository:
     # ----------------------------------------------------------
     # Reads
     # ----------------------------------------------------------
-    async def get_by_username(self, username: str,
-                              include_password: bool = False) -> Optional[User]:
-        """
-        Return a fully populated User by username, or None.
-
-        Parameters
-        ----------
-        username : str
-            The exact username to look up. Case sensitivity depends on
-            the database collation (SQLite is case-sensitive by default).
-        include_password : bool
-            If True, the returned User will contain `password_hash`.
-            Only login should pass True.
-        """
+    async def get_by_username(
+        self, username: str, include_password: bool = False
+    ) -> Optional[User]:
         if not username:
             return None
         return await self._find_one_user(
@@ -108,11 +93,9 @@ class UserRepository:
             include_password=include_password,
         )
 
-    async def get_by_id(self, user_id: int,
-                        include_password: bool = False) -> Optional[User]:
-        """
-        Return a fully populated User by user_id, or None.
-        """
+    async def get_by_id(
+        self, user_id: int, include_password: bool = False
+    ) -> Optional[User]:
         if not user_id:
             return None
         return await self._find_one_user(
@@ -122,11 +105,6 @@ class UserRepository:
         )
 
     async def is_enabled(self, user_id: int) -> bool:
-        """
-        Return True if the given user is enabled. False otherwise.
-        Used by access control to check the current state of a user
-        without loading the full row.
-        """
         if not user_id:
             return False
         row = await self._conn().fetch_one(
@@ -135,113 +113,7 @@ class UserRepository:
         )
         if not row:
             return False
-        # SQLite stores booleans as 0/1.
         return bool(row.get("enabled", 0))
-
-    # ----------------------------------------------------------
-    # Password updates (internal — used by login and settings)
-    # ----------------------------------------------------------
-    async def update_password_hash(
-        self, user_id: int, password_hash: str
-    ) -> bool:
-        """
-        Update the stored password hash for a user.
-
-        Returns True if a row was updated, False otherwise.
-        The caller is responsible for hashing the plaintext password
-        before calling this method.
-        """
-        if not user_id or not password_hash:
-            return False
-
-        result = await self._conn().update(
-            self.TABLE,
-            where={"user_id": int(user_id)},
-            values={"password_hash": password_hash},
-        )
-        # The framework's update() returns the number of affected rows,
-        # or a QueryResult. Handle both.
-        return _update_ok(result)
-
-    async def update_email_id(
-        self, user_id: int, email_id: Optional[int]
-    ) -> bool:
-        """Update the primary email_id pointer for a user."""
-        if not user_id:
-            return False
-        result = await self._conn().update(
-            self.TABLE,
-            where={"user_id": int(user_id)},
-            values={"email_id": int(email_id) if email_id else None},
-        )
-        return _update_ok(result)
-
-    async def update_phone_id(
-        self, user_id: int, phone_id: Optional[int]
-    ) -> bool:
-        """Update the primary phone_id pointer for a user."""
-        if not user_id:
-            return False
-        result = await self._conn().update(
-            self.TABLE,
-            where={"user_id": int(user_id)},
-            values={"phone_id": int(phone_id) if phone_id else None},
-        )
-        return _update_ok(result)
-
-    async def set_2fa(
-        self,
-        user_id: int,
-        enabled: bool,
-        secret: Optional[str] = None,
-        backup_codes: Optional[str] = None,
-    ) -> bool:
-        """
-        Enable or disable two-factor authentication.
-
-        Parameters
-        ----------
-        user_id : int
-        enabled : bool
-        secret : str, optional
-            The TOTP secret (base32). Required when enabling.
-        backup_codes : str, optional
-            A JSON-encoded string of backup codes.
-            Required when enabling.
-        """
-        if not user_id:
-            return False
-
-        values = {"two_factor_enabled": 1 if enabled else 0}
-
-        if enabled:
-            if not secret or not backup_codes:
-                return False
-            values["two_factor_secret"] = secret
-            values["two_factor_backup_codes"] = backup_codes
-        else:
-            values["two_factor_secret"] = None
-            values["two_factor_backup_codes"] = None
-
-        result = await self._conn().update(
-            self.TABLE,
-            where={"user_id": int(user_id)},
-            values=values,
-        )
-        return _update_ok(result)
-
-    async def get_2fa_data(self, user_id: int) -> Optional[dict]:
-        """
-        Return the two_factor_secret and two_factor_backup_codes for
-        a user. Returns None if the user does not exist.
-        """
-        if not user_id:
-            return None
-        return await self._conn().fetch_one(
-            "SELECT two_factor_enabled, two_factor_secret, two_factor_backup_codes "
-            "FROM user WHERE user_id = ? LIMIT 1",
-            (int(user_id),),
-        )
 
     # ----------------------------------------------------------
     # Writes
@@ -256,85 +128,97 @@ class UserRepository:
         phone_id: Optional[int] = None,
         subscription_id: Optional[int] = None,
     ) -> Optional[int]:
-        """
-        Create a new user row and return its user_id.
-
-        Parameters
-        ----------
-        people_id : int
-            Must reference an existing people row.
-        role_id : int
-            Must reference an existing role row.
-        username : str
-            Must be unique.
-        password_hash : str
-            The bcrypt hash. The caller must hash before calling.
-        email_id, phone_id, subscription_id : int, optional
-            Foreign keys into email, phone, subscription.
-
-        Returns
-        -------
-        int or None
-            The new user_id on success, None on failure.
-        """
         if not people_id or not role_id or not username or not password_hash:
             return None
 
-        result = await self._conn().insert(
+        result = await db_insert(self._conn(), self.TABLE, {
+            "people_id":          int(people_id),
+            "role_id":            int(role_id),
+            "username":           username,
+            "password_hash":      password_hash,
+            "email_id":           int(email_id) if email_id else None,
+            "phone_id":           int(phone_id) if phone_id else None,
+            "subscription_id":    int(subscription_id) if subscription_id else None,
+            "enabled":            1,
+            "xp_points":          0,
+            "two_factor_enabled": 0,
+        })
+        return result_last_id(result)
+
+    async def update_password_hash(
+        self, user_id: int, password_hash: str
+    ) -> bool:
+        if not user_id or not password_hash:
+            return False
+
+        result = await db_update(
+            self._conn(),
             self.TABLE,
-            {
-                "people_id":        int(people_id),
-                "role_id":          int(role_id),
-                "username":         username,
-                "password_hash":    password_hash,
-                "email_id":         int(email_id) if email_id else None,
-                "phone_id":         int(phone_id) if phone_id else None,
-                "subscription_id":  int(subscription_id) if subscription_id else None,
-                "enabled":          1,
-                "xp_points":        0,
-                "two_factor_enabled": 0,
-            },
+            where={"user_id": int(user_id)},
+            values={"password_hash": password_hash},
         )
-        return _extract_last_insert_id(result)
+        return result_ok(result)
 
+    async def update_email_id(
+        self, user_id: int, email_id: Optional[int]
+    ) -> bool:
+        if not user_id:
+            return False
+        result = await db_update(
+            self._conn(),
+            self.TABLE,
+            where={"user_id": int(user_id)},
+            values={"email_id": int(email_id) if email_id else None},
+        )
+        return result_ok(result)
 
-def _extract_last_insert_id(result) -> Optional[int]:
-    """Extract last_insert_id from framework's insert() return value."""
-    if result is None:
-        return None
-    if isinstance(result, int):
-        return result
-    for attr in ("last_insert_id", "lastrowid", "last_row_id"):
-        if hasattr(result, attr):
-            try:
-                return int(getattr(result, attr))
-            except (TypeError, ValueError):
-                pass
-    return None
+    async def update_phone_id(
+        self, user_id: int, phone_id: Optional[int]
+    ) -> bool:
+        if not user_id:
+            return False
+        result = await db_update(
+            self._conn(),
+            self.TABLE,
+            where={"user_id": int(user_id)},
+            values={"phone_id": int(phone_id) if phone_id else None},
+        )
+        return result_ok(result)
 
+    async def set_2fa(
+        self,
+        user_id: int,
+        enabled: bool,
+        secret: Optional[str] = None,
+        backup_codes: Optional[str] = None,
+    ) -> bool:
+        if not user_id:
+            return False
 
-# --------------------------------------------------------------
-# Helper
-# --------------------------------------------------------------
-def _update_ok(result) -> bool:
-    """
-    Interpret the return value of framework's update().
+        values = {"two_factor_enabled": 1 if enabled else 0}
+        if enabled:
+            if not secret or not backup_codes:
+                return False
+            values["two_factor_secret"] = secret
+            values["two_factor_backup_codes"] = backup_codes
+        else:
+            values["two_factor_secret"] = None
+            values["two_factor_backup_codes"] = None
 
-    Some framework versions return an int (affected rows), others
-    return a QueryResult object with an 'affected_rows' or 'rowcount'
-    attribute. This helper accepts any of them.
-    """
-    if result is None:
-        return False
-    if isinstance(result, int):
-        return result > 0
+        result = await db_update(
+            self._conn(),
+            self.TABLE,
+            where={"user_id": int(user_id)},
+            values=values,
+        )
+        return result_ok(result)
 
-    for attr in ("affected_rows", "rowcount", "rows_affected"):
-        if hasattr(result, attr):
-            try:
-                return int(getattr(result, attr)) > 0
-            except (TypeError, ValueError):
-                pass
-    # If we can't tell, assume success (safer than breaking the flow).
-    return True
-
+    async def get_2fa_data(self, user_id: int) -> Optional[dict]:
+        if not user_id:
+            return None
+        return await self._conn().fetch_one(
+            "SELECT two_factor_enabled, two_factor_secret, "
+            "two_factor_backup_codes "
+            "FROM user WHERE user_id = ? LIMIT 1",
+            (int(user_id),),
+        )

@@ -16,6 +16,7 @@ import time
 from typing import Optional
 
 from ..models.activity import Activity
+from ._helpers import db_insert
 
 
 class ActivityRepository:
@@ -107,15 +108,12 @@ class ActivityRepository:
                 )
                 return False
 
-            await self._conn().insert(
-                self.LOG_TABLE,
-                {
-                    "user_id":          int(user_id),
-                    "activity_type_id": int(type_id),
-                    "ip_address":       ip_address,
-                    "user_agent":       user_agent,
-                },
-            )
+            await db_insert(self._conn(), self.LOG_TABLE, {
+                "user_id":          int(user_id),
+                "activity_type_id": int(type_id),
+                "ip_address":       ip_address,
+                "user_agent":       user_agent,
+            })
             return True
 
         except Exception as exc:

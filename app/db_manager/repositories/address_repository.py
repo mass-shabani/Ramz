@@ -1,10 +1,15 @@
 """
 Address repository.
-
-Handles the `post_address` table. Multiple addresses can belong to one
-contact (home, work, billing, shipping).
 """
 from typing import Optional
+
+from ._helpers import (
+    db_insert,
+    db_update,
+    db_delete,
+    result_ok,
+    result_last_id,
+)
 
 
 class AddressRepository:
@@ -18,30 +23,21 @@ class AddressRepository:
     def _conn(self):
         return self._db.connection()
 
-    # ----------------------------------------------------------
-    # Reads
-    # ----------------------------------------------------------
     async def get_by_id(self, address_id: int) -> Optional[dict]:
         if not address_id:
             return None
         return await self._conn().find_one(
-            self.TABLE,
-            where={"address_id": int(address_id)},
+            self.TABLE, where={"address_id": int(address_id)}
         )
 
     async def list_by_contact(self, contact_id: int) -> list[dict]:
         if not contact_id:
             return []
         return await self._conn().find_many(
-            self.TABLE,
-            where={"contact_id": int(contact_id)},
+            self.TABLE, where={"contact_id": int(contact_id)}
         )
 
     async def get_primary(self, contact_id: int) -> Optional[dict]:
-        """
-        Return the 'home' address for a contact, or the first address
-        found if no home address exists. Used for display purposes.
-        """
         if not contact_id:
             return None
         addresses = await self.list_by_contact(contact_id)
@@ -52,9 +48,6 @@ class AddressRepository:
                 return addr
         return addresses[0]
 
-    # ----------------------------------------------------------
-    # Writes
-    # ----------------------------------------------------------
     async def create(
         self,
         contact_id: int,
@@ -66,11 +59,6 @@ class AddressRepository:
         country: str = "Iran",
         address_type: str = "home",
     ) -> Optional[int]:
-        """
-        Create an address row and return its address_id.
-
-        address_type must be one of: home, work, billing, shipping.
-        """
         if not contact_id or not address_line1:
             return None
 
@@ -78,28 +66,19 @@ class AddressRepository:
         if address_type not in allowed:
             address_type = "home"
 
-        result = await self._conn().insert(
-            self.TABLE,
-            {
-                "contact_id":     int(contact_id),
-                "address_line1":  address_line1,
-                "address_line2":  address_line2,
-                "city":           city,
-                "state_province": state_province,
-                "postal_code":    postal_code,
-                "country":        country,
-                "address_type":   address_type,
-            },
-        )
-        return _extract_last_insert_id(result)
+        result = await db_insert(self._conn(), self.TABLE, {
+            "contact_id":     int(contact_id),
+            "address_line1":  address_line1,
+            "address_line2":  address_line2,
+            "city":           city,
+            "state_province": state_province,
+            "postal_code":    postal_code,
+            "country":        country,
+            "address_type":   address_type,
+        })
+        return result_last_id(result)
 
-    async def update(
-        self, address_id: int, **fields
-    ) -> bool:
-        """
-        Update the given address fields. Only whitelisted fields are
-        accepted to prevent accidental column injection.
-        """
+    async def update(self, address_id: int, **fields) -> bool:
         if not address_id:
             return False
 
@@ -111,49 +90,20 @@ class AddressRepository:
         if not values:
             return False
 
-        result = await self._conn().update(
+        result = await db_update(
+            self._conn(),
             self.TABLE,
             where={"address_id": int(address_id)},
             values=values,
         )
-        return _update_ok(result)
+        return result_ok(result)
 
     async def delete(self, address_id: int) -> bool:
         if not address_id:
             return False
-        result = await self._conn().delete(
+        result = await db_delete(
+            self._conn(),
             self.TABLE,
             where={"address_id": int(address_id)},
         )
-        return _update_ok(result)
-
-
-# --------------------------------------------------------------
-# Helpers
-# --------------------------------------------------------------
-def _extract_last_insert_id(result) -> Optional[int]:
-    if result is None:
-        return None
-    if isinstance(result, int):
-        return result
-    for attr in ("last_insert_id", "lastrowid", "last_row_id"):
-        if hasattr(result, attr):
-            try:
-                return int(getattr(result, attr))
-            except (TypeError, ValueError):
-                pass
-    return None
-
-
-def _update_ok(result) -> bool:
-    if result is None:
-        return False
-    if isinstance(result, int):
-        return result > 0
-    for attr in ("affected_rows", "rowcount", "rows_affected"):
-        if hasattr(result, attr):
-            try:
-                return int(getattr(result, attr)) > 0
-            except (TypeError, ValueError):
-                pass
-    return True
+        return result_ok(result)
