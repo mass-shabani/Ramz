@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block body_class %}page-dashboard{% endblock %}
+
+{% block content %}
+
+<div class="app">
+
+  <!-- ============ TOPBAR (standalone, no sidebar) ============ -->
+  <div class="main" style="width: 100%;">
+
+    <header class="topbar">
+      <a class="standalone-brand" href="/panel"
+         style="display: flex; align-items: center; gap: 12px; text-decoration: none; color: inherit;">
+        <span class="brand-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+               style="width: 22px; height: 22px;">
+            <path d="M12 2 3 7v10l9 5 9-5V7z"/>
+            <path d="M12 22V12"/>
+            <path d="m3 7 9 5 9-5"/>
+          </svg>
+        </span>
+        <span class="brand-text">
+          <span class="brand-name">Nebula</span>
+          <span class="brand-sub">Admin Suite</span>
+        </span>
+      </a>
+
+      <div class="topbar-actions">
+        <a class="icon-btn" href="/panel" aria-label="Back to panel" title="Back to Panel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="9" rx="2"/>
+            <rect x="14" y="3" width="7" height="5" rx="2"/>
+            <rect x="14" y="12" width="7" height="9" rx="2"/>
+            <rect x="3" y="16" width="7" height="5" rx="2"/>
+          </svg>
+        </a>
+
+        <a class="user-chip" href="/logout" style="text-decoration: none;">
+          <span class="avatar avatar--indigo">{{ profile.initials }}</span>
+          <span class="user-name">{{ profile.full_name }}</span>
+        </a>
+      </div>
+    </header>
+
+    <main class="content" style="max-width: 1100px; margin: 0 auto; width: 100%;">
+
+      <!-- Page head -->
+      <div class="page-head">
+        <div>
+          <h1>My Profile</h1>
+          <p>Your account information.</p>
+        </div>
+        <a class="btn-primary" href="/panel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m3 11 9-8 9 8"/>
+            <path d="M5 10v10h14V10"/>
+          </svg>
+          Back to Panel
+        </a>
+      </div>
+
+      <!-- Basic info card -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-head-left">
+            <div class="card-head-text">
+              <div class="card-title">Welcome, {{ profile.full_name }}</div>
+              <div class="card-sub">@{{ profile.username }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+          <div>
+            <div style="font-size: 11px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px;">Role</div>
+            <div style="font-size: 14px; font-weight: 600;">{{ profile.role_name or '—' }}</div>
+          </div>
+          <div>
+            <div style="font-size: 11px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px;">Email</div>
+            <div style="font-size: 14px; font-weight: 600;">{{ profile.email or '—' }}</div>
+          </div>
+          <div>
+            <div style="font-size: 11px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px;">Phone</div>
+            <div style="font-size: 14px; font-weight: 600;">{{ profile.phone or '—' }}</div>
+          </div>
+          <div>
+            <div style="font-size: 11px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px;">XP Points</div>
+            <div style="font-size: 14px; font-weight: 600;">{{ profile.xp_points }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Development placeholder -->
+      <div class="card" style="text-align: center; padding: 40px;">
+        <p style="color: var(--muted); font-size: 13px; margin: 0;">
+          📋 Full profile layout coming in the next step.
+        </p>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+{% endblock %}

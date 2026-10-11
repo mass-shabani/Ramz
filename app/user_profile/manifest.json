@@ -1,0 +1,13 @@
+{
+  "name": "user_profile",
+  "version": "1.0.0",
+  "entrypoint": "UserProfileModule",
+  "description": "Standalone profile page — displays the authenticated user's personal and contact information.",
+  "requires": [
+    "core_logger",
+    "http_api",
+    "template_service",
+    "app_db_service"
+  ],
+  "provides": ["user_profile_service"]
+}

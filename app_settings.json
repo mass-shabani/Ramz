@@ -21,6 +21,7 @@
         "route_manager",
         "ui_components",
         "user_panel",
+        "user_profile",
         "auth",
         "home",
         "server_manager"
