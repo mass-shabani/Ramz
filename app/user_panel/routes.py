@@ -90,6 +90,15 @@ def register_routes(http_api: Any, panel_service: Any, message_service: Any, log
         if not current_user:
             return http_api.RedirectResponse(url="/login", status_code=302)
 
+        # 2. Validate the session (checks enabled status)
+        auth_service = None
+        if hasattr(request, "app") and hasattr(request.app, "state"):
+            auth_service = request.app.state.services.get("auth_service") if hasattr(request.app.state, "services") else None
+        if auth_service:
+            valid = await auth_service.validate_session(request)
+            if not valid:
+                return http_api.RedirectResponse(url="/login", status_code=302)
+
         try:
             html_content = await panel_service.render_panel_view(
                 "dashboard.html",

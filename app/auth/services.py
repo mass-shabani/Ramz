@@ -97,6 +97,53 @@ class AuthService:
         request.session.clear()
         return True
 
+    # ----------------------------------------------------------
+    # Session validation
+    # ----------------------------------------------------------
+    async def validate_session(self, request) -> bool:
+        """
+        Check whether the current session is still valid.
+
+        A session becomes invalid if:
+            • No user is stored in the session
+            • The stored user_id is missing or malformed
+            • The user has been disabled since the session started
+
+        When invalid, the session is cleared so the next request is
+        treated as a fresh visitor.
+
+        Returns True if the session is valid, False otherwise.
+        """
+        user_data = None
+        try:
+            user_data = request.session.get("user")
+        except Exception:
+            return False
+
+        if not user_data:
+            return False
+
+        user_id = user_data.get("user_id") if isinstance(user_data, dict) else None
+        if not user_id:
+            request.session.clear()
+            return False
+
+        try:
+            enabled = await self.db.is_user_enabled(user_id)
+        except Exception:
+            # If we can't check, keep the user logged in (fail open).
+            return True
+
+        if not enabled:
+            self._log(
+                f"Session invalidated for user_id={user_id} (disabled)",
+                level="WARNING",
+            )
+            request.session.clear()
+            return False
+
+        return True
+
 
 # --------------------------------------------------------------
 # Helpers

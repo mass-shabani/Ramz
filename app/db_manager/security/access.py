@@ -143,6 +143,12 @@ class AccessChecker:
         condition = await self.get_form_condition(user_id, form_id)
         if condition is None:
             return False
+
+        # "Closed" is a special condition meaning "no access at all",
+        # regardless of what the caller asked for.
+        if _is_closed(condition):
+            return False
+
         if required_condition is None:
             return True
         return condition == required_condition
@@ -176,6 +182,11 @@ class AccessChecker:
 
         if condition is None:
             return False
+
+        # "Closed" is a special condition meaning "no access at all".
+        if _is_closed(condition):
+            return False
+
         if required_condition is None:
             return True
         return condition == required_condition
@@ -285,3 +296,18 @@ class AccessChecker:
         self._user_enabled_cache.clear()
         self._user_role_cache.clear()
         self._role_form_cache.clear()
+
+
+# --------------------------------------------------------------
+# Helpers
+# --------------------------------------------------------------
+def _is_closed(condition: Optional[str]) -> bool:
+    """
+    Return True if the given condition means "no access".
+
+    Comparison is case-insensitive so that 'Closed', 'closed' and
+    'CLOSED' all behave the same.
+    """
+    if not condition:
+        return False
+    return condition.strip().lower() == "closed"
