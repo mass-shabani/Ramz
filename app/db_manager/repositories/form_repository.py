@@ -49,3 +49,21 @@ class FormRepository:
             self.TABLE,
             where={"enabled": 1},
         )
+
+    async def create(
+        self,
+        form_id: str,
+        form_name: str,
+        description: str = "",
+    ) -> bool:
+        """Create a form row. Returns True on success."""
+        if not form_id or not form_name:
+            return False
+        from ._helpers import db_insert, result_ok
+        result = await db_insert(self._conn(), self.TABLE, {
+            "form_id":     form_id,
+            "form_name":   form_name,
+            "description": description,
+            "enabled":     1,
+        })
+        return result_ok(result)

@@ -147,6 +147,60 @@ class AccessChecker:
             return True
         return condition == required_condition
 
+    async def has_role_access(
+        self,
+        role_id: Optional[int],
+        form_id: str,
+        required_condition: Optional[str] = None,
+    ) -> bool:
+        """
+        Return True if the given role has access to the form.
+
+        Same logic as has_access() but based on a role_id directly,
+        without needing a user. Used for guest/public checks.
+        """
+        if role_id is None or not form_id:
+            return False
+
+        key = (role_id, form_id)
+        cached = self._role_form_cache.get(key)
+
+        if cached and (self._now() - cached[0]) < self.ROLE_FORM_TTL:
+            condition = cached[1]
+        else:
+            row = await self._db._form_access_repo.get_full_access_one(
+                role_id=role_id, form_id=form_id
+            )
+            condition = row.get("condition_name") if row else None
+            self._role_form_cache[key] = (self._now(), condition)
+
+        if condition is None:
+            return False
+        if required_condition is None:
+            return True
+        return condition == required_condition
+
+    async def get_form_condition_by_role(
+        self, role_id: int, form_id: str
+    ) -> Optional[str]:
+        """
+        Same as get_form_condition() but by role_id directly.
+        """
+        if role_id is None or not form_id:
+            return None
+
+        key = (role_id, form_id)
+        cached = self._role_form_cache.get(key)
+        if cached and (self._now() - cached[0]) < self.ROLE_FORM_TTL:
+            return cached[1]
+
+        row = await self._db._form_access_repo.get_full_access_one(
+            role_id=role_id, form_id=form_id
+        )
+        condition_name = row.get("condition_name") if row else None
+        self._role_form_cache[key] = (self._now(), condition_name)
+        return condition_name
+
     async def get_accessible_forms(self, user_id: int) -> list[str]:
         """
         Return the list of form_ids the user has access to.

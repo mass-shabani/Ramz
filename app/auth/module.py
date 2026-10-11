@@ -41,6 +41,11 @@ class AuthModule(IModule):
         templates_dir = str(Path(__file__).parent / "templates")
         template_service.register_template_directory(templates_dir, "auth")
 
+        # ------------------------------------------------------------
+        # Ensure required forms and guest access exist
+        # ------------------------------------------------------------
+        await _ensure_auth_forms(db_service, logger)
+
         menu_manager.register_menu_item(
             menu_id="main_nav",
             item_id="auth_login",
@@ -58,7 +63,8 @@ class AuthModule(IModule):
 
         @http_api.get("/login", response_class=http_api.HTMLResponse)
         async def login_page(request: http_api.Request):
-            """Display the login page."""
+            """Display the login page (guarded by auth.login.view)."""
+            # 1. Already logged in? → redirect to panel
             current_user = (
                 request.session.get("user")
                 if hasattr(request, "session")
@@ -66,6 +72,15 @@ class AuthModule(IModule):
             )
             if current_user:
                 return http_api.RedirectResponse(url="/panel", status_code=302)
+
+            # 2. Check public access
+            allowed = await db_service.has_public_access("auth.login.view")
+            if not allowed:
+                # Login page closed by admin — likely a misconfiguration
+                return http_api.HTMLResponse(
+                    content="<h1>Login is temporarily unavailable</h1>",
+                    status_code=503,
+                )
 
             html = await template_service.render(
                 "login.html",
@@ -126,6 +141,151 @@ class AuthModule(IModule):
             )
             return http_api.HTMLResponse(content=html)
 
+        @http_api.get("/signup", response_class=http_api.HTMLResponse)
+        async def signup_page(request: http_api.Request):
+            """Display the signup page (guarded by auth.signup.view)."""
+            # 1. Already logged in? → redirect
+            current_user = (
+                request.session.get("user")
+                if hasattr(request, "session")
+                else None
+            )
+            if current_user:
+                return http_api.RedirectResponse(url="/panel", status_code=302)
+
+            # 2. Check public access
+            allowed = await db_service.has_public_access("auth.signup.view")
+            if not allowed:
+                return http_api.HTMLResponse(
+                    content=(
+                        "<h1>Sign-up is currently closed</h1>"
+                        "<p>Please contact an administrator.</p>"
+                    ),
+                    status_code=403,
+                )
+
+            html = await template_service.render(
+                "signup.html",
+                context={
+                    "current_user": None,
+                    "error":        None,
+                    "error_code":   None,
+                    "form_data":    {},
+                    "module_name":  "auth",
+                },
+            )
+            return http_api.HTMLResponse(content=html)
+
+        @http_api.post("/signup", response_class=http_api.HTMLResponse)
+        async def signup_post(request: http_api.Request):
+            """Handle signup form submission."""
+            # Guard again — admin may have closed signup between GET and POST
+            allowed = await db_service.has_public_access("auth.signup.view")
+            if not allowed:
+                return http_api.HTMLResponse(
+                    content="<h1>Sign-up is currently closed</h1>",
+                    status_code=403,
+                )
+
+            form_data = await request.form()
+
+            # Collect fields
+            username   = (form_data.get("username") or "").strip()
+            password   = form_data.get("password") or ""
+            password2  = form_data.get("password_confirm") or ""
+            first_name = (form_data.get("first_name") or "").strip()
+            last_name  = (form_data.get("last_name") or "").strip()
+            email      = (form_data.get("email") or "").strip() or None
+            phone      = (form_data.get("phone") or "").strip() or None
+
+            # Render the form back with data preserved on error
+            async def render_with_error(code: str, message: str):
+                return await template_service.render(
+                    "signup.html",
+                    context={
+                        "current_user": None,
+                        "error":        message,
+                        "error_code":   code,
+                        "form_data": {
+                            "username":   username,
+                            "first_name": first_name,
+                            "last_name":  last_name,
+                            "email":      email or "",
+                            "phone":      phone or "",
+                        },
+                        "module_name": "auth",
+                    },
+                )
+
+            # Local validation
+            if not all([username, password, first_name, last_name]):
+                html = await render_with_error(
+                    "missing_fields",
+                    "Please fill in all required fields.",
+                )
+                return http_api.HTMLResponse(content=html)
+
+            if password != password2:
+                html = await render_with_error(
+                    "password_mismatch",
+                    "The two passwords do not match.",
+                )
+                return http_api.HTMLResponse(content=html)
+
+            if len(password) < 8:
+                html = await render_with_error(
+                    "weak_password",
+                    "Password must be at least 8 characters long.",
+                )
+                return http_api.HTMLResponse(content=html)
+
+            # Build SignupData
+            from app.db_manager.models.signup import SignupData
+            from app.db_manager.workflows import SignupError
+
+            data = SignupData(
+                username=username,
+                password=password,
+                first_name=first_name,
+                last_name=last_name,
+                email=email,
+                phone=phone,
+            )
+
+            try:
+                user = await db_service.create_account(data)
+            except SignupError as exc:
+                message_map = {
+                    "username_exists": "This username is already taken.",
+                    "email_exists":    "This email is already registered.",
+                    "role_not_found":  "Configuration error. Contact support.",
+                    "internal_error":  "Something went wrong. Please try again.",
+                }
+                html = await render_with_error(
+                    exc.code,
+                    message_map.get(exc.code, "Signup failed."),
+                )
+                return http_api.HTMLResponse(content=html)
+
+            if logger:
+                logger.log(
+                    f"New account created: {username} (user_id={user.user_id})",
+                    tag="auth",
+                )
+
+            # Auto-login: authenticate immediately
+            try:
+                await auth_service.login(username, password, request)
+                return http_api.RedirectResponse(url="/panel", status_code=302)
+            except Exception as exc:
+                if logger:
+                    logger.log(
+                        f"Auto-login after signup failed: {exc}",
+                        level="WARNING",
+                        tag="auth",
+                    )
+                return http_api.RedirectResponse(url="/login", status_code=302)
+
         @http_api.get("/logout")
         async def logout(request: http_api.Request):
             """Clear user session and redirect to home."""
@@ -140,3 +300,83 @@ class AuthModule(IModule):
         logger = context.services.get("core_logger")
         if logger:
             logger.log("Auth module stopped", tag="auth")
+
+
+# --------------------------------------------------------------
+# Auth bootstrap
+# --------------------------------------------------------------
+async def _ensure_auth_forms(db_service, logger=None):
+    """
+    Ensure the auth-related forms exist and are assigned to the
+    'guest' role. This runs on every startup and is idempotent.
+
+    Forms created:
+        • auth.login.view     — the login page itself
+        • auth.signup.view    — the signup page (can be disabled by admin)
+
+    Both are assigned to the 'guest' role with condition 'low' by
+    default. Admin can revoke guest access later to close signup.
+    """
+    FORMS = [
+        ("auth.login.view",  "Login page access"),
+        ("auth.signup.view", "Signup page access"),
+    ]
+    DEFAULT_CONDITION = "low"
+
+    try:
+        # 1. Ensure guest role exists
+        guest_role = await db_service._role_repo.get_by_name("guest")
+        if not guest_role:
+            if logger:
+                logger.log(
+                    "auth bootstrap: 'guest' role not found — skipping",
+                    level="WARNING",
+                    tag="auth",
+                )
+            return
+        guest_role_id = int(guest_role["role_id"])
+
+        # 2. Ensure condition 'low' exists
+        condition = await db_service._condition_repo.get_by_name(DEFAULT_CONDITION)
+        if not condition:
+            if logger:
+                logger.log(
+                    "auth bootstrap: 'low' condition not found — skipping",
+                    level="WARNING",
+                    tag="auth",
+                )
+            return
+        condition_id = int(condition["condition_id"])
+
+        # 3. Ensure each form exists
+        for form_id, form_name in FORMS:
+            existing_form = await db_service._form_repo.get_by_id(form_id)
+            if not existing_form:
+                await db_service._form_repo.create(
+                    form_id=form_id,
+                    form_name=form_name,
+                )
+
+            # 4. Ensure guest role has access
+            access = await db_service._form_access_repo.get(
+                role_id=guest_role_id, form_id=form_id
+            )
+            if not access:
+                await db_service._form_access_repo.create(
+                    role_id=guest_role_id,
+                    form_id=form_id,
+                    condition_id=condition_id,
+                )
+                if logger:
+                    logger.log(
+                        f"auth bootstrap: granted guest access to '{form_id}'",
+                        tag="auth",
+                    )
+
+    except Exception as exc:
+        if logger:
+            logger.log(
+                f"auth bootstrap failed: {exc}",
+                level="ERROR",
+                tag="auth",
+            )

@@ -341,6 +341,50 @@ class DbManagerService:
             user_id, form_id, required_condition=required_condition
         )
 
+    async def has_public_access(
+        self, form_id, required_condition=None
+    ):
+        """
+        Check if a public (unauthenticated) visitor has access to a
+        given form.
+
+        Public visitors are treated as members of the 'guest' role.
+        If the guest role does not exist or the form is not assigned
+        to it, this returns False.
+
+        This is the correct way to make a page conditionally
+        available to anonymous users (e.g. /signup can be disabled
+        by the admin by revoking guest access to auth.signup.view).
+        """
+        guest_role_id = await self._get_guest_role_id()
+        if guest_role_id is None:
+            return False
+        return await self._access.has_role_access(
+            guest_role_id, form_id, required_condition
+        )
+
+    async def get_public_condition(self, form_id):
+        """
+        Return the condition name the guest role has for the form,
+        or None if no access is granted.
+        """
+        guest_role_id = await self._get_guest_role_id()
+        if guest_role_id is None:
+            return None
+        return await self._access.get_form_condition_by_role(
+            guest_role_id, form_id
+        )
+
+    async def _get_guest_role_id(self):
+        """Return the role_id for the 'guest' role, or None."""
+        try:
+            role = await self._role_repo.get_by_name("guest")
+            if role:
+                return int(role["role_id"])
+        except Exception as exc:
+            self._log(f"Failed to resolve guest role: {exc}", level="ERROR")
+        return None
+
     async def get_accessible_forms(self, user_id):
         """Return the list of form_ids the user can access."""
         return await self._access.get_accessible_forms(user_id)

@@ -112,3 +112,20 @@ class FormAccessRepository:
             LIMIT 1
         """
         return await self._conn().fetch_one(sql, (int(role_id), form_id))
+
+    async def create(
+        self,
+        role_id: int,
+        form_id: str,
+        condition_id: int,
+    ) -> bool:
+        """Create a form_access row. Returns True on success."""
+        if not role_id or not form_id or not condition_id:
+            return False
+        from ._helpers import db_insert, result_ok
+        result = await db_insert(self._conn(), self.TABLE, {
+            "role_id":      int(role_id),
+            "form_id":      form_id,
+            "condition_id": int(condition_id),
+        })
+        return result_ok(result)
