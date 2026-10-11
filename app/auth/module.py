@@ -41,10 +41,8 @@ class AuthModule(IModule):
         templates_dir = str(Path(__file__).parent / "templates")
         template_service.register_template_directory(templates_dir, "auth")
 
-        # ------------------------------------------------------------
-        # Ensure required forms and guest access exist
-        # ------------------------------------------------------------
-        await _ensure_auth_forms(db_service, logger)
+        # (Data seeding is the administrator's responsibility —
+        #  see data/seed_auth.sql for the required forms.)
 
         menu_manager.register_menu_item(
             menu_id="main_nav",
@@ -300,83 +298,3 @@ class AuthModule(IModule):
         logger = context.services.get("core_logger")
         if logger:
             logger.log("Auth module stopped", tag="auth")
-
-
-# --------------------------------------------------------------
-# Auth bootstrap
-# --------------------------------------------------------------
-async def _ensure_auth_forms(db_service, logger=None):
-    """
-    Ensure the auth-related forms exist and are assigned to the
-    'guest' role. This runs on every startup and is idempotent.
-
-    Forms created:
-        • auth.login.view     — the login page itself
-        • auth.signup.view    — the signup page (can be disabled by admin)
-
-    Both are assigned to the 'guest' role with condition 'low' by
-    default. Admin can revoke guest access later to close signup.
-    """
-    FORMS = [
-        ("auth.login.view",  "Login page access"),
-        ("auth.signup.view", "Signup page access"),
-    ]
-    DEFAULT_CONDITION = "low"
-
-    try:
-        # 1. Ensure guest role exists
-        guest_role = await db_service._role_repo.get_by_name("guest")
-        if not guest_role:
-            if logger:
-                logger.log(
-                    "auth bootstrap: 'guest' role not found — skipping",
-                    level="WARNING",
-                    tag="auth",
-                )
-            return
-        guest_role_id = int(guest_role["role_id"])
-
-        # 2. Ensure condition 'low' exists
-        condition = await db_service._condition_repo.get_by_name(DEFAULT_CONDITION)
-        if not condition:
-            if logger:
-                logger.log(
-                    "auth bootstrap: 'low' condition not found — skipping",
-                    level="WARNING",
-                    tag="auth",
-                )
-            return
-        condition_id = int(condition["condition_id"])
-
-        # 3. Ensure each form exists
-        for form_id, form_name in FORMS:
-            existing_form = await db_service._form_repo.get_by_id(form_id)
-            if not existing_form:
-                await db_service._form_repo.create(
-                    form_id=form_id,
-                    form_name=form_name,
-                )
-
-            # 4. Ensure guest role has access
-            access = await db_service._form_access_repo.get(
-                role_id=guest_role_id, form_id=form_id
-            )
-            if not access:
-                await db_service._form_access_repo.create(
-                    role_id=guest_role_id,
-                    form_id=form_id,
-                    condition_id=condition_id,
-                )
-                if logger:
-                    logger.log(
-                        f"auth bootstrap: granted guest access to '{form_id}'",
-                        tag="auth",
-                    )
-
-    except Exception as exc:
-        if logger:
-            logger.log(
-                f"auth bootstrap failed: {exc}",
-                level="ERROR",
-                tag="auth",
-            )
