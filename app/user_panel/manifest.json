@@ -9,7 +9,8 @@
     "template_service",
     "menu_manager",
     "asset_service",
-    "component_service"
+    "component_service",
+    "app_db_service"
   ],
   "provides": ["panel_service"]
 }

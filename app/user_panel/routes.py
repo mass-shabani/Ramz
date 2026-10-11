@@ -66,7 +66,13 @@ def _initials(name: str) -> str:
 # ============================================================
 # Route registration
 # ============================================================
-def register_routes(http_api: Any, panel_service: Any, message_service: Any, logger: Any):
+def register_routes(
+    http_api: Any,
+    panel_service: Any,
+    message_service: Any,
+    logger: Any,
+    db_service: Any = None,
+):
     """
     Register user panel routes with the HTTP API.
 
@@ -90,13 +96,42 @@ def register_routes(http_api: Any, panel_service: Any, message_service: Any, log
         if not current_user:
             return http_api.RedirectResponse(url="/login", status_code=302)
 
-        # 2. Validate the session (checks enabled status)
-        auth_service = None
-        if hasattr(request, "app") and hasattr(request.app, "state"):
-            auth_service = request.app.state.services.get("auth_service") if hasattr(request.app.state, "services") else None
-        if auth_service:
-            valid = await auth_service.validate_session(request)
-            if not valid:
+        # Validate session: user must still exist and be enabled
+        user_id = None
+        if isinstance(current_user, dict):
+            user_id = current_user.get("user_id")
+
+        if not user_id:
+            try:
+                request.session.clear()
+            except Exception:
+                pass
+            return http_api.RedirectResponse(url="/login", status_code=302)
+
+        if db_service:
+            try:
+                enabled = await db_service.is_user_enabled(user_id)
+            except Exception as exc:
+                # Fail open: a transient DB error must not eject every user
+                if logger:
+                    logger.log(
+                        f"Session check failed for user_id={user_id}: {exc}",
+                        level="ERROR",
+                        tag="panel",
+                    )
+                enabled = True
+
+            if not enabled:
+                if logger:
+                    logger.log(
+                        f"Session invalidated for user_id={user_id} (disabled)",
+                        level="WARNING",
+                        tag="panel",
+                    )
+                try:
+                    request.session.clear()
+                except Exception:
+                    pass
                 return http_api.RedirectResponse(url="/login", status_code=302)
 
         try:
@@ -146,6 +181,27 @@ def register_routes(http_api: Any, panel_service: Any, message_service: Any, log
                 content="<div class='card'><p>Session expired. Please sign in again.</p></div>",
                 status_code=401,
             )
+
+        # Validate: user must still exist and be enabled
+        user_id = None
+        if isinstance(current_user, dict):
+            user_id = current_user.get("user_id")
+
+        if user_id and db_service:
+            try:
+                enabled = await db_service.is_user_enabled(user_id)
+            except Exception:
+                enabled = True
+
+            if not enabled:
+                try:
+                    request.session.clear()
+                except Exception:
+                    pass
+                return http_api.HTMLResponse(
+                    content="<div class='card'><p>Your session has expired. Please sign in again.</p></div>",
+                    status_code=401,
+                )
 
         # --- Look up the partial template ---
         template_name = VIEW_TEMPLATES.get(view)

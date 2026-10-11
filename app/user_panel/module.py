@@ -47,6 +47,19 @@ class UserPanelModule(IModule):
             return
 
         # ------------------------------------------------------------
+        # Database service (for session validation)
+        # ------------------------------------------------------------
+        db_service = context.services.get("app_db_service")
+        if not db_service:
+            if logger:
+                logger.log(
+                    "app_db_service not available — session validation disabled",
+                    level="ERROR",
+                    tag="panel",
+                )
+            return
+
+        # ------------------------------------------------------------
         # Panel service (exposed to other modules)
         # ------------------------------------------------------------
         panel_service = PanelService(template_service, menu_manager, logger)
@@ -107,7 +120,13 @@ class UserPanelModule(IModule):
         # ------------------------------------------------------------
         # Routes
         # ------------------------------------------------------------
-        register_routes(http_api, panel_service, message_service, logger)
+        register_routes(
+            http_api,
+            panel_service,
+            message_service,
+            logger,
+            db_service,
+        )
 
         if logger:
             logger.log("UserPanel module started successfully", tag="panel")
