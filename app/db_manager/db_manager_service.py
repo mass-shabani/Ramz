@@ -134,6 +134,25 @@ class DbManagerService:
             user_agent=user_agent,
         )
 
+    async def authenticate_strict(
+        self, username, password, ip=None, user_agent=None
+    ):
+        """
+        Same as authenticate() but raises LoginError on failure.
+
+        Raises
+        ------
+        app.db_manager.workflows.login_workflow.LoginError
+            with codes: invalid_data | invalid_credentials |
+            account_disabled
+        """
+        return await self._login_workflow.login_strict(
+            username=username,
+            password=password,
+            ip=ip,
+            user_agent=user_agent,
+        )
+
     async def log_failed_login(self, username, ip=None, user_agent=None):
         """
         Record a failed login attempt for an existing user.

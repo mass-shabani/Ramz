@@ -71,8 +71,10 @@ class AuthModule(IModule):
                 "login.html",
                 context={
                     "current_user": None,
-                    "error": None,
-                    "module_name": "auth",
+                    "error":        None,
+                    "error_code":   None,
+                    "username":     "",
+                    "module_name":  "auth",
                 },
             )
             return http_api.HTMLResponse(content=html)
@@ -84,30 +86,45 @@ class AuthModule(IModule):
             username = form_data.get("username", "")
             password = form_data.get("password", "")
 
-            success = await auth_service.login(username, password, request)
-            if success:
+            error_code = await auth_service.login(username, password, request)
+
+            if error_code is None:
                 if logger:
                     logger.log(
                         f"User '{username}' logged in successfully",
                         tag="auth",
                     )
                 return http_api.RedirectResponse(url="/panel", status_code=302)
-            else:
-                if logger:
-                    logger.log(
-                        f"Failed login attempt for '{username}'",
-                        level="WARNING",
-                        tag="auth",
-                    )
-                html = await template_service.render(
-                    "login.html",
-                    context={
-                        "current_user": None,
-                        "error": "Invalid username or password.",
-                        "module_name": "auth",
-                    },
+
+            if logger:
+                logger.log(
+                    f"Failed login attempt for '{username}': {error_code}",
+                    level="WARNING",
+                    tag="auth",
                 )
-                return http_api.HTMLResponse(content=html)
+
+            # Map error code to a user-facing message
+            messages = {
+                "invalid_credentials": "Invalid username or password.",
+                "account_disabled":    "Your account has been disabled. Contact support.",
+                "invalid_data":        "Please enter both username and password.",
+                "internal_error":      "Something went wrong. Please try again later.",
+            }
+            error_message = messages.get(
+                error_code, "Invalid username or password."
+            )
+
+            html = await template_service.render(
+                "login.html",
+                context={
+                    "current_user": None,
+                    "error":        error_message,
+                    "error_code":   error_code,
+                    "username":     username,
+                    "module_name":  "auth",
+                },
+            )
+            return http_api.HTMLResponse(content=html)
 
         @http_api.get("/logout")
         async def logout(request: http_api.Request):

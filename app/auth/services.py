@@ -1,84 +1,84 @@
 """
-Auth Service - Handles business logic for authentication.
+Auth Service — handles login, logout, and session management.
 """
-from typing import Optional
+from typing import Optional, Dict, Any
 
-# --------------------------------------------------------------
-# Helpers
-# --------------------------------------------------------------
-def _get_client_ip(request) -> str | None:
-    """Best-effort extraction of the client IP from the request."""
-    if request is None:
-        return None
-    headers = getattr(request, "headers", None)
-    if headers:
-        # Common proxy headers
-        for name in ("x-forwarded-for", "x-real-ip"):
-            value = headers.get(name) if hasattr(headers, "get") else None
-            if value:
-                return value.split(",")[0].strip()
-    client = getattr(request, "client", None)
-    if client and hasattr(client, "host"):
-        return client.host
-    return None
-
-
-def _get_user_agent(request) -> str | None:
-    """Best-effort extraction of the user-agent header."""
-    if request is None:
-        return None
-    headers = getattr(request, "headers", None)
-    if headers and hasattr(headers, "get"):
-        return headers.get("user-agent")
-    return None
+from app.db_manager.workflows import LoginError
 
 
 class AuthService:
-    """
-    Provides authentication methods using the app_db_service.
-    """
 
-    def __init__(self, db_service, logger):
+    def __init__(self, db_service, logger=None):
         self.db = db_service
         self.logger = logger
 
-    async def login(self, username: str, password: str, request) -> bool:
-        """
-        Authenticate a user via the new db_manager service.
+    def _log(self, message, level="INFO"):
+        if self.logger:
+            try:
+                self.logger.log(message, level=level, tag="auth")
+            except Exception:
+                pass
 
-        Extracts IP and user-agent from the request for activity logging.
-        On success, stores the user dict in the session.
+    # ----------------------------------------------------------
+    # Login
+    # ----------------------------------------------------------
+    async def login(
+        self,
+        username: str,
+        password: str,
+        request,
+    ) -> Optional[str]:
         """
-        # Extract client info for activity logging
+        Attempt to authenticate a user.
+
+        Returns
+        -------
+        str or None
+            On success: None and the session is populated.
+            On failure: an error code string suitable for the template:
+                • "invalid_credentials"
+                • "account_disabled"
+                • "invalid_data"
+                • "internal_error"
+        """
+        if not username or not password:
+            return "invalid_data"
+
         ip = _get_client_ip(request)
         user_agent = _get_user_agent(request)
 
-        user = await self.db.authenticate(
-            username=username,
-            password=password,
-            ip=ip,
-            user_agent=user_agent,
-        )
+        try:
+            user = await self.db.authenticate_strict(
+                username=username,
+                password=password,
+                ip=ip,
+                user_agent=user_agent,
+            )
+        except LoginError as exc:
+            return exc.code
+        except Exception as exc:
+            self._log(f"Login internal error: {exc}", level="ERROR")
+            return "internal_error"
 
-        if not user:
-            return False
-
-        # Store session data (adjust the shape if the old code used something else)
+        # Populate session
         request.session["user"] = {
-            "user_id": user.user_id,
-            "username": user.username,
-            "full_name": user.full_name,
-            "initials": user.initials,
-            "role_id": user.role_id,
-            "role_name": user.role_name,
-            "email": user.email,
-            "phone": user.phone,
+            "user_id":    user.user_id,
+            "username":   user.username,
+            "full_name":  user.full_name,
+            "initials":   user.initials,
+            "role_id":    user.role_id,
+            "role_name":  user.role_name,
+            "email":      user.email,
+            "phone":      user.phone,
         }
-        return True
+        return None
 
+    # ----------------------------------------------------------
+    # Logout
+    # ----------------------------------------------------------
     async def logout(self, request) -> bool:
         """
-        Clear the session and record the logout activity.
+        Clear the session and record a logout activity.
         """
         user_data = request.session.get("user") or {}
         user_id = user_data.get("user_id")
@@ -92,8 +92,34 @@ class AuthService:
                     user_agent=_get_user_agent(request),
                 )
             except Exception:
-                # Never block logout on activity logging failure
                 pass
 
         request.session.clear()
         return True
+
+
+# --------------------------------------------------------------
+# Helpers
+# --------------------------------------------------------------
+def _get_client_ip(request) -> Optional[str]:
+    if request is None:
+        return None
+    headers = getattr(request, "headers", None)
+    if headers and hasattr(headers, "get"):
+        for name in ("x-forwarded-for", "x-real-ip"):
+            value = headers.get(name)
+            if value:
+                return value.split(",")[0].strip()
+    client = getattr(request, "client", None)
+    if client and hasattr(client, "host"):
+        return client.host
+    return None
+
+
+def _get_user_agent(request) -> Optional[str]:
+    if request is None:
+        return None
+    headers = getattr(request, "headers", None)
+    if headers and hasattr(headers, "get"):
+        return headers.get("user-agent")
+    return None

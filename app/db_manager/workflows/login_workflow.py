@@ -24,6 +24,23 @@ from ..models.user import User
 from ..security.password import verify_password, needs_rehash, hash_password
 
 
+class LoginError(Exception):
+    """
+    Raised by `authenticate_strict` when authentication fails.
+
+    Codes
+    -----
+    • "invalid_credentials" — username not found OR password wrong
+                              (deliberately combined to prevent
+                              username enumeration)
+    • "account_disabled"    — user exists but is disabled
+    • "invalid_data"        — username or password was empty
+    """
+    def __init__(self, code: str, message: str = ""):
+        self.code = code
+        super().__init__(message or code)
+
+
 class LoginWorkflow:
 
     def __init__(self, db_service, logger=None):
@@ -40,51 +57,59 @@ class LoginWorkflow:
     # ----------------------------------------------------------
     # Public API
     # ----------------------------------------------------------
-    async def login(
+    async def login_strict(
         self,
         username: str,
         password: str,
         ip: Optional[str] = None,
         user_agent: Optional[str] = None,
-    ) -> Optional[User]:
+    ) -> User:
         """
-        Attempt to authenticate a user.
+        Same as login() but raises LoginError on failure with a code
+        that describes the reason.
 
-        Parameters
-        ----------
-        username : str
-        password : str
-        ip : str, optional
-        user_agent : str, optional
+        Returns a User (without password_hash) on success.
 
-        Returns
-        -------
-        User or None
-            The authenticated user (without password_hash) on success,
-            None on any failure.
+        Raises
+        ------
+        LoginError
+            with codes: invalid_credentials | account_disabled |
+            invalid_data
         """
         if not username or not password:
-            return None
+            raise LoginError("invalid_data")
 
-        # 1) Look up the user including the password hash
         user = await self._db._user_repo.get_by_username(
             username, include_password=True
         )
+
+        # Unknown user → generic error (do NOT reveal that user doesn't exist)
         if user is None:
-            self._log(f"Login failed: unknown user '{username}'", level="WARNING")
-            return None
+            self._log(
+                f"Login failed: unknown user '{username}'",
+                level="WARNING",
+            )
+            raise LoginError("invalid_credentials")
 
-        # 2) Account must be enabled
+        # User found but disabled → specific error
         if not user.enabled:
-            self._log(f"Login failed: user '{username}' is disabled", level="WARNING")
-            return None
+            self._log(
+                f"Login failed: user '{username}' is disabled",
+                level="WARNING",
+            )
+            raise LoginError("account_disabled")
 
-        # 3) Verify password
-        if not user.password_hash or not verify_password(password, user.password_hash):
-            self._log(f"Login failed: bad password for '{username}'", level="WARNING")
-            return None
+        # Wrong password → generic error (same as unknown user)
+        if not user.password_hash or not verify_password(
+            password, user.password_hash
+        ):
+            self._log(
+                f"Login failed: bad password for '{username}'",
+                level="WARNING",
+            )
+            raise LoginError("invalid_credentials")
 
-        # 4) Optional: re-hash if the cost factor is outdated
+        # Optional re-hash — same as login()
         if needs_rehash(user.password_hash):
             try:
                 new_hash = hash_password(password)
@@ -95,13 +120,12 @@ class LoginWorkflow:
                     f"Password hash upgraded for user_id={user.user_id}"
                 )
             except Exception as exc:
-                # Re-hash is an optimisation — failure must not block login
                 self._log(
                     f"Password re-hash failed for user_id={user.user_id}: {exc}",
                     level="WARNING",
                 )
 
-        # 5) Log successful login
+        # Log successful login
         try:
             await self._db._activity_repo.log(
                 user_id=user.user_id,
@@ -110,12 +134,31 @@ class LoginWorkflow:
                 user_agent=user_agent,
             )
         except Exception as exc:
-            # Activity logging is best-effort and never blocks login
-            self._log(f"Failed to log login activity: {exc}", level="WARNING")
+            self._log(
+                f"Failed to log login activity: {exc}",
+                level="WARNING",
+            )
 
-        # 6) Strip password hash before returning
         user.password_hash = None
         return user
+
+    async def login(
+        self,
+        username: str,
+        password: str,
+        ip: Optional[str] = None,
+        user_agent: Optional[str] = None,
+    ) -> Optional[User]:
+        """
+        Same as login_strict() but returns None on any failure.
+        Provided for backward compatibility with existing callers.
+        """
+        try:
+            return await self.login_strict(
+                username, password, ip, user_agent
+            )
+        except LoginError:
+            return None
 
     # ----------------------------------------------------------
     # Optional: record a failed login
