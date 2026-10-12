@@ -5,12 +5,10 @@
 {% block content %}
 
 <div class="app" style="display: block;">
-
   <div class="main" style="width: 100%;">
 
-    <!-- ============ STANDALONE TOPBAR ============ -->
+    <!-- ============ TOPBAR ============ -->
     <header class="standalone-topbar">
-
       <ramz-brand name="Nebula" subtitle="Admin Suite"></ramz-brand>
 
       <div class="standalone-actions">
@@ -23,7 +21,6 @@
             <rect x="3" y="16" width="7" height="5" rx="2"/>
           </svg>
         </a>
-
         <a class="icon-btn" href="/profile" title="View Profile" aria-label="View Profile">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
                stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
@@ -38,7 +35,6 @@
           user-initials="{{ profile.initials }}"
         ></ramz-user-menu>
       </div>
-
     </header>
 
     <!-- ============ CONTENT ============ -->
@@ -47,80 +43,715 @@
       <div class="page-head">
         <div>
           <h1>Account Settings</h1>
-          <p>Manage your account, security and preferences.</p>
+          <p>Manage your personal information, security, subscription and more.</p>
         </div>
       </div>
 
-      <ramz-card title="Setup in progress" subtitle="Full settings layout coming soon">
-        <p style="color: var(--text-dim); font-size: 14px; line-height: 1.7; margin: 0;">
-          Welcome <strong>{{ profile.full_name }}</strong>.
-          The full account settings page is being prepared.
-        </p>
-        <p style="color: var(--muted); font-size: 13px; margin-top: 12px; margin-bottom: 0;">
-          You currently have the following edit permissions:
-        </p>
-        <div class="profile-tags" style="margin-top: 12px;">
-          {% if permissions.profile_edit %}
-          <span class="profile-tag ok">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20 6 9 17l-5-5"/>
-            </svg>
-            Edit personal info
-          </span>
-          {% endif %}
-          {% if permissions.password %}
-          <span class="profile-tag ok">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20 6 9 17l-5-5"/>
-            </svg>
-            Change password
-          </span>
-          {% endif %}
-          {% if permissions.twofa %}
-          <span class="profile-tag ok">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20 6 9 17l-5-5"/>
-            </svg>
-            Manage 2FA
-          </span>
-          {% endif %}
-          {% if permissions.banking %}
-          <span class="profile-tag ok">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20 6 9 17l-5-5"/>
-            </svg>
-            Manage banking
-          </span>
-          {% endif %}
-          {% if permissions.sessions %}
-          <span class="profile-tag ok">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20 6 9 17l-5-5"/>
-            </svg>
-            Manage sessions
-          </span>
-          {% endif %}
-          {% if permissions.delete %}
-          <span class="profile-tag ok">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20 6 9 17l-5-5"/>
-            </svg>
-            Delete account
-          </span>
-          {% endif %}
-          {% if not permissions.profile_edit and not permissions.password and not permissions.twofa and not permissions.banking and not permissions.sessions and not permissions.delete %}
-          <span class="profile-tag warn">
-            No edit permissions granted
-          </span>
+      <!-- ============ FLASH MESSAGE ============ -->
+      {% set status = request.query_params.get('status') if request and request.query_params else None %}
+      {% set section = request.query_params.get('section') if request and request.query_params else None %}
+      {% set code = request.query_params.get('code') if request and request.query_params else None %}
+
+      {% if status == 'success' %}
+      <div class="settings-flash success">
+        <span class="settings-flash-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 6 9 17l-5-5"/>
+          </svg>
+        </span>
+        <div class="settings-flash-body">
+          <strong>Changes saved</strong>
+          {% if section == 'personal' %}
+            Your personal information has been updated.
+          {% elif section == 'contact' %}
+            Your contact information has been updated.
+          {% elif section == 'password' %}
+            Your password has been changed.
+          {% elif section == '2fa' %}
+            Two-factor settings updated.
+          {% else %}
+            Your settings have been updated.
           {% endif %}
         </div>
-      </ramz-card>
+      </div>
+      {% elif status == 'error' %}
+      <div class="settings-flash error">
+        <span class="settings-flash-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"/>
+            <path d="M12 8v5"/>
+            <path d="M12 16h.01"/>
+          </svg>
+        </span>
+        <div class="settings-flash-body">
+          <strong>
+            {% if code == 'no_permission' %}Access denied
+            {% elif code == 'internal_error' %}Something went wrong
+            {% elif code == 'password_mismatch' %}Passwords don't match
+            {% elif code == 'not_yet_available' %}Not available yet
+            {% else %}Update failed{% endif %}
+          </strong>
+          {% if code == 'no_permission' %}
+            You do not have permission to perform this action.
+          {% elif code == 'invalid_password' %}
+            The current password is incorrect.
+          {% elif code == 'weak_password' %}
+            Password must be at least 8 characters.
+          {% elif code == 'same_password' %}
+            The new password is the same as the current one.
+          {% elif code == 'password_mismatch' %}
+            The two passwords do not match.
+          {% elif code == 'email_exists' %}
+            That email is already registered on another account.
+          {% elif code == 'phone_exists' %}
+            That phone number is already registered on another account.
+          {% elif code == '2fa_already_enabled' %}
+            Two-factor authentication is already enabled.
+          {% elif code == '2fa_not_enabled' %}
+            Two-factor authentication is not currently enabled.
+          {% elif code == 'not_yet_available' %}
+            This feature will be available in a future update.
+          {% else %}
+            Please try again. If the problem persists, contact support.
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="settings-layout">
+
+        <!-- ============ LEFT NAV ============ -->
+        <aside class="settings-nav">
+          <div class="settings-nav-title">Account</div>
+
+          <a class="settings-nav-item" href="#personal">
+            <span class="settings-nav-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="8" r="3.6"/>
+                <path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>
+              </svg>
+            </span>
+            Personal Info
+          </a>
+
+          <a class="settings-nav-item" href="#contact">
+            <span class="settings-nav-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="4" width="20" height="16" rx="3"/>
+                <path d="m3 7 9 6 9-6"/>
+              </svg>
+            </span>
+            Contact Info
+          </a>
+
+          <a class="settings-nav-item" href="#password">
+            <span class="settings-nav-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="4" y="10" width="16" height="11" rx="3"/>
+                <path d="M8 10V7a4 4 0 0 1 8 0v3"/>
+              </svg>
+            </span>
+            Password
+          </a>
+
+          <a class="settings-nav-item" href="#twofa">
+            <span class="settings-nav-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2 4 6v6c0 5 3.4 9.4 8 10 4.6-.6 8-5 8-10V6z"/>
+              </svg>
+            </span>
+            2FA
+          </a>
+
+          <a class="settings-nav-item" href="#subscription">
+            <span class="settings-nav-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2 15 8l7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/>
+              </svg>
+            </span>
+            Subscription
+          </a>
+
+          <a class="settings-nav-item" href="#banking">
+            <span class="settings-nav-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="5" width="20" height="14" rx="3"/>
+                <path d="M2 10h20"/>
+              </svg>
+            </span>
+            Banking
+          </a>
+
+          <a class="settings-nav-item" href="#sessions">
+            <span class="settings-nav-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="4" width="20" height="14" rx="3"/>
+                <path d="M8 20h8"/>
+                <path d="M12 18v2"/>
+              </svg>
+            </span>
+            Sessions
+          </a>
+
+          <div class="settings-nav-title" style="margin-top: 6px;">Danger Zone</div>
+
+          <a class="settings-nav-item danger" href="#danger">
+            <span class="settings-nav-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 6h18"/>
+                <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+              </svg>
+            </span>
+            Delete Account
+          </a>
+        </aside>
+
+        <!-- ============ CONTENT COLUMN ============ -->
+        <div class="settings-content">
+
+          <!-- ===== PERSONAL ===== -->
+          <ramz-card id="personal" title="Personal Information"
+                     subtitle="Basic identity details from your account">
+            <div slot="icon" class="card-icon icon-soft--indigo">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="8" r="3.6"/>
+                <path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>
+              </svg>
+            </div>
+
+            {% if not permissions.profile_edit %}
+            <p style="color: var(--muted); font-size: 13px; margin: 0;">
+              You do not have permission to edit this section.
+            </p>
+            {% else %}
+            <form method="post" action="/account/settings/personal">
+              <div class="settings-rows">
+
+                <div class="settings-row">
+                  <div class="settings-row-label">
+                    <div class="label">First Name</div>
+                    <div class="hint">Your given name</div>
+                  </div>
+                  <div class="settings-row-control">
+                    <div class="settings-field">
+                      <input type="text" name="first_name"
+                             value="{{ profile.first_name or '' }}"
+                             placeholder="First name" required />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-row">
+                  <div class="settings-row-label">
+                    <div class="label">Last Name</div>
+                    <div class="hint">Your family name</div>
+                  </div>
+                  <div class="settings-row-control">
+                    <div class="settings-field">
+                      <input type="text" name="last_name"
+                             value="{{ profile.last_name or '' }}"
+                             placeholder="Last name" required />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-row">
+                  <div class="settings-row-label">
+                    <div class="label">National Code</div>
+                    <div class="hint">Government-issued ID</div>
+                  </div>
+                  <div class="settings-row-control">
+                    <div class="settings-field">
+                      <input type="text" name="national_code"
+                             value="{{ profile.national_code or '' }}"
+                             placeholder="Optional" />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-row">
+                  <div class="settings-row-label">
+                    <div class="label">Birth Date</div>
+                    <div class="hint">Date of birth</div>
+                  </div>
+                  <div class="settings-row-control">
+                    <div class="settings-field">
+                      <input type="date" name="birth_date"
+                             value="{{ profile.birth_date.strftime('%Y-%m-%d') if profile.birth_date else '' }}" />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-row">
+                  <div class="settings-row-label">
+                    <div class="label">Gender</div>
+                    <div class="hint">Select your gender</div>
+                  </div>
+                  <div class="settings-row-control">
+                    <div class="settings-field">
+                      <select name="gender">
+                        <option value="">— Not specified —</option>
+                        <option value="male"   {% if profile.gender == 'male' %}selected{% endif %}>Male</option>
+                        <option value="female" {% if profile.gender == 'female' %}selected{% endif %}>Female</option>
+                        <option value="other"  {% if profile.gender == 'other' %}selected{% endif %}>Other</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              <div class="settings-actions">
+                <a class="btn-ghost" href="/account/settings">Cancel</a>
+                <button class="btn-primary" type="submit">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                       stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 6 9 17l-5-5"/>
+                  </svg>
+                  Save Changes
+                </button>
+              </div>
+            </form>
+            {% endif %}
+          </ramz-card>
+
+          <!-- ===== CONTACT ===== -->
+          <ramz-card id="contact" title="Contact Information"
+                     subtitle="Email, phone and address">
+            <div slot="icon" class="card-icon icon-soft--green">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="4" width="20" height="16" rx="3"/>
+                <path d="m3 7 9 6 9-6"/>
+              </svg>
+            </div>
+
+            {% if not permissions.profile_edit %}
+            <p style="color: var(--muted); font-size: 13px; margin: 0;">
+              You do not have permission to edit this section.
+            </p>
+            {% else %}
+            <form method="post" action="/account/settings/contact">
+              <div class="settings-rows">
+
+                <div class="settings-row">
+                  <div class="settings-row-label">
+                    <div class="label">Email Address</div>
+                    <div class="hint">Used for login and notifications</div>
+                  </div>
+                  <div class="settings-row-control">
+                    <div class="settings-field">
+                      <input type="email" name="email"
+                             value="{{ profile.email or '' }}"
+                             placeholder="you@example.com" />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-row">
+                  <div class="settings-row-label">
+                    <div class="label">Mobile Phone</div>
+                    <div class="hint">Used for 2FA and security alerts</div>
+                  </div>
+                  <div class="settings-row-control">
+                    <div class="settings-field">
+                      <input type="tel" name="phone"
+                             value="{{ profile.phone or '' }}"
+                             placeholder="+1 555 000 0000" />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-row">
+                  <div class="settings-row-label">
+                    <div class="label">Address Line 1</div>
+                    <div class="hint">Street address</div>
+                  </div>
+                  <div class="settings-row-control">
+                    <div class="settings-field">
+                      <input type="text" name="address_line1"
+                             value="{{ profile.address_line1 or '' }}"
+                             placeholder="Street and number" />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-row">
+                  <div class="settings-row-label">
+                    <div class="label">Address Line 2</div>
+                    <div class="hint">Apartment, floor, etc.</div>
+                  </div>
+                  <div class="settings-row-control">
+                    <div class="settings-field">
+                      <input type="text" name="address_line2"
+                             value="{{ profile.address_line2 or '' }}"
+                             placeholder="Optional" />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-row">
+                  <div class="settings-row-label">
+                    <div class="label">City</div>
+                    <div class="hint">Your city</div>
+                  </div>
+                  <div class="settings-row-control">
+                    <div class="settings-field">
+                      <input type="text" name="city"
+                             value="{{ profile.city or '' }}" />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-row">
+                  <div class="settings-row-label">
+                    <div class="label">State / Province</div>
+                    <div class="hint">State or province</div>
+                  </div>
+                  <div class="settings-row-control">
+                    <div class="settings-field">
+                      <input type="text" name="state_province"
+                             value="{{ profile.state_province or '' }}" />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-row">
+                  <div class="settings-row-label">
+                    <div class="label">Postal Code</div>
+                    <div class="hint">ZIP or postal code</div>
+                  </div>
+                  <div class="settings-row-control">
+                    <div class="settings-field">
+                      <input type="text" name="postal_code"
+                             value="{{ profile.postal_code or '' }}" />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-row">
+                  <div class="settings-row-label">
+                    <div class="label">Country</div>
+                    <div class="hint">Country of residence</div>
+                  </div>
+                  <div class="settings-row-control">
+                    <div class="settings-field">
+                      <input type="text" name="country"
+                             value="{{ profile.country or 'Iran' }}" />
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              <div class="settings-actions">
+                <a class="btn-ghost" href="/account/settings">Cancel</a>
+                <button class="btn-primary" type="submit">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                       stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 6 9 17l-5-5"/>
+                  </svg>
+                  Save Contact Info
+                </button>
+              </div>
+            </form>
+            {% endif %}
+          </ramz-card>
+
+          <!-- ===== PASSWORD ===== -->
+          <ramz-card id="password" title="Password"
+                     subtitle="Change your account password">
+            <div slot="icon" class="card-icon icon-soft--rose">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="4" y="10" width="16" height="11" rx="3"/>
+                <path d="M8 10V7a4 4 0 0 1 8 0v3"/>
+              </svg>
+            </div>
+
+            {% if not permissions.password %}
+            <p style="color: var(--muted); font-size: 13px; margin: 0;">
+              You do not have permission to change your password.
+            </p>
+            {% else %}
+            <form method="post" action="/account/settings/password">
+              <div class="settings-rows">
+
+                <div class="settings-row">
+                  <div class="settings-row-label">
+                    <div class="label">Current Password</div>
+                    <div class="hint">Confirm your current password</div>
+                  </div>
+                  <div class="settings-row-control">
+                    <div class="settings-field">
+                      <input type="password" name="current_password"
+                             placeholder="••••••••" required />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-row">
+                  <div class="settings-row-label">
+                    <div class="label">New Password</div>
+                    <div class="hint">At least 8 characters</div>
+                  </div>
+                  <div class="settings-row-control">
+                    <div class="settings-field">
+                      <input type="password" name="new_password"
+                             placeholder="••••••••" minlength="8" required />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-row">
+                  <div class="settings-row-label">
+                    <div class="label">Confirm Password</div>
+                    <div class="hint">Repeat the new password</div>
+                  </div>
+                  <div class="settings-row-control">
+                    <div class="settings-field">
+                      <input type="password" name="confirm_password"
+                             placeholder="••••••••" minlength="8" required />
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              <div class="settings-actions">
+                <button class="btn-primary" type="submit">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                       stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 6 9 17l-5-5"/>
+                  </svg>
+                  Update Password
+                </button>
+              </div>
+            </form>
+            {% endif %}
+          </ramz-card>
+
+          <!-- ===== 2FA ===== -->
+          <ramz-card id="twofa" title="Two-Factor Authentication"
+                     subtitle="Extra security for your account">
+            <div slot="icon" class="card-icon icon-soft--violet">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2 4 6v6c0 5 3.4 9.4 8 10 4.6-.6 8-5 8-10V6z"/>
+              </svg>
+            </div>
+
+            {% if not permissions.twofa %}
+            <p style="color: var(--muted); font-size: 13px; margin: 0;">
+              You do not have permission to manage two-factor authentication.
+            </p>
+            {% else %}
+
+            {% if profile.two_factor_enabled %}
+            <div class="twofa-banner">
+              <span class="twofa-banner-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2 4 6v6c0 5 3.4 9.4 8 10 4.6-.6 8-5 8-10V6z"/>
+                  <path d="m9 12 2 2 4-4"/>
+                </svg>
+              </span>
+              <div class="twofa-banner-text">
+                <strong>Two-factor authentication is enabled</strong>
+                <span>Your account is protected by an additional layer of security.</span>
+              </div>
+            </div>
+
+            <form method="post" action="/account/settings/2fa/disable">
+              <div class="settings-actions" style="justify-content: flex-start; border-top: none; margin-top: 0; padding-top: 0;">
+                <button class="btn-ghost" type="submit">
+                  Disable 2FA
+                </button>
+              </div>
+            </form>
+
+            {% else %}
+            <div class="twofa-banner" style="background: rgba(40,54,84,0.4); border-color: var(--border);">
+              <span class="twofa-banner-icon" style="background: rgba(129,140,248,0.10);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="9"/>
+                  <path d="M12 8v4"/>
+                  <path d="M12 16h.01"/>
+                </svg>
+              </span>
+              <div class="twofa-banner-text">
+                <strong>Two-factor authentication is not enabled</strong>
+                <span>We recommend enabling 2FA to protect your account.</span>
+              </div>
+            </div>
+
+            <form method="post" action="/account/settings/2fa/enable">
+              <div class="settings-actions" style="justify-content: flex-start; border-top: none; margin-top: 0; padding-top: 0;">
+                <button class="btn-primary" type="submit">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                       stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 5v14M5 12h14"/>
+                  </svg>
+                  Enable 2FA
+                </button>
+              </div>
+            </form>
+            {% endif %}
+
+            {% endif %}
+          </ramz-card>
+
+          <!-- ===== SUBSCRIPTION ===== -->
+          <ramz-card id="subscription" title="Subscription"
+                     subtitle="Your current plan">
+            <div slot="icon" class="card-icon icon-soft--amber">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2 15 8l7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/>
+              </svg>
+            </div>
+
+            {% if profile.subscription_name %}
+            <div class="plan-card">
+              <span class="plan-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2 15 8l7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/>
+                </svg>
+              </span>
+              <div class="plan-body">
+                <div class="plan-name">{{ profile.subscription_name|capitalize }} Plan</div>
+                <div class="plan-meta">Active subscription</div>
+              </div>
+              <button class="btn-ghost" type="button">Change Plan</button>
+            </div>
+            {% else %}
+            <div style="text-align: center; padding: 24px 16px;">
+              <p style="color: var(--muted); font-size: 13px; margin: 0;">
+                You don't have an active subscription plan.
+              </p>
+            </div>
+            {% endif %}
+          </ramz-card>
+
+          <!-- ===== BANKING ===== -->
+          <ramz-card id="banking" title="Banking"
+                     subtitle="Bank accounts and cards">
+            <div slot="icon" class="card-icon icon-soft--indigo">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="5" width="20" height="14" rx="3"/>
+                <path d="M2 10h20"/>
+              </svg>
+            </div>
+
+            {% if not permissions.banking %}
+            <p style="color: var(--muted); font-size: 13px; margin: 0;">
+              You do not have permission to manage banking information.
+            </p>
+            {% else %}
+            <p style="color: var(--muted); font-size: 13px; margin: 0;">
+              Banking management UI will be added in a future update.
+            </p>
+            {% endif %}
+          </ramz-card>
+
+          <!-- ===== SESSIONS ===== -->
+          <ramz-card id="sessions" title="Active Sessions"
+                     subtitle="Devices currently signed in">
+            <div slot="icon" class="card-icon icon-soft--sky">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="4" width="20" height="14" rx="3"/>
+                <path d="M8 20h8"/>
+                <path d="M12 18v2"/>
+              </svg>
+            </div>
+
+            {% if not permissions.sessions %}
+            <p style="color: var(--muted); font-size: 13px; margin: 0;">
+              You do not have permission to manage sessions.
+            </p>
+            {% else %}
+            <div class="session-list">
+              <div class="session-item">
+                <span class="session-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                       stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="4" width="20" height="14" rx="3"/>
+                    <path d="M8 20h8"/>
+                  </svg>
+                </span>
+                <div class="session-body">
+                  <div class="session-name">
+                    Current browser
+                    <span class="current-badge">CURRENT</span>
+                  </div>
+                  <div class="session-meta">This session · Active now</div>
+                </div>
+              </div>
+            </div>
+            <p style="color: var(--muted); font-size: 12px; margin-top: 16px;">
+              Full session management will be added in a future update.
+            </p>
+            {% endif %}
+          </ramz-card>
+
+          <!-- ===== DANGER ZONE ===== -->
+          <ramz-card id="danger" card-class="danger-card">
+            <div class="settings-section-head" style="margin-bottom: 0; border-bottom: none; padding-bottom: 0;">
+              <span class="settings-section-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 9v4"/>
+                  <path d="M12 17h.01"/>
+                  <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>
+                </svg>
+              </span>
+              <div>
+                <div class="settings-section-title">Danger Zone</div>
+                <div class="settings-section-sub">
+                  Once you delete your account, there is no going back.
+                  Please be certain.
+                </div>
+              </div>
+            </div>
+
+            {% if not permissions.delete %}
+            <p style="color: #fda4af; font-size: 12px; margin: 16px 0 0 0; opacity: 0.8;">
+              You do not have permission to delete your account.
+            </p>
+            {% else %}
+            <div class="settings-actions" style="justify-content: flex-start; border-top: none; margin-top: 16px; padding-top: 0;">
+              <button class="btn-danger" type="button"
+                      onclick="alert('Account deletion will be available in a future update.');">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 6h18"/>
+                  <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                </svg>
+                Delete My Account
+              </button>
+            </div>
+            {% endif %}
+          </ramz-card>
+
+        </div><!-- /.settings-content -->
+      </div><!-- /.settings-layout -->
 
     </main>
   </div>
