@@ -4,18 +4,19 @@
 
 {% block content %}
 
-<div class="app">
+{% set is_admin = profile.role_name and profile.role_name|lower == 'admin' %}
+{% set is_manager = profile.role_name and profile.role_name|lower == 'manager' %}
 
-  <!-- ============ TOPBAR (standalone, no sidebar) ============ -->
+<div class="app" style="display: block;">
+
   <div class="main" style="width: 100%;">
 
-    <header class="topbar">
-      <a class="standalone-brand" href="/panel"
-         style="display: flex; align-items: center; gap: 12px; text-decoration: none; color: inherit;">
+    <!-- ============ STANDALONE TOPBAR ============ -->
+    <header class="standalone-topbar">
+      <a class="standalone-brand" href="/panel">
         <span class="brand-logo">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-               style="width: 22px; height: 22px;">
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 2 3 7v10l9 5 9-5V7z"/>
             <path d="M12 22V12"/>
             <path d="m3 7 9 5 9-5"/>
@@ -27,8 +28,8 @@
         </span>
       </a>
 
-      <div class="topbar-actions">
-        <a class="icon-btn" href="/panel" aria-label="Back to panel" title="Back to Panel">
+      <div class="standalone-actions">
+        <a class="icon-btn" href="/panel" title="Back to Panel" aria-label="Back to Panel">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
                stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="3" width="7" height="9" rx="2"/>
@@ -38,68 +39,563 @@
           </svg>
         </a>
 
+        <a class="icon-btn" href="/account/settings" title="Account Settings" aria-label="Account Settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7.9 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 4 13.9H4a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 5.3 7.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 10.9 4V4a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1.3z"/>
+          </svg>
+        </a>
+
         <a class="user-chip" href="/logout" style="text-decoration: none;">
           <span class="avatar avatar--indigo">{{ profile.initials }}</span>
           <span class="user-name">{{ profile.full_name }}</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3"/>
+            <path d="M16 17l5-5-5-5"/>
+            <path d="M21 12H9"/>
+          </svg>
         </a>
       </div>
     </header>
 
-    <main class="content" style="max-width: 1100px; margin: 0 auto; width: 100%;">
+    <!-- ============ CONTENT ============ -->
+    <main class="standalone-content">
 
       <!-- Page head -->
       <div class="page-head">
         <div>
           <h1>My Profile</h1>
-          <p>Your account information.</p>
+          <p>Your account information at a glance.</p>
         </div>
-        <a class="btn-primary" href="/panel">
+        <a class="btn-primary" href="/account/settings">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
                stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="m3 11 9-8 9 8"/>
-            <path d="M5 10v10h14V10"/>
+            <path d="M12 20h9"/>
+            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/>
           </svg>
-          Back to Panel
+          Edit in Settings
         </a>
       </div>
 
-      <!-- Basic info card -->
-      <div class="card">
-        <div class="card-head">
-          <div class="card-head-left">
-            <div class="card-head-text">
-              <div class="card-title">Welcome, {{ profile.full_name }}</div>
-              <div class="card-sub">@{{ profile.username }}</div>
+      <!-- ============ HERO ============ -->
+      <div class="card profile-hero">
+        <div class="profile-hero-bg"></div>
+        <div class="profile-hero-content">
+          <div class="profile-avatar">
+            <span class="avatar avatar--xlarge avatar--indigo">{{ profile.initials }}</span>
+            {% if profile.enabled %}
+            <span class="profile-online" title="Active"></span>
+            {% endif %}
+          </div>
+
+          <div class="profile-meta">
+            <h2>
+              {{ profile.full_name }}
+              {% if profile.email_verified and profile.phone_verified %}
+              <span class="profile-verified" title="Verified account">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 6 9 17l-5-5"/>
+                </svg>
+              </span>
+              {% endif %}
+            </h2>
+
+            <div class="profile-handle">
+              <span>@{{ profile.username }}</span>
+              {% if profile.role_name %}
+              <span class="role-chip {% if is_admin %}gold{% elif is_manager %}green{% endif %}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2 4 6v6c0 5 3.4 9.4 8 10 4.6-.6 8-5 8-10V6z"/>
+                </svg>
+                {{ profile.role_name|capitalize }}
+              </span>
+              {% endif %}
+              {% if profile.subscription_name %}
+              <span class="role-chip">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2 15 8l7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/>
+                </svg>
+                {{ profile.subscription_name|capitalize }}
+              </span>
+              {% endif %}
+            </div>
+
+            {% if profile.has_address %}
+            <div class="profile-bio" style="font-size: 12.5px; color: var(--muted); margin-bottom: 14px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"
+                   style="width: 14px; height: 14px; display: inline-block;
+                          vertical-align: middle; margin-right: 6px;">
+                <path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+              {{ profile.city }}{% if profile.country %}, {{ profile.country }}{% endif %}
+            </div>
+            {% endif %}
+
+            <div class="profile-tags">
+              {% if profile.email_verified %}
+              <span class="profile-tag ok">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 6 9 17l-5-5"/>
+                </svg>
+                Email verified
+              </span>
+              {% elif profile.email %}
+              <span class="profile-tag warn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="9"/>
+                  <path d="M12 8v5"/>
+                  <path d="M12 16h.01"/>
+                </svg>
+                Email pending
+              </span>
+              {% endif %}
+
+              {% if profile.phone_verified %}
+              <span class="profile-tag ok">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 6 9 17l-5-5"/>
+                </svg>
+                Phone verified
+              </span>
+              {% endif %}
+
+              {% if profile.two_factor_enabled %}
+              <span class="profile-tag ok">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2 4 6v6c0 5 3.4 9.4 8 10 4.6-.6 8-5 8-10V6z"/>
+                  <path d="m9 12 2 2 4-4"/>
+                </svg>
+                2FA enabled
+              </span>
+              {% endif %}
             </div>
           </div>
         </div>
+      </div>
 
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
-          <div>
-            <div style="font-size: 11px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px;">Role</div>
-            <div style="font-size: 14px; font-weight: 600;">{{ profile.role_name or '—' }}</div>
+      <!-- ============ STATS ============ -->
+      <section class="stats">
+        <div class="card stat">
+          <div class="stat-top">
+            <span class="stat-icon icon-soft--indigo">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2 15 8l7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/>
+              </svg>
+            </span>
+            <span class="stat-label">XP Points</span>
           </div>
-          <div>
-            <div style="font-size: 11px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px;">Email</div>
-            <div style="font-size: 14px; font-weight: 600;">{{ profile.email or '—' }}</div>
-          </div>
-          <div>
-            <div style="font-size: 11px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px;">Phone</div>
-            <div style="font-size: 14px; font-weight: 600;">{{ profile.phone or '—' }}</div>
-          </div>
-          <div>
-            <div style="font-size: 11px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px;">XP Points</div>
-            <div style="font-size: 14px; font-weight: 600;">{{ profile.xp_points }}</div>
+          <div class="stat-value">{{ "{:,}".format(profile.xp_points) }}</div>
+          <div class="trend up" style="color: var(--muted); font-weight: 500;">
+            Earned on the platform
           </div>
         </div>
-      </div>
 
-      <!-- Development placeholder -->
-      <div class="card" style="text-align: center; padding: 40px;">
-        <p style="color: var(--muted); font-size: 13px; margin: 0;">
-          📋 Full profile layout coming in the next step.
-        </p>
-      </div>
+        <div class="card stat">
+          <div class="stat-top">
+            <span class="stat-icon icon-soft--green">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M12 7v5l3 2"/>
+              </svg>
+            </span>
+            <span class="stat-label">Member Since</span>
+          </div>
+          <div class="stat-value" style="font-size: 20px; letter-spacing: -0.5px;">
+            {{ profile.created_at.strftime("%b %Y") if profile.created_at else '—' }}
+          </div>
+          <div class="trend up" style="color: var(--muted); font-weight: 500;">
+            Welcome aboard
+          </div>
+        </div>
+
+        <div class="card stat">
+          <div class="stat-top">
+            <span class="stat-icon icon-soft--amber">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 3v18h18"/>
+                <path d="m7 15 4-5 3 3 5-7"/>
+              </svg>
+            </span>
+            <span class="stat-label">Activities</span>
+          </div>
+          <div class="stat-value">{{ "{:,}".format(activity_count) }}</div>
+          <div class="trend up" style="color: var(--muted); font-weight: 500;">
+            Logged events
+          </div>
+        </div>
+
+        <div class="card stat">
+          <div class="stat-top">
+            <span class="stat-icon icon-soft--violet">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2 4 6v6c0 5 3.4 9.4 8 10 4.6-.6 8-5 8-10V6z"/>
+              </svg>
+            </span>
+            <span class="stat-label">Security</span>
+          </div>
+          <div class="stat-value" style="font-size: 20px; letter-spacing: -0.5px;">
+            {% if profile.two_factor_enabled %}Strong{% else %}Basic{% endif %}
+          </div>
+          <div class="trend up" style="color: var(--muted); font-weight: 500;">
+            {% if profile.two_factor_enabled %}2FA enabled{% else %}Enable 2FA for more{% endif %}
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ PERSONAL + CONTACT ============ -->
+      <section class="two-col">
+
+        <!-- Personal Info -->
+        <div class="card">
+          <div class="card-head">
+            <div class="card-head-left">
+              <span class="stat-icon icon-soft--indigo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="8" r="3.6"/>
+                  <path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>
+                </svg>
+              </span>
+              <div>
+                <div class="card-title">Personal Information</div>
+                <div class="card-sub">Identity details from your account</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="info-list">
+            <div class="info-row">
+              <span class="ico icon-soft--indigo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="8" r="3.6"/>
+                  <path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>
+                </svg>
+              </span>
+              <div>
+                <span class="label">Full Name</span>
+                <span class="value">{{ profile.full_name or '—' }}</span>
+              </div>
+            </div>
+
+            <div class="info-row">
+              <span class="ico icon-soft--violet">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2 15 8l7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/>
+                </svg>
+              </span>
+              <div>
+                <span class="label">Username</span>
+                <span class="value">@{{ profile.username }}</span>
+              </div>
+            </div>
+
+            {% if profile.birth_date %}
+            <div class="info-row">
+              <span class="ico icon-soft--amber">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="3"/>
+                  <path d="M16 2v4M8 2v4M3 10h18"/>
+                </svg>
+              </span>
+              <div>
+                <span class="label">Birth Date</span>
+                <span class="value">{{ profile.birth_date.strftime("%B %d, %Y") }}</span>
+              </div>
+            </div>
+            {% endif %}
+
+            {% if profile.gender %}
+            <div class="info-row">
+              <span class="ico icon-soft--sky">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="9"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </span>
+              <div>
+                <span class="label">Gender</span>
+                <span class="value">{{ profile.gender|capitalize }}</span>
+              </div>
+            </div>
+            {% endif %}
+
+            {% if profile.national_code %}
+            <div class="info-row">
+              <span class="ico icon-soft--indigo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="5" width="18" height="14" rx="2"/>
+                  <path d="M7 9h2M7 13h10"/>
+                </svg>
+              </span>
+              <div>
+                <span class="label">National Code</span>
+                <span class="value mono">{{ profile.national_code }}</span>
+              </div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Contact Info -->
+        <div class="card">
+          <div class="card-head">
+            <div class="card-head-left">
+              <span class="stat-icon icon-soft--green">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="4" width="20" height="16" rx="3"/>
+                  <path d="m3 7 9 6 9-6"/>
+                </svg>
+              </span>
+              <div>
+                <div class="card-title">Contact Information</div>
+                <div class="card-sub">How we reach you</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="info-list">
+            {% if profile.email %}
+            <div class="info-row">
+              <span class="ico icon-soft--green">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="4" width="20" height="16" rx="3"/>
+                  <path d="m3 7 9 6 9-6"/>
+                </svg>
+              </span>
+              <div>
+                <span class="label">Email Address</span>
+                <span class="value">
+                  {{ profile.email }}
+                  {% if profile.email_verified %}
+                  <span class="verify-badge ok">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M20 6 9 17l-5-5"/>
+                    </svg>
+                    Verified
+                  </span>
+                  {% else %}
+                  <span class="verify-badge pending">Pending</span>
+                  {% endif %}
+                </span>
+              </div>
+            </div>
+            {% endif %}
+
+            {% if profile.phone %}
+            <div class="info-row">
+              <span class="ico icon-soft--sky">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.9a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.2-1.2a2 2 0 0 1 2.1-.5c.9.3 1.9.6 2.9.7a2 2 0 0 1 1.7 2z"/>
+                </svg>
+              </span>
+              <div>
+                <span class="label">Phone Number</span>
+                <span class="value">
+                  {{ profile.phone }}
+                  {% if profile.phone_verified %}
+                  <span class="verify-badge ok">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M20 6 9 17l-5-5"/>
+                    </svg>
+                    Verified
+                  </span>
+                  {% else %}
+                  <span class="verify-badge pending">Pending</span>
+                  {% endif %}
+                </span>
+              </div>
+            </div>
+            {% endif %}
+
+            {% if profile.has_address %}
+            <div class="info-row">
+              <span class="ico icon-soft--amber">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z"/>
+                  <circle cx="12" cy="10" r="3"/>
+                </svg>
+              </span>
+              <div>
+                <span class="label">Address</span>
+                <span class="value">
+                  {{ profile.address_line1 }}{% if profile.address_line2 %}, {{ profile.address_line2 }}{% endif %}<br>
+                  {% if profile.city or profile.state_province or profile.postal_code %}
+                    {{ profile.city }}{% if profile.state_province %}, {{ profile.state_province }}{% endif %}{% if profile.postal_code %} — {{ profile.postal_code }}{% endif %}<br>
+                  {% endif %}
+                  {% if profile.country %}{{ profile.country }}{% endif %}
+                </span>
+              </div>
+            </div>
+            {% endif %}
+
+            {% if not profile.email and not profile.phone and not profile.has_address %}
+            <div class="info-row" style="text-align: center; color: var(--muted); padding: 20px 0;">
+              <div style="width: 100%; text-align: center;">
+                No contact information on file yet.
+              </div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ============ ACTIVITY + SUBSCRIPTION ============ -->
+      <section class="two-col">
+
+        <!-- Activity Timeline -->
+        <div class="card">
+          <div class="card-head">
+            <div class="card-head-left">
+              <span class="stat-icon icon-soft--violet">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="9"/>
+                  <path d="M12 7v5l3 2"/>
+                </svg>
+              </span>
+              <div>
+                <div class="card-title">Recent Activity</div>
+                <div class="card-sub">Your last actions on the platform</div>
+              </div>
+            </div>
+            <a class="btn-ghost" href="/account/settings#activity"
+               style="display: inline-flex; align-items: center; gap: 8px;
+                      height: 36px; padding: 0 14px; border-radius: 10px;
+                      font-size: 12px; font-weight: 600;
+                      color: var(--text-dim); text-decoration: none;
+                      background: rgba(30,41,66,0.6);
+                      border: 1px solid var(--border);">
+              View all
+            </a>
+          </div>
+
+          {% if activities and activities|length > 0 %}
+          <div class="timeline">
+            {% set dot_colors = ['#818cf8', '#34d399', '#fbbf24', '#f472b6', '#38bdf8'] %}
+            {% for activity in activities %}
+            <div class="timeline-item">
+              <span class="timeline-dot" style="background: {{ dot_colors[loop.index0 % 5] }};"></span>
+              <div class="timeline-body">
+                <div class="timeline-title">
+                  {% if activity.activity_type == 'login' %}
+                    Logged in
+                  {% elif activity.activity_type == 'logout' %}
+                    Logged out
+                  {% elif activity.activity_type == 'signup' %}
+                    Account created
+                  {% elif activity.activity_type == 'password_change' %}
+                    Password changed
+                  {% elif activity.activity_type == 'profile_update' %}
+                    Profile updated
+                  {% elif activity.activity_type == '2fa_enabled' %}
+                    Two-factor authentication enabled
+                  {% elif activity.activity_type == '2fa_disabled' %}
+                    Two-factor authentication disabled
+                  {% else %}
+                    {{ activity.activity_type|replace('_', ' ')|capitalize }}
+                  {% endif %}
+                </div>
+                <div class="timeline-time">
+                  {% if activity.action_time %}
+                    {{ activity.action_time.strftime("%Y-%m-%d %H:%M") }}
+                  {% endif %}
+                  {% if activity.ip_address %}
+                    · {{ activity.ip_address }}
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div style="text-align: center; padding: 32px 16px; color: var(--muted); font-size: 13px;">
+            No activity recorded yet.
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Subscription -->
+        <div class="card">
+          <div class="card-head">
+            <div class="card-head-left">
+              <span class="stat-icon icon-soft--amber">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2 15 8l7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/>
+                </svg>
+              </span>
+              <div>
+                <div class="card-title">Subscription</div>
+                <div class="card-sub">Your current plan</div>
+              </div>
+            </div>
+          </div>
+
+          {% if profile.subscription_name %}
+          <div class="bank-list">
+            <div class="bank-item">
+              <span class="bank-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2 15 8l7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/>
+                </svg>
+              </span>
+              <div class="bank-body">
+                <div class="bank-name">{{ profile.subscription_name|capitalize }} Plan</div>
+                <div class="bank-meta">Active subscription</div>
+              </div>
+              <span class="bank-tag">Active</span>
+            </div>
+          </div>
+          {% else %}
+          <div style="text-align: center; padding: 24px 16px;">
+            <p style="color: var(--muted); font-size: 13px; margin-bottom: 14px;">
+              You don't have an active subscription plan.
+            </p>
+          </div>
+          {% endif %}
+
+          <div style="margin-top: 16px;">
+            <a class="btn-primary" href="/account/settings#subscription"
+               style="width: 100%; justify-content: center; display: flex;
+                      text-decoration: none;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+              {% if profile.subscription_name %}Manage Plan{% else %}Choose a Plan{% endif %}
+            </a>
+          </div>
+        </div>
+
+      </section>
 
     </main>
   </div>

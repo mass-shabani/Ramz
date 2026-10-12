@@ -2511,6 +2511,416 @@ content-container {
 }
 
 /* ==========================================================================
+   STANDALONE PAGES (Profile, Account Settings)
+   --------------------------------------------------------------------------
+   These pages are outside the panel shell. They have their own topbar
+   (with brand on the left, user chip on the right) and no sidebar.
+   ========================================================================== */
+
+.standalone-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  height: 76px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 0 28px;
+  background: rgba(10, 15, 28, 0.72);
+  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.standalone-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: inherit;
+}
+.standalone-brand .brand-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #6366f1, #a855f7);
+  box-shadow: 0 10px 24px -8px rgba(99, 102, 241, 0.9);
+}
+.standalone-brand .brand-logo svg { width: 22px; height: 22px; color: #fff; }
+.standalone-brand .brand-text { display: flex; flex-direction: column; line-height: 1.15; }
+.standalone-brand .brand-name { font-size: 15px; font-weight: 800; letter-spacing: -0.2px; }
+.standalone-brand .brand-sub {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.standalone-actions { display: flex; align-items: center; gap: 10px; }
+
+.standalone-content {
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 32px 28px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ---------- Profile hero ---------- */
+.profile-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+}
+.profile-hero-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(700px 260px at 15% 0%,  rgba(99, 102, 241, 0.28), transparent 60%),
+    radial-gradient(600px 220px at 85% 100%, rgba(168, 85, 247, 0.20), transparent 60%),
+    linear-gradient(180deg, rgba(40, 54, 84, 0.55), rgba(28, 40, 66, 0.35));
+  pointer-events: none;
+}
+.profile-hero-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: radial-gradient(circle at 30% 40%, black, transparent 75%);
+  -webkit-mask-image: radial-gradient(circle at 30% 40%, black, transparent 75%);
+  pointer-events: none;
+}
+.profile-hero-content {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 26px;
+  padding: 34px 30px;
+  flex-wrap: wrap;
+}
+.profile-avatar { position: relative; flex: 0 0 auto; }
+.profile-avatar::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  background: conic-gradient(from 90deg, #6366f1, #a855f7, #ec4899, #6366f1);
+  animation: profile-ring-spin 6s linear infinite;
+  opacity: 0.85;
+  z-index: 0;
+}
+.profile-avatar::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background: #0b1226;
+  z-index: 1;
+}
+@keyframes profile-ring-spin { to { transform: rotate(360deg); } }
+
+.avatar--xlarge {
+  position: relative;
+  z-index: 2;
+  width: 116px;
+  height: 116px;
+  border-radius: 50%;
+  font-size: 38px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  border: 3px solid rgba(255,255,255,0.08);
+}
+.profile-online {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  z-index: 3;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--success);
+  border: 4px solid #0b1226;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.7);
+}
+
+.profile-meta { flex: 1 1 320px; min-width: 0; padding-top: 4px; }
+.profile-meta h2 {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.7px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.profile-verified {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #a855f7);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(129, 140, 248, 0.7);
+}
+.profile-verified svg { width: 13px; height: 13px; }
+
+.profile-handle {
+  font-size: 13.5px;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.role-chip {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.18);
+  color: #a5b4fc;
+  border: 1px solid rgba(129, 140, 248, 0.28);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.role-chip svg { width: 12px; height: 12px; }
+.role-chip.gold {
+  background: linear-gradient(135deg, rgba(251,191,36,0.18), rgba(245,158,11,0.14));
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.32);
+}
+.role-chip.green {
+  background: rgba(16, 185, 129, 0.18);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.28);
+}
+.role-chip.rose {
+  background: rgba(244, 63, 94, 0.16);
+  color: #fb7185;
+  border-color: rgba(244, 63, 94, 0.28);
+}
+
+.profile-bio {
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--text-dim);
+  max-width: 620px;
+  margin-bottom: 16px;
+}
+.profile-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.profile-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.profile-tag svg { width: 13px; height: 13px; }
+.profile-tag.ok { color: #34d399; border-color: rgba(16, 185, 129, 0.28); background: rgba(16, 185, 129, 0.08); }
+.profile-tag.warn { color: #fbbf24; border-color: rgba(245, 158, 11, 0.28); background: rgba(245, 158, 11, 0.08); }
+
+/* ---------- Two-column layout ---------- */
+.two-col {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 980px) { .two-col { grid-template-columns: 1fr; } }
+
+/* ---------- Info list (used in cards) ---------- */
+.info-list { display: flex; flex-direction: column; gap: 14px; }
+.info-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.5;
+  padding: 4px 0;
+}
+.info-row + .info-row {
+  border-top: 1px solid var(--border-soft);
+  padding-top: 14px;
+}
+.info-row .ico {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+}
+.info-row .ico svg { width: 16px; height: 16px; }
+.info-row .label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.info-row .value {
+  font-size: 13.5px;
+  color: var(--text);
+  font-weight: 500;
+  word-break: break-word;
+}
+.info-row .value.mono {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  letter-spacing: 0.3px;
+}
+.verify-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  margin-left: 8px;
+}
+.verify-badge.ok { background: rgba(16, 185, 129, 0.18); color: #34d399; }
+.verify-badge.pending { background: rgba(245, 158, 11, 0.18); color: #fbbf24; }
+.verify-badge svg { width: 11px; height: 11px; }
+
+/* ---------- Banking list ---------- */
+.bank-list { display: flex; flex-direction: column; gap: 12px; }
+.bank-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.bank-icon {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, rgba(99,102,241,0.18), rgba(168,85,247,0.12));
+  color: #a5b4fc;
+}
+.bank-icon svg { width: 19px; height: 19px; }
+.bank-body { flex: 1; min-width: 0; }
+.bank-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 3px;
+}
+.bank-meta {
+  font-size: 11.5px;
+  color: var(--muted);
+  font-family: 'SF Mono', monospace;
+  letter-spacing: 0.4px;
+}
+.bank-tag {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(129, 140, 248, 0.15);
+  color: #c7d2fe;
+}
+
+/* ---------- Activity timeline ---------- */
+.timeline {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  padding-left: 8px;
+}
+.timeline-item {
+  position: relative;
+  display: flex;
+  gap: 14px;
+  padding: 12px 8px 12px 22px;
+  border-radius: 12px;
+  transition: background .18s;
+}
+.timeline-item:hover { background: rgba(255,255,255,0.03); }
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(180deg, rgba(129,140,248,.5), rgba(129,140,248,.05));
+  border-radius: 2px;
+}
+.timeline-item:first-child::before { top: 18px; }
+.timeline-item:last-child::before  { bottom: calc(100% - 48px); }
+.timeline-dot {
+  position: absolute;
+  left: -5px;
+  top: 18px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #0b1226;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+.timeline-body { flex: 1; min-width: 0; }
+.timeline-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 3px;
+}
+.timeline-title b { color: #a5b4fc; }
+.timeline-time {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 640px) {
+  .standalone-topbar { padding: 0 16px; height: 68px; }
+  .standalone-content { padding: 20px 16px 44px; gap: 16px; }
+  .page-head h1 { font-size: 21px; }
+  .user-name { display: none; }
+  .user-chip { padding: 0 8px; gap: 0; }
+  .avatar--xlarge { width: 92px; height: 92px; font-size: 30px; }
+  .profile-hero-content { padding: 24px 20px; gap: 18px; }
+  .profile-meta h2 { font-size: 21px; }
+}
+
+/* ==========================================================================
    26. REDUCED MOTION
    ========================================================================== */
 @media (prefers-reduced-motion: reduce){
