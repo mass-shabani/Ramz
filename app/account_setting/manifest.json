@@ -1,0 +1,13 @@
+{
+  "name": "account_setting",
+  "version": "1.0.0",
+  "entrypoint": "AccountSettingModule",
+  "description": "Standalone account settings page — manages personal, contact, security, subscription, banking, sessions, and danger zone.",
+  "requires": [
+    "core_logger",
+    "http_api",
+    "template_service",
+    "app_db_service"
+  ],
+  "provides": ["account_setting_service"]
+}

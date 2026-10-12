@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block body_class %}page-dashboard{% endblock %}
+
+{% block content %}
+
+<div class="app" style="display: block;">
+
+  <div class="main" style="width: 100%;">
+
+    <!-- ============ STANDALONE TOPBAR ============ -->
+    <header class="standalone-topbar">
+
+      <ramz-brand name="Nebula" subtitle="Admin Suite"></ramz-brand>
+
+      <div class="standalone-actions">
+        <a class="icon-btn" href="/panel" title="Back to Panel" aria-label="Back to Panel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="9" rx="2"/>
+            <rect x="14" y="3" width="7" height="5" rx="2"/>
+            <rect x="14" y="12" width="7" height="9" rx="2"/>
+            <rect x="3" y="16" width="7" height="5" rx="2"/>
+          </svg>
+        </a>
+
+        <a class="icon-btn" href="/profile" title="View Profile" aria-label="View Profile">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="3.6"/>
+            <path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>
+          </svg>
+        </a>
+
+        <ramz-user-menu
+          user-name="{{ profile.full_name }}"
+          user-email="{{ profile.email or '' }}"
+          user-initials="{{ profile.initials }}"
+        ></ramz-user-menu>
+      </div>
+
+    </header>
+
+    <!-- ============ CONTENT ============ -->
+    <main class="standalone-content">
+
+      <div class="page-head">
+        <div>
+          <h1>Account Settings</h1>
+          <p>Manage your account, security and preferences.</p>
+        </div>
+      </div>
+
+      <ramz-card title="Setup in progress" subtitle="Full settings layout coming soon">
+        <p style="color: var(--text-dim); font-size: 14px; line-height: 1.7; margin: 0;">
+          Welcome <strong>{{ profile.full_name }}</strong>.
+          The full account settings page is being prepared.
+        </p>
+        <p style="color: var(--muted); font-size: 13px; margin-top: 12px; margin-bottom: 0;">
+          You currently have the following edit permissions:
+        </p>
+        <div class="profile-tags" style="margin-top: 12px;">
+          {% if permissions.profile_edit %}
+          <span class="profile-tag ok">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 6 9 17l-5-5"/>
+            </svg>
+            Edit personal info
+          </span>
+          {% endif %}
+          {% if permissions.password %}
+          <span class="profile-tag ok">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 6 9 17l-5-5"/>
+            </svg>
+            Change password
+          </span>
+          {% endif %}
+          {% if permissions.twofa %}
+          <span class="profile-tag ok">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 6 9 17l-5-5"/>
+            </svg>
+            Manage 2FA
+          </span>
+          {% endif %}
+          {% if permissions.banking %}
+          <span class="profile-tag ok">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 6 9 17l-5-5"/>
+            </svg>
+            Manage banking
+          </span>
+          {% endif %}
+          {% if permissions.sessions %}
+          <span class="profile-tag ok">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 6 9 17l-5-5"/>
+            </svg>
+            Manage sessions
+          </span>
+          {% endif %}
+          {% if permissions.delete %}
+          <span class="profile-tag ok">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 6 9 17l-5-5"/>
+            </svg>
+            Delete account
+          </span>
+          {% endif %}
+          {% if not permissions.profile_edit and not permissions.password and not permissions.twofa and not permissions.banking and not permissions.sessions and not permissions.delete %}
+          <span class="profile-tag warn">
+            No edit permissions granted
+          </span>
+          {% endif %}
+        </div>
+      </ramz-card>
+
+    </main>
+  </div>
+</div>
+
+{% endblock %}

@@ -22,6 +22,7 @@
         "ui_components",
         "user_panel",
         "user_profile",
+        "account_setting",
         "auth",
         "home",
         "server_manager"
