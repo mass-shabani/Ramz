@@ -46,6 +46,33 @@ class UserProfileModule(IModule):
         )
 
         # ------------------------------------------------------------
+        # Component registration (only what this module needs)
+        # ------------------------------------------------------------
+        component_service = context.services.get("component_service")
+        if component_service:
+            template_service.register_module_assets(
+                "user_profile",
+                js_files=component_service.get_component_urls([
+                    "brand",
+                    "user-menu",
+                    "card",
+                ]),
+            )
+            if logger:
+                logger.log(
+                    "User Profile will load components: "
+                    "brand, user-menu, card",
+                    tag="profile",
+                )
+        else:
+            if logger:
+                logger.log(
+                    "component_service not available — profile will be static",
+                    level="ERROR",
+                    tag="profile",
+                )
+
+        # ------------------------------------------------------------
         # Routes
         # ------------------------------------------------------------
         register_routes(http_api, template_service, db_service, logger)

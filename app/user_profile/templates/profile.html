@@ -13,20 +13,8 @@
 
     <!-- ============ STANDALONE TOPBAR ============ -->
     <header class="standalone-topbar">
-      <a class="standalone-brand" href="/panel">
-        <span class="brand-logo">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2 3 7v10l9 5 9-5V7z"/>
-            <path d="M12 22V12"/>
-            <path d="m3 7 9 5 9-5"/>
-          </svg>
-        </span>
-        <span class="brand-text">
-          <span class="brand-name">Nebula</span>
-          <span class="brand-sub">Admin Suite</span>
-        </span>
-      </a>
+
+      <ramz-brand name="Nebula" subtitle="Admin Suite"></ramz-brand>
 
       <div class="standalone-actions">
         <a class="icon-btn" href="/panel" title="Back to Panel" aria-label="Back to Panel">
@@ -39,25 +27,13 @@
           </svg>
         </a>
 
-        <a class="icon-btn" href="/account/settings" title="Account Settings" aria-label="Account Settings">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="3"/>
-            <path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7.9 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 4 13.9H4a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 5.3 7.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 10.9 4V4a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1.3z"/>
-          </svg>
-        </a>
-
-        <a class="user-chip" href="/logout" style="text-decoration: none;">
-          <span class="avatar avatar--indigo">{{ profile.initials }}</span>
-          <span class="user-name">{{ profile.full_name }}</span>
-          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M9 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3"/>
-            <path d="M16 17l5-5-5-5"/>
-            <path d="M21 12H9"/>
-          </svg>
-        </a>
+        <ramz-user-menu
+          user-name="{{ profile.full_name }}"
+          user-email="{{ profile.email or '' }}"
+          user-initials="{{ profile.initials }}"
+        ></ramz-user-menu>
       </div>
+
     </header>
 
     <!-- ============ CONTENT ============ -->
@@ -186,96 +162,86 @@
 
       <!-- ============ STATS ============ -->
       <section class="stats">
-        <div class="card stat">
-          <div class="stat-top">
-            <span class="stat-icon icon-soft--indigo">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 2 15 8l7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/>
-              </svg>
-            </span>
-            <span class="stat-label">XP Points</span>
+
+        <ramz-card card-class="stat" title="XP Points">
+          <div slot="icon" class="card-icon icon-soft--indigo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2 15 8l7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/>
+            </svg>
           </div>
+
           <div class="stat-value">{{ "{:,}".format(profile.xp_points) }}</div>
-          <div class="trend up" style="color: var(--muted); font-weight: 500;">
+
+          <div slot="footer" class="trend" style="color: var(--muted); font-weight: 500;">
             Earned on the platform
           </div>
-        </div>
+        </ramz-card>
 
-        <div class="card stat">
-          <div class="stat-top">
-            <span class="stat-icon icon-soft--green">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="9"/>
-                <path d="M12 7v5l3 2"/>
-              </svg>
-            </span>
-            <span class="stat-label">Member Since</span>
+        <ramz-card card-class="stat" title="Member Since">
+          <div slot="icon" class="card-icon icon-soft--green">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9"/>
+              <path d="M12 7v5l3 2"/>
+            </svg>
           </div>
-          <div class="stat-value" style="font-size: 20px; letter-spacing: -0.5px;">
+
+          <div class="stat-value" style="font-size: 22px; letter-spacing: -0.5px;">
             {{ profile.created_at.strftime("%b %Y") if profile.created_at else '—' }}
           </div>
-          <div class="trend up" style="color: var(--muted); font-weight: 500;">
+
+          <div slot="footer" class="trend" style="color: var(--muted); font-weight: 500;">
             Welcome aboard
           </div>
-        </div>
+        </ramz-card>
 
-        <div class="card stat">
-          <div class="stat-top">
-            <span class="stat-icon icon-soft--amber">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 3v18h18"/>
-                <path d="m7 15 4-5 3 3 5-7"/>
-              </svg>
-            </span>
-            <span class="stat-label">Activities</span>
+        <ramz-card card-class="stat" title="Activities">
+          <div slot="icon" class="card-icon icon-soft--amber">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 3v18h18"/>
+              <path d="m7 15 4-5 3 3 5-7"/>
+            </svg>
           </div>
+
           <div class="stat-value">{{ "{:,}".format(activity_count) }}</div>
-          <div class="trend up" style="color: var(--muted); font-weight: 500;">
+
+          <div slot="footer" class="trend" style="color: var(--muted); font-weight: 500;">
             Logged events
           </div>
-        </div>
+        </ramz-card>
 
-        <div class="card stat">
-          <div class="stat-top">
-            <span class="stat-icon icon-soft--violet">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 2 4 6v6c0 5 3.4 9.4 8 10 4.6-.6 8-5 8-10V6z"/>
-              </svg>
-            </span>
-            <span class="stat-label">Security</span>
+        <ramz-card card-class="stat" title="Security">
+          <div slot="icon" class="card-icon icon-soft--violet">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2 4 6v6c0 5 3.4 9.4 8 10 4.6-.6 8-5 8-10V6z"/>
+            </svg>
           </div>
-          <div class="stat-value" style="font-size: 20px; letter-spacing: -0.5px;">
+
+          <div class="stat-value" style="font-size: 22px; letter-spacing: -0.5px;">
             {% if profile.two_factor_enabled %}Strong{% else %}Basic{% endif %}
           </div>
-          <div class="trend up" style="color: var(--muted); font-weight: 500;">
+
+          <div slot="footer" class="trend" style="color: var(--muted); font-weight: 500;">
             {% if profile.two_factor_enabled %}2FA enabled{% else %}Enable 2FA for more{% endif %}
           </div>
-        </div>
+        </ramz-card>
+
       </section>
 
       <!-- ============ PERSONAL + CONTACT ============ -->
       <section class="two-col">
 
-        <!-- Personal Info -->
-        <div class="card">
-          <div class="card-head">
-            <div class="card-head-left">
-              <span class="stat-icon icon-soft--indigo">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="8" r="3.6"/>
-                  <path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>
-                </svg>
-              </span>
-              <div>
-                <div class="card-title">Personal Information</div>
-                <div class="card-sub">Identity details from your account</div>
-              </div>
-            </div>
+        <!-- Personal Information -->
+        <ramz-card title="Personal Information" subtitle="Identity details from your account">
+          <div slot="icon" class="card-icon icon-soft--indigo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="8" r="3.6"/>
+              <path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>
+            </svg>
           </div>
 
           <div class="info-list">
@@ -354,24 +320,16 @@
             </div>
             {% endif %}
           </div>
-        </div>
+        </ramz-card>
 
-        <!-- Contact Info -->
-        <div class="card">
-          <div class="card-head">
-            <div class="card-head-left">
-              <span class="stat-icon icon-soft--green">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="2" y="4" width="20" height="16" rx="3"/>
-                  <path d="m3 7 9 6 9-6"/>
-                </svg>
-              </span>
-              <div>
-                <div class="card-title">Contact Information</div>
-                <div class="card-sub">How we reach you</div>
-              </div>
-            </div>
+        <!-- Contact Information -->
+        <ramz-card title="Contact Information" subtitle="How we reach you">
+          <div slot="icon" class="card-icon icon-soft--green">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="4" width="20" height="16" rx="3"/>
+              <path d="m3 7 9 6 9-6"/>
+            </svg>
           </div>
 
           <div class="info-list">
@@ -455,45 +413,26 @@
             {% endif %}
 
             {% if not profile.email and not profile.phone and not profile.has_address %}
-            <div class="info-row" style="text-align: center; color: var(--muted); padding: 20px 0;">
-              <div style="width: 100%; text-align: center;">
-                No contact information on file yet.
-              </div>
+            <div style="text-align: center; color: var(--muted); padding: 20px 0; font-size: 13px;">
+              No contact information on file yet.
             </div>
             {% endif %}
           </div>
-        </div>
+        </ramz-card>
 
       </section>
 
       <!-- ============ ACTIVITY + SUBSCRIPTION ============ -->
       <section class="two-col">
 
-        <!-- Activity Timeline -->
-        <div class="card">
-          <div class="card-head">
-            <div class="card-head-left">
-              <span class="stat-icon icon-soft--violet">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="9"/>
-                  <path d="M12 7v5l3 2"/>
-                </svg>
-              </span>
-              <div>
-                <div class="card-title">Recent Activity</div>
-                <div class="card-sub">Your last actions on the platform</div>
-              </div>
-            </div>
-            <a class="btn-ghost" href="/account/settings#activity"
-               style="display: inline-flex; align-items: center; gap: 8px;
-                      height: 36px; padding: 0 14px; border-radius: 10px;
-                      font-size: 12px; font-weight: 600;
-                      color: var(--text-dim); text-decoration: none;
-                      background: rgba(30,41,66,0.6);
-                      border: 1px solid var(--border);">
-              View all
-            </a>
+        <!-- Recent Activity -->
+        <ramz-card title="Recent Activity" subtitle="Your last actions on the platform">
+          <div slot="icon" class="card-icon icon-soft--violet">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9"/>
+              <path d="M12 7v5l3 2"/>
+            </svg>
           </div>
 
           {% if activities and activities|length > 0 %}
@@ -539,23 +478,15 @@
             No activity recorded yet.
           </div>
           {% endif %}
-        </div>
+        </ramz-card>
 
         <!-- Subscription -->
-        <div class="card">
-          <div class="card-head">
-            <div class="card-head-left">
-              <span class="stat-icon icon-soft--amber">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M12 2 15 8l7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/>
-                </svg>
-              </span>
-              <div>
-                <div class="card-title">Subscription</div>
-                <div class="card-sub">Your current plan</div>
-              </div>
-            </div>
+        <ramz-card title="Subscription" subtitle="Your current plan">
+          <div slot="icon" class="card-icon icon-soft--amber">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2 15 8l7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/>
+            </svg>
           </div>
 
           {% if profile.subscription_name %}
@@ -576,7 +507,7 @@
           </div>
           {% else %}
           <div style="text-align: center; padding: 24px 16px;">
-            <p style="color: var(--muted); font-size: 13px; margin-bottom: 14px;">
+            <p style="color: var(--muted); font-size: 13px; margin: 0;">
               You don't have an active subscription plan.
             </p>
           </div>
@@ -584,8 +515,7 @@
 
           <div style="margin-top: 16px;">
             <a class="btn-primary" href="/account/settings#subscription"
-               style="width: 100%; justify-content: center; display: flex;
-                      text-decoration: none;">
+               style="width: 100%; justify-content: center; display: flex; text-decoration: none;">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
                    stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 5v14M5 12h14"/>
@@ -593,7 +523,7 @@
               {% if profile.subscription_name %}Manage Plan{% else %}Choose a Plan{% endif %}
             </a>
           </div>
-        </div>
+        </ramz-card>
 
       </section>
 
