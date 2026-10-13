@@ -34,6 +34,16 @@
           <h1>Account Settings</h1>
           <p>Manage your personal information, security, subscription and more.</p>
         </div>
+
+        <button type="button" class="settings-mobile-menu-btn" id="settingsMobileToggle">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 7h16"/>
+            <path d="M4 12h10"/>
+            <path d="M4 17h16"/>
+          </svg>
+          Menu
+        </button>
       </div>
 
       <!-- ============ FLASH MESSAGE ============ -->
@@ -235,6 +245,8 @@
 
       </div>
 
+      <div class="settings-nav-backdrop" id="settingsNavBackdrop"></div>
+
     </main>
   </div>
 </div>
@@ -244,43 +256,24 @@
   'use strict';
 
   /* ============================================================
-     Nav click handling — AJAX partial loading
+     Progress bar coordination
      ============================================================ */
-  const nav = document.getElementById('settingsNav');
-  if (nav) {
-    nav.addEventListener('click', (e) => {
-      const item = e.target.closest('.settings-nav-item');
-      if (!item) return;
-
-      e.preventDefault();
-
-      const endpoint = item.dataset.endpoint;
-      const section  = item.dataset.section;
-      if (!endpoint || !section) return;
-
-      nav.querySelectorAll('.settings-nav-item').forEach(el => el.classList.remove('active'));
-      item.classList.add('active');
-
-      try {
-        window.history.replaceState({ section }, '',
-          `?section=${encodeURIComponent(section)}`);
-      } catch (err) { /* ignore */ }
-
-      // Remove any existing flash
-      clearFlash();
-
-      window.dispatchEvent(new CustomEvent('ramz:load-content', {
-        detail: { url: endpoint, section }
-      }));
-    });
+  function startProgress(source) {
+    window.dispatchEvent(new CustomEvent('ramz:content-loading', {
+      detail: { source: source || 'unknown' }
+    }));
+  }
+  function endProgress(source) {
+    window.dispatchEvent(new CustomEvent('ramz:content-loaded', {
+      detail: { source: source || 'unknown' }
+    }));
   }
 
   /* ============================================================
-     Flash message helpers
+     Flash messages
      ============================================================ */
   function clearFlash() {
-    const flash = document.querySelector('.settings-flash');
-    if (flash) flash.remove();
+    document.querySelectorAll('.settings-flash').forEach(el => el.remove());
   }
 
   function showFlash(type, title, message) {
@@ -291,14 +284,18 @@
 
     const iconPath = type === 'success'
       ? '<path d="M20 6 9 17l-5-5"/>'
+      : type === 'warn'
+      ? '<path d="M12 8v4"/><path d="M12 16h.01"/>'
       : '<circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16h.01"/>';
+
+    const strokeWidth = type === 'success' ? '3' : '2';
 
     const div = document.createElement('div');
     div.className = `settings-flash ${type}`;
     div.innerHTML = `
       <span class="settings-flash-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="${type === 'success' ? '3' : '2'}"
+             stroke-width="${strokeWidth}"
              stroke-linecap="round" stroke-linejoin="round">
           ${iconPath}
         </svg>
@@ -311,11 +308,9 @@
     div.querySelector('strong').textContent = title;
     div.querySelector('.settings-flash-text').textContent = message;
 
-    // Insert before the container's parent (so it appears above the card)
     container.parentNode.insertBefore(div, container);
 
-    // Auto-hide after 6 seconds for success; keep errors longer
-    const delay = type === 'success' ? 6000 : 10000;
+    const delay = type === 'success' ? 6000 : type === 'warn' ? 4000 : 10000;
     setTimeout(() => {
       if (div.parentNode) {
         div.style.transition = 'opacity .3s';
@@ -326,13 +321,13 @@
   }
 
   /* ============================================================
-     Form snapshot — track "dirty" state
+     Form snapshot — dirty tracking
      ============================================================ */
   function snapshotForm(form) {
     const values = {};
     form.querySelectorAll('input, select, textarea').forEach(el => {
       if (!el.name) return;
-      if (el.type === 'submit' || el.type === 'button') return;
+      if (el.type === 'submit' || el.type === 'button' || el.type === 'hidden') return;
       values[el.name] = el.value;
     });
     form._snapshot = values;
@@ -354,8 +349,18 @@
     cancel.disabled = !isDirty(form);
   }
 
+  function attachFormTracking() {
+    document.querySelectorAll('form[data-ajax="true"]').forEach(form => {
+      if (form._snapshot) return;
+      snapshotForm(form);
+      updateCancelButton(form);
+      form.addEventListener('input', () => updateCancelButton(form));
+      form.addEventListener('change', () => updateCancelButton(form));
+    });
+  }
+
   /* ============================================================
-     Intercept form submissions inside content-container
+     AJAX form submission
      ============================================================ */
   document.addEventListener('submit', async (e) => {
     const form = e.target.closest('form[data-ajax="true"]');
@@ -371,6 +376,26 @@
       submitBtn.classList.add('is-loading');
     }
 
+    // Start progress bar
+    startProgress('form-save');
+    await new Promise(r => setTimeout(r, 30));
+
+    // Confirm
+    const proceed = window.confirm(
+      'Save these changes?\n\n' +
+      'Your updates will be stored immediately.'
+    );
+
+    if (!proceed) {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('is-loading');
+        submitBtn.innerHTML = originalText;
+      }
+      endProgress('form-save');
+      return;
+    }
+
     try {
       const formData = new FormData(form);
 
@@ -384,23 +409,20 @@
         },
       });
 
-      if (!resp.ok) {
-        throw new Error(`HTTP ${resp.status}`);
-      }
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
       const data = await resp.json();
 
       if (data.status === 'success') {
-        showFlash('success', 'Changes saved', data.message || 'Your changes have been saved.');
+        showFlash('success', 'Changes saved',
+          data.message || 'Your changes have been saved.');
 
-        // Broadcast user update if provided
         if (data.user_update) {
           window.dispatchEvent(new CustomEvent('ramz:user-updated', {
             detail: data.user_update,
           }));
         }
 
-        // Special case: some sections need reload (2FA)
         if (data.reload_section) {
           const activeItem = nav ? nav.querySelector('.settings-nav-item.active') : null;
           const endpoint = activeItem ? activeItem.dataset.endpoint : null;
@@ -410,11 +432,8 @@
             }));
           }
         } else {
-          // Reset the snapshot to current values (they're now the "saved" state)
           snapshotForm(form);
           updateCancelButton(form);
-
-          // Clear password fields after successful password change
           if (data.section === 'password') {
             form.querySelectorAll('input[type="password"]').forEach(el => el.value = '');
           }
@@ -434,61 +453,106 @@
         submitBtn.classList.remove('is-loading');
         submitBtn.innerHTML = originalText;
       }
+      endProgress('form-save');
     }
   });
 
   /* ============================================================
-     Intercept Cancel clicks inside content-container
+     Cancel — no confirm, inline yellow message
      ============================================================ */
   document.addEventListener('click', (e) => {
     const cancel = e.target.closest('[data-action="cancel"]');
-    if (!cancel) return;
+    if (!cancel || cancel.disabled) return;
 
     const form = cancel.closest('form[data-ajax="true"]');
     if (!form) return;
 
     e.preventDefault();
 
-    if (!isDirty(form)) return;   // safety check (button should be disabled anyway)
-
-    const ok = window.confirm(
-      'Discard unsaved changes?\n\n' +
-      'Your edits will be reverted to the last saved values.'
-    );
-    if (!ok) return;
+    if (!isDirty(form)) return;
 
     form.reset();
-    snapshotForm(form);          // form.reset() reverted to original snapshot values
+    snapshotForm(form);
     updateCancelButton(form);
 
-    showFlash('success', 'Changes discarded',
-      'Your form has been reset to the last saved values.');
+    showFlash('warn', 'Changes discarded',
+      'Your edits were reverted to the last saved values.');
   });
 
   /* ============================================================
-     Attach snapshot + dirty tracking after each partial load
+     Nav click — partial loading + mobile close
      ============================================================ */
-  function attachFormTracking() {
-    document.querySelectorAll('form[data-ajax="true"]').forEach(form => {
-      // Skip if already tracked
-      if (form._snapshot) return;
+  const nav = document.getElementById('settingsNav');
+  const backdrop = document.getElementById('settingsNavBackdrop');
+  const mobileToggle = document.getElementById('settingsMobileToggle');
 
-      snapshotForm(form);
-      updateCancelButton(form);
+  function openMobileNav() {
+    if (!nav) return;
+    nav.classList.add('open');
+    if (backdrop) backdrop.classList.add('show');
+    document.body.classList.add('no-scroll');
+  }
 
-      // Track changes
-      form.addEventListener('input', () => updateCancelButton(form));
-      form.addEventListener('change', () => updateCancelButton(form));
+  function closeMobileNav() {
+    if (!nav) return;
+    nav.classList.remove('open');
+    if (backdrop) backdrop.classList.remove('show');
+    document.body.classList.remove('no-scroll');
+  }
+
+  if (mobileToggle) {
+    mobileToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      nav && nav.classList.contains('open') ? closeMobileNav() : openMobileNav();
     });
   }
 
-  // After partial reload
+  if (backdrop) {
+    backdrop.addEventListener('click', closeMobileNav);
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      if (nav && nav.classList.contains('open')) closeMobileNav();
+    }
+  });
+
+  if (nav) {
+    nav.addEventListener('click', (e) => {
+      const item = e.target.closest('.settings-nav-item');
+      if (!item) return;
+
+      e.preventDefault();
+
+      const endpoint = item.dataset.endpoint;
+      const section  = item.dataset.section;
+      if (!endpoint || !section) return;
+
+      nav.querySelectorAll('.settings-nav-item').forEach(el => el.classList.remove('active'));
+      item.classList.add('active');
+
+      try {
+        window.history.replaceState({ section }, '',
+          `?section=${encodeURIComponent(section)}`);
+      } catch (err) { /* ignore */ }
+
+      clearFlash();
+
+      if (window.innerWidth <= 980) closeMobileNav();
+
+      window.dispatchEvent(new CustomEvent('ramz:load-content', {
+        detail: { url: endpoint, section }
+      }));
+    });
+  }
+
+  /* ============================================================
+     Attach tracking after each partial load
+     ============================================================ */
   window.addEventListener('ramz:content-loaded', () => {
-    // Small delay to allow DOM to settle
     setTimeout(attachFormTracking, 0);
   });
 
-  // Initial load (content-container may have already loaded)
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => setTimeout(attachFormTracking, 0));
   } else {

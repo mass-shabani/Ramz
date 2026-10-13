@@ -2942,8 +2942,106 @@ content-container {
   gap: 22px;
   align-items: start;
 }
+
+/* ---------- Disabled Cancel button ---------- */
+.btn-ghost:disabled,
+.btn-ghost[disabled] {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+  filter: grayscale(0.4);
+}
+.btn-ghost:disabled:hover,
+.btn-ghost[disabled]:hover {
+  background: rgba(30,41,66,0.6);
+  border-color: var(--border);
+  color: var(--text-dim);
+}
+
+/* ---------- Warn flash ---------- */
+.settings-flash.warn {
+  background: linear-gradient(135deg, rgba(245,158,11,0.14), rgba(245,158,11,0.05));
+  border: 1px solid rgba(245,158,11,0.32);
+  color: #fde68a;
+}
+.settings-flash.warn .settings-flash-icon {
+  background: rgba(245,158,11,0.18);
+  color: #fbbf24;
+}
+.settings-flash.warn .settings-flash-body strong { color: #fef3c7; }
+
+/* ---------- Mobile menu button ---------- */
+.settings-mobile-menu-btn {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  background: rgba(30,41,66,0.6);
+  border: 1px solid var(--border);
+  transition: background .18s, border-color .18s;
+}
+.settings-mobile-menu-btn:hover {
+  background: rgba(40,54,84,0.85);
+  border-color: rgba(129,140,248,.45);
+}
+.settings-mobile-menu-btn svg { width: 16px; height: 16px; }
+
+/* ---------- Mobile nav backdrop ---------- */
+.settings-nav-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+  background: rgba(3,6,14,0.72);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .3s, visibility .3s;
+}
+.settings-nav-backdrop.show {
+  opacity: 1;
+  visibility: visible;
+}
+
 @media (max-width: 980px) {
   .settings-layout { grid-template-columns: 1fr; }
+
+  .settings-mobile-menu-btn { display: inline-flex; }
+
+  .settings-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 300px;
+    max-width: 85vw;
+    height: 100vh;
+    z-index: 100;
+    border-radius: 0;
+    border-right: 1px solid var(--border);
+    border-left: none;
+    border-top: none;
+    border-bottom: none;
+    overflow-y: auto;
+    padding-top: 24px;
+    transform: translateX(-100%);
+    transition: transform .32s cubic-bezier(.4,0,.2,1);
+  }
+
+  .settings-nav.open {
+    transform: translateX(0);
+  }
+
+  .settings-nav-backdrop { display: block; }
+
+  body.no-scroll { overflow: hidden; }
 }
 
 /* ---------- Left navigation ---------- */
