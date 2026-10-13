@@ -2564,6 +2564,18 @@ content-container {
 
 .standalone-actions { display: flex; align-items: center; gap: 10px; }
 
+.standalone-center {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+@media (max-width: 640px) {
+  .standalone-center { display: none; }
+}
+
 .standalone-content {
   width: 100%;
   max-width: 1240px;

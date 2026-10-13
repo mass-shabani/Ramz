@@ -71,3 +71,23 @@ export function escapeHtml(s) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
+
+/* ==============================================================
+   Cross-component broadcast helpers
+   ============================================================== */
+
+/**
+ * Broadcast a user-data update to every component that listens on
+ * `ramz:user-updated`. Currently consumed by `ramz-user-menu`.
+ *
+ * @param {Object} data
+ * @param {string} [data.name]
+ * @param {string} [data.email]
+ * @param {string} [data.initials]
+ * @param {string} [data.phone]
+ */
+export function broadcastUserUpdate(data = {}) {
+  window.dispatchEvent(new CustomEvent('ramz:user-updated', {
+    detail: data,
+  }));
+}

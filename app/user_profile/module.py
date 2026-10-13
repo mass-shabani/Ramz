@@ -56,12 +56,13 @@ class UserProfileModule(IModule):
                     "brand",
                     "user-menu",
                     "card",
+                    "topbar",
                 ]),
             )
             if logger:
                 logger.log(
                     "User Profile will load components: "
-                    "brand, user-menu, card",
+                    "brand, user-menu, card, topbar",
                     tag="profile",
                 )
         else:

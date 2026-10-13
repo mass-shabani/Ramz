@@ -60,17 +60,27 @@ class AuthService:
             self._log(f"Login internal error: {exc}", level="ERROR")
             return "internal_error"
 
-        # Populate session
-        request.session["user"] = {
-            "user_id":    user.user_id,
-            "username":   user.username,
-            "full_name":  user.full_name,
-            "initials":   user.initials,
-            "role_id":    user.role_id,
-            "role_name":  user.role_name,
-            "email":      user.email,
-            "phone":      user.phone,
-        }
+        # Populate session (single source of truth for shape)
+        from app.db_manager.models.session_user import build_session_user
+
+        try:
+            profile = await self.db.get_full_profile(user.user_id)
+        except Exception:
+            profile = None
+
+        if profile:
+            request.session["user"] = build_session_user(profile)
+        else:
+            request.session["user"] = {
+                "user_id":   user.user_id,
+                "username":  user.username,
+                "full_name": user.full_name,
+                "initials":  user.initials,
+                "role_id":   user.role_id,
+                "role_name": user.role_name or "",
+                "email":     user.email,
+                "phone":     user.phone,
+            }
         return None
 
     # ----------------------------------------------------------

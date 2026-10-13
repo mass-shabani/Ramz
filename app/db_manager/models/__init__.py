@@ -9,6 +9,7 @@ from .profile import Profile
 from .access import Role, Form, Condition, FormAccess
 from .activity import Activity
 from .signup import SignupData
+from .session_user import build_session_user
 
 __all__ = [
     "User",
@@ -19,4 +20,5 @@ __all__ = [
     "FormAccess",
     "Activity",
     "SignupData",
+    "build_session_user",
 ]

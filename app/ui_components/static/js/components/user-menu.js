@@ -30,10 +30,12 @@ class RamzUserMenu extends HTMLElement {
     this._render();
     this._cacheRefs();
     this._attachListeners();
+    window.addEventListener('ramz:user-updated', this._onUserUpdated);
   }
 
   disconnectedCallback() {
     this._detachListeners();
+    window.removeEventListener('ramz:user-updated', this._onUserUpdated);
   }
 
   attributeChangedCallback(name, oldVal, newVal) {
@@ -203,6 +205,21 @@ class RamzUserMenu extends HTMLElement {
 
   _onGlobalClose = (e) => {
     if (e.detail?.except !== 'user-menu') this.close();
+  };
+
+  /* --------------------------------------------------------------
+     Public API — live update from external source
+     -------------------------------------------------------------- */
+  setUser({ name, email, initials } = {}) {
+    if (name !== undefined)     this.setAttribute('user-name', name || '');
+    if (email !== undefined)    this.setAttribute('user-email', email || '');
+    if (initials !== undefined) this.setAttribute('user-initials', initials || '');
+    // attributeChangedCallback → _render() → DOM updated
+  }
+
+  _onUserUpdated = (e) => {
+    const data = e.detail || {};
+    this.setUser(data);
   };
 }
 

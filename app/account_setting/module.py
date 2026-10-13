@@ -57,12 +57,13 @@ class AccountSettingModule(IModule):
                     "brand",
                     "user-menu",
                     "card",
+                    "topbar",
                 ]),
             )
             if logger:
                 logger.log(
                     "Account Setting will load components: "
-                    "brand, user-menu, card",
+                    "brand, user-menu, card, topbar",
                     tag="settings",
                 )
         else:

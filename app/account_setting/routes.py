@@ -212,6 +212,25 @@ def register_routes(
 
         return user_id, None
 
+    async def _refresh_session(request, user_id):
+        """
+        Re-read the profile and update the session user dict so that
+        subsequent page loads show fresh data.
+        """
+        try:
+            fresh = await db_service.get_full_profile(user_id)
+            if not fresh:
+                return
+            from app.db_manager.models import build_session_user
+            request.session["user"] = build_session_user(fresh)
+        except Exception as exc:
+            if logger:
+                logger.log(
+                    f"Session refresh failed for user_id={user_id}: {exc}",
+                    level="WARNING",
+                    tag="settings",
+                )
+
     def _redirect(request, status, section, code=None):
         """Build a redirect back to /account/settings with query params."""
         from urllib.parse import urlencode
@@ -275,6 +294,7 @@ def register_routes(
             ok = False
 
         if ok:
+            await _refresh_session(request, user_id)
             return _redirect(request, "success", "personal")
         return _redirect(request, "error", "personal", "update_failed")
 
@@ -315,6 +335,7 @@ def register_routes(
             ok = False
 
         if ok:
+            await _refresh_session(request, user_id)
             return _redirect(request, "success", "contact")
         return _redirect(request, "error", "contact", "update_failed")
 
