@@ -1,0 +1,105 @@
+<ramz-card title="Personal Information" subtitle="Basic identity details">
+  <div slot="icon" class="card-icon icon-soft--indigo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="8" r="3.6"/>
+      <path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>
+    </svg>
+  </div>
+
+  {% if not permissions.profile_edit %}
+  <p style="color: var(--muted); font-size: 13px; margin: 0;">
+    You do not have permission to edit this section.
+  </p>
+  {% else %}
+  <form method="post" action="/account/settings/personal">
+    <input type="hidden" name="section" value="personal" />
+    <div class="settings-rows">
+
+      <div class="settings-row">
+        <div class="settings-row-label">
+          <div class="label">First Name</div>
+          <div class="hint">Your given name</div>
+        </div>
+        <div class="settings-row-control">
+          <div class="settings-field">
+            <input type="text" name="first_name"
+                   value="{{ profile.first_name or '' }}"
+                   placeholder="First name" required />
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <div class="settings-row-label">
+          <div class="label">Last Name</div>
+          <div class="hint">Your family name</div>
+        </div>
+        <div class="settings-row-control">
+          <div class="settings-field">
+            <input type="text" name="last_name"
+                   value="{{ profile.last_name or '' }}"
+                   placeholder="Last name" required />
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <div class="settings-row-label">
+          <div class="label">National Code</div>
+          <div class="hint">Government-issued ID</div>
+        </div>
+        <div class="settings-row-control">
+          <div class="settings-field">
+            <input type="text" name="national_code"
+                   value="{{ profile.national_code or '' }}"
+                   placeholder="Optional" />
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <div class="settings-row-label">
+          <div class="label">Birth Date</div>
+          <div class="hint">Date of birth</div>
+        </div>
+        <div class="settings-row-control">
+          <div class="settings-field">
+            <input type="date" name="birth_date"
+                   value="{{ profile.birth_date.strftime('%Y-%m-%d') if profile.birth_date else '' }}" />
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <div class="settings-row-label">
+          <div class="label">Gender</div>
+          <div class="hint">Select your gender</div>
+        </div>
+        <div class="settings-row-control">
+          <div class="settings-field">
+            <select name="gender">
+              <option value="">— Not specified —</option>
+              <option value="male"   {% if profile.gender == 'male' %}selected{% endif %}>Male</option>
+              <option value="female" {% if profile.gender == 'female' %}selected{% endif %}>Female</option>
+              <option value="other"  {% if profile.gender == 'other' %}selected{% endif %}>Other</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="settings-actions">
+      <a class="btn-ghost" href="/account/settings?section=personal">Cancel</a>
+      <button class="btn-primary" type="submit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 6 9 17l-5-5"/>
+        </svg>
+        Save Changes
+      </button>
+    </div>
+  </form>
+  {% endif %}
+</ramz-card>

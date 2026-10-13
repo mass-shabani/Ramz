@@ -1,0 +1,140 @@
+<ramz-card title="Contact Information" subtitle="Email, phone and address">
+  <div slot="icon" class="card-icon icon-soft--green">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="4" width="20" height="16" rx="3"/>
+      <path d="m3 7 9 6 9-6"/>
+    </svg>
+  </div>
+
+  {% if not permissions.profile_edit %}
+  <p style="color: var(--muted); font-size: 13px; margin: 0;">
+    You do not have permission to edit this section.
+  </p>
+  {% else %}
+  <form method="post" action="/account/settings/contact">
+    <input type="hidden" name="section" value="contact" />
+    <div class="settings-rows">
+
+      <div class="settings-row">
+        <div class="settings-row-label">
+          <div class="label">Email Address</div>
+          <div class="hint">Used for login and notifications</div>
+        </div>
+        <div class="settings-row-control">
+          <div class="settings-field">
+            <input type="email" name="email"
+                   value="{{ profile.email or '' }}"
+                   placeholder="you@example.com" />
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <div class="settings-row-label">
+          <div class="label">Mobile Phone</div>
+          <div class="hint">Used for 2FA and security alerts</div>
+        </div>
+        <div class="settings-row-control">
+          <div class="settings-field">
+            <input type="tel" name="phone"
+                   value="{{ profile.phone or '' }}"
+                   placeholder="+1 555 000 0000" />
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <div class="settings-row-label">
+          <div class="label">Address Line 1</div>
+          <div class="hint">Street address</div>
+        </div>
+        <div class="settings-row-control">
+          <div class="settings-field">
+            <input type="text" name="address_line1"
+                   value="{{ profile.address_line1 or '' }}"
+                   placeholder="Street and number" />
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <div class="settings-row-label">
+          <div class="label">Address Line 2</div>
+          <div class="hint">Apartment, floor, etc.</div>
+        </div>
+        <div class="settings-row-control">
+          <div class="settings-field">
+            <input type="text" name="address_line2"
+                   value="{{ profile.address_line2 or '' }}"
+                   placeholder="Optional" />
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <div class="settings-row-label">
+          <div class="label">City</div>
+          <div class="hint">Your city</div>
+        </div>
+        <div class="settings-row-control">
+          <div class="settings-field">
+            <input type="text" name="city" value="{{ profile.city or '' }}" />
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <div class="settings-row-label">
+          <div class="label">State / Province</div>
+          <div class="hint">State or province</div>
+        </div>
+        <div class="settings-row-control">
+          <div class="settings-field">
+            <input type="text" name="state_province"
+                   value="{{ profile.state_province or '' }}" />
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <div class="settings-row-label">
+          <div class="label">Postal Code</div>
+          <div class="hint">ZIP or postal code</div>
+        </div>
+        <div class="settings-row-control">
+          <div class="settings-field">
+            <input type="text" name="postal_code"
+                   value="{{ profile.postal_code or '' }}" />
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <div class="settings-row-label">
+          <div class="label">Country</div>
+          <div class="hint">Country of residence</div>
+        </div>
+        <div class="settings-row-control">
+          <div class="settings-field">
+            <input type="text" name="country"
+                   value="{{ profile.country or 'Iran' }}" />
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="settings-actions">
+      <a class="btn-ghost" href="/account/settings?section=contact">Cancel</a>
+      <button class="btn-primary" type="submit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 6 9 17l-5-5"/>
+        </svg>
+        Save Contact Info
+      </button>
+    </div>
+  </form>
+  {% endif %}
+</ramz-card>

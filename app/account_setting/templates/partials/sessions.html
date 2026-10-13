@@ -1,0 +1,38 @@
+<ramz-card title="Active Sessions" subtitle="Devices currently signed in">
+  <div slot="icon" class="card-icon icon-soft--sky">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="4" width="20" height="14" rx="3"/>
+      <path d="M8 20h8"/>
+      <path d="M12 18v2"/>
+    </svg>
+  </div>
+
+  {% if not permissions.sessions %}
+  <p style="color: var(--muted); font-size: 13px; margin: 0;">
+    You do not have permission to manage sessions.
+  </p>
+  {% else %}
+  <div class="session-list">
+    <div class="session-item">
+      <span class="session-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="4" width="20" height="14" rx="3"/>
+          <path d="M8 20h8"/>
+        </svg>
+      </span>
+      <div class="session-body">
+        <div class="session-name">
+          Current browser
+          <span class="current-badge">CURRENT</span>
+        </div>
+        <div class="session-meta">This session · Active now</div>
+      </div>
+    </div>
+  </div>
+  <p style="color: var(--muted); font-size: 12px; margin-top: 16px;">
+    Full session management will be added in a future update.
+  </p>
+  {% endif %}
+</ramz-card>

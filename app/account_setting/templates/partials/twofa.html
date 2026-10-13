@@ -1,0 +1,68 @@
+<ramz-card title="Two-Factor Authentication" subtitle="Extra security for your account">
+  <div slot="icon" class="card-icon icon-soft--violet">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 2 4 6v6c0 5 3.4 9.4 8 10 4.6-.6 8-5 8-10V6z"/>
+    </svg>
+  </div>
+
+  {% if not permissions.twofa %}
+  <p style="color: var(--muted); font-size: 13px; margin: 0;">
+    You do not have permission to manage two-factor authentication.
+  </p>
+  {% else %}
+
+  {% if profile.two_factor_enabled %}
+  <div class="twofa-banner">
+    <span class="twofa-banner-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2 4 6v6c0 5 3.4 9.4 8 10 4.6-.6 8-5 8-10V6z"/>
+        <path d="m9 12 2 2 4-4"/>
+      </svg>
+    </span>
+    <div class="twofa-banner-text">
+      <strong>Two-factor authentication is enabled</strong>
+      <span>Your account is protected by an additional layer of security.</span>
+    </div>
+  </div>
+
+  <form method="post" action="/account/settings/2fa/disable">
+    <input type="hidden" name="section" value="twofa" />
+    <div class="settings-actions" style="justify-content: flex-start; border-top: none; margin-top: 0; padding-top: 0;">
+      <button class="btn-ghost" type="submit">Disable 2FA</button>
+    </div>
+  </form>
+
+  {% else %}
+  <div class="twofa-banner" style="background: rgba(40,54,84,0.4); border-color: var(--border);">
+    <span class="twofa-banner-icon" style="background: rgba(129,140,248,0.10);">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M12 8v4"/>
+        <path d="M12 16h.01"/>
+      </svg>
+    </span>
+    <div class="twofa-banner-text">
+      <strong>Two-factor authentication is not enabled</strong>
+      <span>We recommend enabling 2FA to protect your account.</span>
+    </div>
+  </div>
+
+  <form method="post" action="/account/settings/2fa/enable">
+    <input type="hidden" name="section" value="twofa" />
+    <div class="settings-actions" style="justify-content: flex-start; border-top: none; margin-top: 0; padding-top: 0;">
+      <button class="btn-primary" type="submit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 5v14M5 12h14"/>
+        </svg>
+        Enable 2FA
+      </button>
+    </div>
+  </form>
+  {% endif %}
+
+  {% endif %}
+</ramz-card>

@@ -1,0 +1,19 @@
+<ramz-card title="Banking" subtitle="Bank accounts and cards">
+  <div slot="icon" class="card-icon icon-soft--indigo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="5" width="20" height="14" rx="3"/>
+      <path d="M2 10h20"/>
+    </svg>
+  </div>
+
+  {% if not permissions.banking %}
+  <p style="color: var(--muted); font-size: 13px; margin: 0;">
+    You do not have permission to manage banking information.
+  </p>
+  {% else %}
+  <p style="color: var(--muted); font-size: 13px; margin: 0;">
+    Banking management UI will be added in a future update.
+  </p>
+  {% endif %}
+</ramz-card>

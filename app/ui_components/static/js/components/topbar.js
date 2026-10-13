@@ -31,6 +31,7 @@ class RamzTopbar extends HTMLElement {
     return [
       'user-name', 'user-email', 'user-initials',
       'brand-name', 'brand-subtitle', 'brand-href',
+      'show-progress',
     ];
   }
 
@@ -142,6 +143,14 @@ class RamzTopbar extends HTMLElement {
     actionsWrap.appendChild(userMenu);
 
     header.appendChild(actionsWrap);
+
+    /* --- Optional progress bar (for AJAX loading feedback) --- */
+    const showProgress = this.hasAttribute('show-progress');
+    if (showProgress) {
+      const progress = document.createElement('ramz-progress-bar');
+      header.appendChild(progress);
+    }
+
     this.appendChild(header);
 
     this.#built = true;

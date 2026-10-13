@@ -132,11 +132,20 @@ def register_routes(
         # ------------------------------------------------------------
         # Render
         # ------------------------------------------------------------
-        # Extract flash message from query params
+        # Extract query params
         qp = getattr(request, "query_params", {}) or {}
-        flash_status = qp.get("status")
+        flash_status  = qp.get("status")
         flash_section = qp.get("section")
-        flash_code = qp.get("code")
+        flash_code    = qp.get("code")
+
+        # Which section is active — used as initial partial endpoint
+        VALID_SECTIONS = {
+            "personal", "contact", "password", "twofa",
+            "subscription", "banking", "sessions", "danger",
+        }
+        requested_section = qp.get("section") or "personal"
+        if requested_section not in VALID_SECTIONS:
+            requested_section = "personal"
 
         try:
             html = await template_service.render(
@@ -148,6 +157,7 @@ def register_routes(
                     "flash_status":  flash_status,
                     "flash_section": flash_section,
                     "flash_code":    flash_code,
+                    "section":       requested_section,
                     "module_name":   "account_setting",
                 },
             )
@@ -433,3 +443,93 @@ def register_routes(
             return _redirect(request, "error", "2fa", "internal_error")
 
         return _redirect(request, "success", "2fa")
+
+    # ------------------------------------------------------------
+    # POST /account/settings/partials/{section} — partial loader
+    # ------------------------------------------------------------
+    PARTIAL_TEMPLATES = {
+        "personal":     "partials/personal.html",
+        "contact":      "partials/contact.html",
+        "password":     "partials/password.html",
+        "twofa":        "partials/twofa.html",
+        "subscription": "partials/subscription.html",
+        "banking":      "partials/banking.html",
+        "sessions":     "partials/sessions.html",
+        "danger":       "partials/danger.html",
+    }
+
+    @http_api.post("/account/settings/partials/{section}",
+                   response_class=http_api.HTMLResponse)
+    async def settings_partial(request: http_api.Request, section: str):
+        """
+        Return the HTML fragment for a specific settings section.
+        Called by <content-container> when a nav item is clicked.
+        """
+        # Auth guards
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return http_api.HTMLResponse(
+                content="<div class='card'><p>Session expired.</p></div>",
+                status_code=401,
+            )
+
+        # Validate section
+        template_name = PARTIAL_TEMPLATES.get(section)
+        if not template_name:
+            return http_api.HTMLResponse(
+                content="<div class='card'><p>Section not available.</p></div>",
+                status_code=404,
+            )
+
+        # Load profile
+        try:
+            profile = await db_service.get_full_profile(user_id)
+        except Exception:
+            profile = None
+
+        if profile is None:
+            return http_api.HTMLResponse(
+                content="<div class='card'><p>Profile not found.</p></div>",
+                status_code=404,
+            )
+
+        # Compute permissions
+        async def _has(form_id):
+            try:
+                return await db_service.has_access(user_id, form_id)
+            except Exception:
+                return False
+
+        permissions = {
+            "profile_edit": await _has("account.profile.edit"),
+            "password":     await _has("account.password.change"),
+            "twofa":        await _has("account.2fa.manage"),
+            "banking":      await _has("account.banking.manage"),
+            "sessions":     await _has("account.sessions.manage"),
+            "delete":       await _has("account.delete"),
+        }
+
+        # Render
+        try:
+            html = await template_service.render(
+                template_name,
+                context={
+                    "profile":     profile,
+                    "permissions": permissions,
+                    "section":     section,
+                    "module_name": "account_setting",
+                },
+            )
+            return http_api.HTMLResponse(content=html)
+        except Exception as exc:
+            if logger:
+                logger.log(
+                    f"Error rendering settings partial '{section}': {exc}",
+                    level="ERROR",
+                    tag="settings",
+                )
+            return http_api.HTMLResponse(
+                content="<div class='card'><p>Failed to load section.</p></div>",
+                status_code=500,
+            )
+

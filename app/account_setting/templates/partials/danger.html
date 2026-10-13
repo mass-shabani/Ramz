@@ -1,0 +1,38 @@
+<ramz-card card-class="danger-card">
+  <div class="settings-section-head" style="margin-bottom: 0; border-bottom: none; padding-bottom: 0;">
+    <span class="settings-section-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 9v4"/>
+        <path d="M12 17h.01"/>
+        <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>
+      </svg>
+    </span>
+    <div>
+      <div class="settings-section-title">Danger Zone</div>
+      <div class="settings-section-sub">
+        Once you delete your account, there is no going back.
+        Please be certain.
+      </div>
+    </div>
+  </div>
+
+  {% if not permissions.delete %}
+  <p style="color: #fda4af; font-size: 12px; margin: 16px 0 0 0; opacity: 0.8;">
+    You do not have permission to delete your account.
+  </p>
+  {% else %}
+  <div class="settings-actions" style="justify-content: flex-start; border-top: none; margin-top: 16px; padding-top: 0;">
+    <button class="btn-danger" type="button"
+            onclick="alert('Account deletion will be available in a future update.');">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 6h18"/>
+        <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+      </svg>
+      Delete My Account
+    </button>
+  </div>
+  {% endif %}
+</ramz-card>

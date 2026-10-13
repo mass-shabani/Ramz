@@ -1,0 +1,30 @@
+<ramz-card title="Subscription" subtitle="Your current plan">
+  <div slot="icon" class="card-icon icon-soft--amber">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 2 15 8l7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/>
+    </svg>
+  </div>
+
+  {% if profile.subscription_name %}
+  <div class="plan-card">
+    <span class="plan-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2 15 8l7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/>
+      </svg>
+    </span>
+    <div class="plan-body">
+      <div class="plan-name">{{ profile.subscription_name|capitalize }} Plan</div>
+      <div class="plan-meta">Active subscription</div>
+    </div>
+    <button class="btn-ghost" type="button">Change Plan</button>
+  </div>
+  {% else %}
+  <div style="text-align: center; padding: 24px 16px;">
+    <p style="color: var(--muted); font-size: 13px; margin: 0;">
+      You don't have an active subscription plan.
+    </p>
+  </div>
+  {% endif %}
+</ramz-card>
