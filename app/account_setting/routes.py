@@ -270,6 +270,26 @@ def register_routes(
                 ip = client.host
         return ip, ua
 
+    def _wants_json(request):
+        """Return True if the request explicitly accepts JSON."""
+        headers = getattr(request, "headers", None)
+        if not headers:
+            return False
+        accept = headers.get("accept", "") or ""
+        return "application/json" in accept.lower()
+
+    def _json_ok(message, **extra):
+        """Build a success JSON response."""
+        data = {"status": "success", "message": message}
+        data.update(extra)
+        return http_api.JSONResponse(content=data, status_code=200)
+
+    def _json_error(code, message, **extra):
+        """Build an error JSON response."""
+        data = {"status": "error", "code": code, "message": message}
+        data.update(extra)
+        return http_api.JSONResponse(content=data, status_code=200)
+
     # ------------------------------------------------------------
     # POST /account/settings/personal — update personal info
     # ------------------------------------------------------------
@@ -285,6 +305,12 @@ def register_routes(
             allowed = False
 
         if not allowed:
+            if _wants_json(request):
+                return _json_error(
+                    "no_permission",
+                    "You do not have permission to perform this action.",
+                    section="personal",
+                )
             return _redirect(request, "error", "personal", "no_permission")
 
         form = await request.form()
@@ -305,7 +331,34 @@ def register_routes(
 
         if ok:
             await _refresh_session(request, user_id)
+
+            if _wants_json(request):
+                # Fetch fresh profile to build the user_update payload
+                try:
+                    fresh = await db_service.get_full_profile(user_id)
+                    user_update = {
+                        "name":     fresh.full_name,
+                        "initials": fresh.initials,
+                        "email":    fresh.email,
+                        "phone":    fresh.phone,
+                    } if fresh else {}
+                except Exception:
+                    user_update = {}
+
+                return _json_ok(
+                    "Personal information updated.",
+                    section="personal",
+                    user_update=user_update,
+                )
+
             return _redirect(request, "success", "personal")
+
+        if _wants_json(request):
+            return _json_error(
+                "update_failed",
+                "Failed to save personal information.",
+                section="personal",
+            )
         return _redirect(request, "error", "personal", "update_failed")
 
     # ------------------------------------------------------------
@@ -323,6 +376,12 @@ def register_routes(
             allowed = False
 
         if not allowed:
+            if _wants_json(request):
+                return _json_error(
+                    "no_permission",
+                    "You do not have permission to perform this action.",
+                    section="contact",
+                )
             return _redirect(request, "error", "contact", "no_permission")
 
         form = await request.form()
@@ -346,7 +405,33 @@ def register_routes(
 
         if ok:
             await _refresh_session(request, user_id)
+
+            if _wants_json(request):
+                try:
+                    fresh = await db_service.get_full_profile(user_id)
+                    user_update = {
+                        "name":     fresh.full_name,
+                        "initials": fresh.initials,
+                        "email":    fresh.email,
+                        "phone":    fresh.phone,
+                    } if fresh else {}
+                except Exception:
+                    user_update = {}
+
+                return _json_ok(
+                    "Contact information updated.",
+                    section="contact",
+                    user_update=user_update,
+                )
+
             return _redirect(request, "success", "contact")
+
+        if _wants_json(request):
+            return _json_error(
+                "update_failed",
+                "Failed to save contact information.",
+                section="contact",
+            )
         return _redirect(request, "error", "contact", "update_failed")
 
     # ------------------------------------------------------------
@@ -364,6 +449,12 @@ def register_routes(
             allowed = False
 
         if not allowed:
+            if _wants_json(request):
+                return _json_error(
+                    "no_permission",
+                    "You do not have permission to change your password.",
+                    section="password",
+                )
             return _redirect(request, "error", "password", "no_permission")
 
         form = await request.form()
@@ -372,6 +463,12 @@ def register_routes(
         new2    = form.get("confirm_password") or ""
 
         if new1 != new2:
+            if _wants_json(request):
+                return _json_error(
+                    "password_mismatch",
+                    "The two passwords do not match.",
+                    section="password",
+                )
             return _redirect(request, "error", "password", "password_mismatch")
 
         ip, ua = _client_info(request)
@@ -381,12 +478,37 @@ def register_routes(
         try:
             await db_service.change_password(user_id, current, new1, ip, ua)
         except SettingsError as exc:
-            return _redirect(request, "error", "password", exc.code)
+            code = exc.code
+            messages = {
+                "invalid_password": "The current password is incorrect.",
+                "weak_password":    "Password must be at least 8 characters.",
+                "same_password":    "The new password is the same as the current one.",
+                "user_not_found":   "User not found.",
+                "internal_error":   "Something went wrong. Please try again.",
+            }
+            if _wants_json(request):
+                return _json_error(
+                    code,
+                    messages.get(code, "Password change failed."),
+                    section="password",
+                )
+            return _redirect(request, "error", "password", code)
         except Exception as exc:
             if logger:
                 logger.log(f"change_password failed: {exc}", level="ERROR", tag="settings")
+            if _wants_json(request):
+                return _json_error(
+                    "internal_error",
+                    "Something went wrong. Please try again.",
+                    section="password",
+                )
             return _redirect(request, "error", "password", "internal_error")
 
+        if _wants_json(request):
+            return _json_ok(
+                "Your password has been changed.",
+                section="password",
+            )
         return _redirect(request, "success", "password")
 
     # ------------------------------------------------------------
@@ -404,12 +526,24 @@ def register_routes(
             allowed = False
 
         if not allowed:
+            if _wants_json(request):
+                return _json_error(
+                    "no_permission",
+                    "You do not have permission to manage 2FA.",
+                    section="twofa",
+                )
             return _redirect(request, "error", "2fa", "no_permission")
 
         # NOTE: The full TOTP setup flow (secret generation, QR code,
         # verification) will be added in a later task. For now, this
         # route is a placeholder that returns a "not yet available"
         # message so the UI can be wired without backend logic.
+        if _wants_json(request):
+            return _json_error(
+                "not_yet_available",
+                "This feature will be available in a future update.",
+                section="twofa",
+            )
         return _redirect(request, "error", "2fa", "not_yet_available")
 
     # ------------------------------------------------------------
@@ -427,6 +561,12 @@ def register_routes(
             allowed = False
 
         if not allowed:
+            if _wants_json(request):
+                return _json_error(
+                    "no_permission",
+                    "You do not have permission to manage 2FA.",
+                    section="twofa",
+                )
             return _redirect(request, "error", "2fa", "no_permission")
 
         ip, ua = _client_info(request)
@@ -436,12 +576,35 @@ def register_routes(
         try:
             await db_service.disable_2fa(user_id, ip, ua)
         except SettingsError as exc:
+            messages = {
+                "2fa_not_enabled": "Two-factor authentication is not currently enabled.",
+                "user_not_found":  "User not found.",
+                "internal_error":  "Something went wrong. Please try again.",
+            }
+            if _wants_json(request):
+                return _json_error(
+                    exc.code,
+                    messages.get(exc.code, "Could not disable 2FA."),
+                    section="twofa",
+                )
             return _redirect(request, "error", "2fa", exc.code)
         except Exception as exc:
             if logger:
                 logger.log(f"disable_2fa failed: {exc}", level="ERROR", tag="settings")
+            if _wants_json(request):
+                return _json_error(
+                    "internal_error",
+                    "Something went wrong. Please try again.",
+                    section="twofa",
+                )
             return _redirect(request, "error", "2fa", "internal_error")
 
+        if _wants_json(request):
+            return _json_ok(
+                "Two-factor authentication has been disabled.",
+                section="twofa",
+                reload_section=True,
+            )
         return _redirect(request, "success", "2fa")
 
     # ------------------------------------------------------------

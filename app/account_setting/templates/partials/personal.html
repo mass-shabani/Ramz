@@ -12,7 +12,7 @@
     You do not have permission to edit this section.
   </p>
   {% else %}
-  <form method="post" action="/account/settings/personal">
+  <form method="post" action="/account/settings/personal" data-ajax="true">
     <input type="hidden" name="section" value="personal" />
     <div class="settings-rows">
 
@@ -91,7 +91,7 @@
     </div>
 
     <div class="settings-actions">
-      <a class="btn-ghost" href="/account/settings?section=personal">Cancel</a>
+      <button type="button" class="btn-ghost" data-action="cancel" disabled>Cancel</button>
       <button class="btn-primary" type="submit">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
