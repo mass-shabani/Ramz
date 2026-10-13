@@ -25,8 +25,8 @@ class AccessChecker:
 
     # --- Cache TTLs (seconds) ---
     USER_ENABLED_TTL = 15.0
-    USER_ROLE_TTL    = 300.0
-    ROLE_FORM_TTL    = 300.0
+    USER_ROLE_TTL    = 60.0     # shorter — role changes must reflect quickly
+    ROLE_FORM_TTL    = 60.0
 
     def __init__(self, db_service, logger=None):
         self._db = db_service

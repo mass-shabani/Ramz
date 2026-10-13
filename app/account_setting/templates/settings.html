@@ -21,13 +21,6 @@
             <rect x="3" y="16" width="7" height="5" rx="2"/>
           </svg>
         </a>
-        <a class="icon-btn" href="/profile" title="View Profile" aria-label="View Profile">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="8" r="3.6"/>
-            <path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>
-          </svg>
-        </a>
 
         <ramz-user-menu
           user-name="{{ profile.full_name }}"
@@ -48,11 +41,7 @@
       </div>
 
       <!-- ============ FLASH MESSAGE ============ -->
-      {% set status = request.query_params.get('status') if request and request.query_params else None %}
-      {% set section = request.query_params.get('section') if request and request.query_params else None %}
-      {% set code = request.query_params.get('code') if request and request.query_params else None %}
-
-      {% if status == 'success' %}
+      {% if flash_status == 'success' %}
       <div class="settings-flash success">
         <span class="settings-flash-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -62,20 +51,20 @@
         </span>
         <div class="settings-flash-body">
           <strong>Changes saved</strong>
-          {% if section == 'personal' %}
+          {% if flash_section == 'personal' %}
             Your personal information has been updated.
-          {% elif section == 'contact' %}
+          {% elif flash_section == 'contact' %}
             Your contact information has been updated.
-          {% elif section == 'password' %}
+          {% elif flash_section == 'password' %}
             Your password has been changed.
-          {% elif section == '2fa' %}
+          {% elif flash_section == '2fa' %}
             Two-factor settings updated.
           {% else %}
             Your settings have been updated.
           {% endif %}
         </div>
       </div>
-      {% elif status == 'error' %}
+      {% elif flash_status == 'error' %}
       <div class="settings-flash error">
         <span class="settings-flash-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -87,31 +76,31 @@
         </span>
         <div class="settings-flash-body">
           <strong>
-            {% if code == 'no_permission' %}Access denied
-            {% elif code == 'internal_error' %}Something went wrong
-            {% elif code == 'password_mismatch' %}Passwords don't match
-            {% elif code == 'not_yet_available' %}Not available yet
+            {% if flash_code == 'no_permission' %}Access denied
+            {% elif flash_code == 'internal_error' %}Something went wrong
+            {% elif flash_code == 'password_mismatch' %}Passwords don't match
+            {% elif flash_code == 'not_yet_available' %}Not available yet
             {% else %}Update failed{% endif %}
           </strong>
-          {% if code == 'no_permission' %}
+          {% if flash_code == 'no_permission' %}
             You do not have permission to perform this action.
-          {% elif code == 'invalid_password' %}
+          {% elif flash_code == 'invalid_password' %}
             The current password is incorrect.
-          {% elif code == 'weak_password' %}
+          {% elif flash_code == 'weak_password' %}
             Password must be at least 8 characters.
-          {% elif code == 'same_password' %}
+          {% elif flash_code == 'same_password' %}
             The new password is the same as the current one.
-          {% elif code == 'password_mismatch' %}
+          {% elif flash_code == 'password_mismatch' %}
             The two passwords do not match.
-          {% elif code == 'email_exists' %}
+          {% elif flash_code == 'email_exists' %}
             That email is already registered on another account.
-          {% elif code == 'phone_exists' %}
+          {% elif flash_code == 'phone_exists' %}
             That phone number is already registered on another account.
-          {% elif code == '2fa_already_enabled' %}
+          {% elif flash_code == '2fa_already_enabled' %}
             Two-factor authentication is already enabled.
-          {% elif code == '2fa_not_enabled' %}
+          {% elif flash_code == '2fa_not_enabled' %}
             Two-factor authentication is not currently enabled.
-          {% elif code == 'not_yet_available' %}
+          {% elif flash_code == 'not_yet_available' %}
             This feature will be available in a future update.
           {% else %}
             Please try again. If the problem persists, contact support.

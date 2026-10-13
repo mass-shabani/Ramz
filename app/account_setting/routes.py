@@ -132,14 +132,23 @@ def register_routes(
         # ------------------------------------------------------------
         # Render
         # ------------------------------------------------------------
+        # Extract flash message from query params
+        qp = getattr(request, "query_params", {}) or {}
+        flash_status = qp.get("status")
+        flash_section = qp.get("section")
+        flash_code = qp.get("code")
+
         try:
             html = await template_service.render(
                 "settings.html",
                 context={
-                    "profile":      profile,
-                    "current_user": current_user,
-                    "permissions":  permissions,
-                    "module_name":  "account_setting",
+                    "profile":       profile,
+                    "current_user":  current_user,
+                    "permissions":   permissions,
+                    "flash_status":  flash_status,
+                    "flash_section": flash_section,
+                    "flash_code":    flash_code,
+                    "module_name":   "account_setting",
                 },
             )
             return http_api.HTMLResponse(content=html)
