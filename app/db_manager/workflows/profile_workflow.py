@@ -219,6 +219,267 @@ class ProfileWorkflow:
             self._log(f"update_contact_info failed: {exc}", level="ERROR")
             return False
 
+    # ============================================================
+    # Multi-value contact management
+    # ============================================================
+    async def list_contact_channels(self, user_id: int) -> dict:
+        """
+        Return all emails, phones, and addresses for the user's contact.
+
+        Each email/phone entry has an `is_primary` flag that is True
+        only if it matches `user.email_id` / `user.phone_id`.
+
+        Returns
+        -------
+        dict
+            {
+                "emails":    [{"email_id", "email_address", "is_verified", "is_primary"}, ...],
+                "phones":    [{"phone_id", "phone_number", "phone_type", "is_verified", "is_primary"}, ...],
+                "addresses": [{"address_id", ...}, ...],
+            }
+        """
+        empty = {"emails": [], "phones": [], "addresses": []}
+        if not user_id:
+            return empty
+
+        user = await self._db._user_repo.get_by_id(user_id)
+        if not user:
+            return empty
+
+        people = await self._db._people_repo.get_by_id(user.people_id)
+        contact_id = int(people["contact_id"]) if people else 0
+        if not contact_id:
+            return empty
+
+        # Emails
+        emails = await self._db._email_repo.list_by_contact(contact_id)
+        for e in emails:
+            e["is_primary"] = (int(e.get("email_id") or 0) == (user.email_id or 0))
+
+        # Phones
+        phones = await self._db._phone_repo.list_by_contact(contact_id)
+        for p in phones:
+            p["is_primary"] = (int(p.get("phone_id") or 0) == (user.phone_id or 0))
+
+        # Addresses
+        addresses = await self._db._address_repo.list_by_contact(contact_id)
+
+        return {
+            "emails":    emails,
+            "phones":    phones,
+            "addresses": addresses,
+        }
+
+    async def add_email(self, user_id: int, email_address: str) -> bool:
+        """
+        Add a new email address to the user's contact.
+
+        Important
+        ---------
+        The new email is NOT automatically assigned as the user's
+        primary. The user must explicitly call set_primary_email().
+        This avoids an accidental first-come-first-served assignment
+        and matches the UX expectation that "primary" is a deliberate
+        choice made in the account settings page.
+
+        Returns True on success, False if the email already exists or
+        on any error.
+        """
+        if not user_id or not email_address:
+            return False
+
+        # Global conflict check
+        existing = await self._db._email_repo.get_by_address(email_address)
+        if existing:
+            return False
+
+        user = await self._db._user_repo.get_by_id(user_id)
+        if not user:
+            return False
+
+        people = await self._db._people_repo.get_by_id(user.people_id)
+        contact_id = int(people["contact_id"]) if people else 0
+        if not contact_id:
+            return False
+
+        try:
+            new_id = await self._db._email_repo.create(
+                contact_id=contact_id,
+                email_address=email_address,
+                is_verified=False,
+            )
+            return bool(new_id)
+        except Exception as exc:
+            self._log(f"add_email failed: {exc}", level="ERROR")
+            return False
+
+    async def remove_email(self, user_id: int, email_id: int) -> tuple:
+        """
+        Remove an email from the user's contact.
+
+        Rules:
+            • Cannot remove the primary email.
+            • Cannot remove the last remaining email.
+
+        Returns
+        -------
+        tuple (ok: bool, reason: str)
+            reason is one of: "ok", "is_primary", "is_last", "not_found"
+        """
+        if not user_id or not email_id:
+            return False, "not_found"
+
+        user = await self._db._user_repo.get_by_id(user_id)
+        if not user:
+            return False, "not_found"
+
+        if int(email_id) == int(user.email_id or 0):
+            return False, "is_primary"
+
+        people = await self._db._people_repo.get_by_id(user.people_id)
+        contact_id = int(people["contact_id"]) if people else 0
+        if not contact_id:
+            return False, "not_found"
+
+        target = await self._db._email_repo.get_by_id(email_id)
+        if not target or int(target.get("contact_id", 0)) != contact_id:
+            return False, "not_found"
+
+        all_emails = await self._db._email_repo.list_by_contact(contact_id)
+        if len(all_emails) <= 1:
+            return False, "is_last"
+
+        try:
+            ok = await self._db._email_repo.delete(email_id)
+            return (ok, "ok" if ok else "not_found")
+        except Exception as exc:
+            self._log(f"remove_email failed: {exc}", level="ERROR")
+            return False, "not_found"
+
+    async def set_primary_email(self, user_id: int, email_id: int) -> bool:
+        """
+        Explicitly set the given email as the user's primary email.
+        Only this method can change user.email_id.
+        """
+        if not user_id or not email_id:
+            return False
+
+        user = await self._db._user_repo.get_by_id(user_id)
+        if not user:
+            return False
+
+        people = await self._db._people_repo.get_by_id(user.people_id)
+        contact_id = int(people["contact_id"]) if people else 0
+        if not contact_id:
+            return False
+
+        target = await self._db._email_repo.get_by_id(email_id)
+        if not target or int(target.get("contact_id", 0)) != contact_id:
+            return False
+
+        try:
+            return await self._db._user_repo.update_email_id(user_id, email_id)
+        except Exception as exc:
+            self._log(f"set_primary_email failed: {exc}", level="ERROR")
+            return False
+
+    async def add_phone(
+        self, user_id: int, phone_number: str, phone_type: str = "mobile"
+    ) -> bool:
+        """
+        Add a new phone number to the user's contact.
+
+        Important
+        ---------
+        Same as add_email: the new phone is NOT auto-assigned as
+        primary. The user must explicitly call set_primary_phone().
+        """
+        if not user_id or not phone_number:
+            return False
+
+        existing = await self._db._phone_repo.get_by_number(phone_number)
+        if existing:
+            return False
+
+        user = await self._db._user_repo.get_by_id(user_id)
+        if not user:
+            return False
+
+        people = await self._db._people_repo.get_by_id(user.people_id)
+        contact_id = int(people["contact_id"]) if people else 0
+        if not contact_id:
+            return False
+
+        try:
+            new_id = await self._db._phone_repo.create(
+                contact_id=contact_id,
+                phone_number=phone_number,
+                phone_type=phone_type,
+                is_verified=False,
+            )
+            return bool(new_id)
+        except Exception as exc:
+            self._log(f"add_phone failed: {exc}", level="ERROR")
+            return False
+
+    async def remove_phone(self, user_id: int, phone_id: int) -> tuple:
+        """
+        Remove a phone. Same rules as remove_email.
+        """
+        if not user_id or not phone_id:
+            return False, "not_found"
+
+        user = await self._db._user_repo.get_by_id(user_id)
+        if not user:
+            return False, "not_found"
+
+        if int(phone_id) == int(user.phone_id or 0):
+            return False, "is_primary"
+
+        people = await self._db._people_repo.get_by_id(user.people_id)
+        contact_id = int(people["contact_id"]) if people else 0
+        if not contact_id:
+            return False, "not_found"
+
+        target = await self._db._phone_repo.get_by_id(phone_id)
+        if not target or int(target.get("contact_id", 0)) != contact_id:
+            return False, "not_found"
+
+        all_phones = await self._db._phone_repo.list_by_contact(contact_id)
+        if len(all_phones) <= 1:
+            return False, "is_last"
+
+        try:
+            ok = await self._db._phone_repo.delete(phone_id)
+            return (ok, "ok" if ok else "not_found")
+        except Exception as exc:
+            self._log(f"remove_phone failed: {exc}", level="ERROR")
+            return False, "not_found"
+
+    async def set_primary_phone(self, user_id: int, phone_id: int) -> bool:
+        """Explicitly set the given phone as primary."""
+        if not user_id or not phone_id:
+            return False
+
+        user = await self._db._user_repo.get_by_id(user_id)
+        if not user:
+            return False
+
+        people = await self._db._people_repo.get_by_id(user.people_id)
+        contact_id = int(people["contact_id"]) if people else 0
+        if not contact_id:
+            return False
+
+        target = await self._db._phone_repo.get_by_id(phone_id)
+        if not target or int(target.get("contact_id", 0)) != contact_id:
+            return False
+
+        try:
+            return await self._db._user_repo.update_phone_id(user_id, phone_id)
+        except Exception as exc:
+            self._log(f"set_primary_phone failed: {exc}", level="ERROR")
+            return False
+
 
 # --------------------------------------------------------------
 # Helpers

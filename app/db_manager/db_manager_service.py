@@ -255,6 +255,32 @@ class DbManagerService:
             user_id, data
         )
 
+    async def list_contact_channels(self, user_id):
+        """Return all emails, phones, and addresses for the user."""
+        return await self._profile_workflow.list_contact_channels(user_id)
+
+    async def add_email(self, user_id, email_address):
+        return await self._profile_workflow.add_email(user_id, email_address)
+
+    async def remove_email(self, user_id, email_id):
+        """Returns (ok: bool, reason: str)."""
+        return await self._profile_workflow.remove_email(user_id, email_id)
+
+    async def set_primary_email(self, user_id, email_id):
+        return await self._profile_workflow.set_primary_email(user_id, email_id)
+
+    async def add_phone(self, user_id, phone_number, phone_type="mobile"):
+        return await self._profile_workflow.add_phone(
+            user_id, phone_number, phone_type
+        )
+
+    async def remove_phone(self, user_id, phone_id):
+        """Returns (ok: bool, reason: str)."""
+        return await self._profile_workflow.remove_phone(user_id, phone_id)
+
+    async def set_primary_phone(self, user_id, phone_id):
+        return await self._profile_workflow.set_primary_phone(user_id, phone_id)
+
     # ============================================================
     # Settings
     # ============================================================

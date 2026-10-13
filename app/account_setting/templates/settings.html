@@ -554,16 +554,153 @@
   }
 
   /* ============================================================
+     Channel actions — set primary / remove
+     ============================================================ */
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+
+    const action = btn.dataset.action;
+    const CHANNEL_ACTIONS = [
+      'set-primary-email', 'remove-email',
+      'set-primary-phone', 'remove-phone',
+    ];
+    if (!CHANNEL_ACTIONS.includes(action)) return;
+
+    e.preventDefault();
+    if (btn.disabled) return;
+
+    const id = btn.dataset.id;
+    if (!id) return;
+
+    // Confirmation for destructive actions
+    if (action.startsWith('remove-')) {
+      const ok = window.confirm(
+        'Remove this item?\n\n' +
+        'This action cannot be undone.'
+      );
+      if (!ok) return;
+    }
+
+    // Map action → endpoint + param name
+    const map = {
+      'set-primary-email':  { url: '/account/settings/emails/set-primary', param: 'email_id' },
+      'remove-email':       { url: '/account/settings/emails/delete',      param: 'email_id' },
+      'set-primary-phone':  { url: '/account/settings/phones/set-primary', param: 'phone_id' },
+      'remove-phone':       { url: '/account/settings/phones/delete',      param: 'phone_id' },
+    };
+    const cfg = map[action];
+    if (!cfg) return;
+
+    btn.disabled = true;
+    startProgress('channel-action');
+
+    try {
+      const formData = new FormData();
+      formData.append(cfg.param, id);
+
+      const resp = await fetch(cfg.url, {
+        method: 'POST',
+        body: formData,
+        credentials: 'same-origin',
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      });
+
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+
+      if (data.status === 'success') {
+        showFlash('success', 'Changes saved', data.message);
+
+        if (data.user_update) {
+          window.dispatchEvent(new CustomEvent('ramz:user-updated', {
+            detail: data.user_update,
+          }));
+        }
+
+        // Reload contact partial
+        const activeItem = nav ? nav.querySelector('.settings-nav-item.active') : null;
+        const endpoint = activeItem ? activeItem.dataset.endpoint : null;
+        if (endpoint) {
+          window.dispatchEvent(new CustomEvent('ramz:load-content', {
+            detail: { url: endpoint },
+          }));
+        }
+      } else {
+        const titleMap = {
+          'no_permission': 'Access denied',
+          'cannot_remove': 'Cannot remove',
+          'email_exists':  'Email exists',
+          'phone_exists':  'Phone exists',
+          'update_failed': 'Update failed',
+        };
+        showFlash('error',
+          titleMap[data.code] || 'Update failed',
+          data.message || 'Something went wrong.');
+      }
+    } catch (err) {
+      console.error('[settings] channel action failed:', err);
+      showFlash('error', 'Network error',
+        'Could not reach the server.');
+    } finally {
+      btn.disabled = false;
+      endProgress('channel-action');
+    }
+  });
+
+  /* ============================================================
+     Enable/disable Add buttons based on input content
+     ============================================================ */
+  function attachAddButtonTracking() {
+    const emailForm  = document.querySelector('form[action="/account/settings/emails/add"]');
+    const phoneForm  = document.querySelector('form[action="/account/settings/phones/add"]');
+
+    if (emailForm) {
+      const input = emailForm.querySelector('input[name="email_address"]');
+      const btn   = emailForm.querySelector('button[type="submit"]');
+      if (input && btn) {
+        const check = () => { btn.disabled = !input.value.trim(); };
+        input.addEventListener('input', check);
+        check();
+      }
+    }
+
+    if (phoneForm) {
+      const input = phoneForm.querySelector('input[name="phone_number"]');
+      const btn   = phoneForm.querySelector('button[type="submit"]');
+      if (input && btn) {
+        const check = () => { btn.disabled = !input.value.trim(); };
+        input.addEventListener('input', check);
+        check();
+      }
+    }
+  }
+
+  /* ============================================================
      Attach tracking after each partial load
      ============================================================ */
   window.addEventListener('ramz:content-loaded', () => {
-    setTimeout(attachFormTracking, 0);
+    setTimeout(() => {
+      attachFormTracking();
+      attachAddButtonTracking();
+    }, 0);
   });
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => setTimeout(attachFormTracking, 0));
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        attachFormTracking();
+        attachAddButtonTracking();
+      }, 0);
+    });
   } else {
-    setTimeout(attachFormTracking, 0);
+    setTimeout(() => {
+      attachFormTracking();
+      attachAddButtonTracking();
+    }, 0);
   }
 
 })();

@@ -608,6 +608,231 @@ def register_routes(
         return _redirect(request, "success", "2fa")
 
     # ------------------------------------------------------------
+    # Email management
+    # ------------------------------------------------------------
+    @http_api.post("/account/settings/emails/add",
+                   response_class=http_api.HTMLResponse)
+    async def add_email(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return _json_error("unauthorized", "Session expired.")
+
+        try:
+            allowed = await db_service.has_access(user_id, "account.profile.edit")
+        except Exception:
+            allowed = False
+        if not allowed:
+            return _json_error("no_permission", "You do not have permission.")
+
+        form = await request.form()
+        address = (form.get("email_address") or "").strip()
+        if not address or "@" not in address:
+            return _json_error("invalid_email", "Please enter a valid email address.")
+
+        try:
+            ok = await db_service.add_email(user_id, address)
+        except Exception as exc:
+            if logger:
+                logger.log(f"add_email failed: {exc}", level="ERROR", tag="settings")
+            ok = False
+
+        if not ok:
+            return _json_error(
+                "email_exists",
+                "This email is already registered."
+            )
+
+        return _json_ok("Email added.", section="contact")
+
+    @http_api.post("/account/settings/emails/set-primary",
+                   response_class=http_api.HTMLResponse)
+    async def set_primary_email(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return _json_error("unauthorized", "Session expired.")
+
+        try:
+            allowed = await db_service.has_access(user_id, "account.profile.edit")
+        except Exception:
+            allowed = False
+        if not allowed:
+            return _json_error("no_permission", "You do not have permission.")
+
+        form = await request.form()
+        try:
+            email_id = int(form.get("email_id") or 0)
+        except ValueError:
+            email_id = 0
+        if not email_id:
+            return _json_error("invalid_data", "Missing email ID.")
+
+        try:
+            ok = await db_service.set_primary_email(user_id, email_id)
+        except Exception:
+            ok = False
+
+        if not ok:
+            return _json_error("update_failed", "Could not set primary email.")
+
+        await _refresh_session(request, user_id)
+        return _json_ok("Primary email updated.", section="contact")
+
+    @http_api.post("/account/settings/emails/delete",
+                   response_class=http_api.HTMLResponse)
+    async def delete_email(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return _json_error("unauthorized", "Session expired.")
+
+        try:
+            allowed = await db_service.has_access(user_id, "account.profile.edit")
+        except Exception:
+            allowed = False
+        if not allowed:
+            return _json_error("no_permission", "You do not have permission.")
+
+        form = await request.form()
+        try:
+            email_id = int(form.get("email_id") or 0)
+        except ValueError:
+            email_id = 0
+        if not email_id:
+            return _json_error("invalid_data", "Missing email ID.")
+
+        try:
+            ok, reason = await db_service.remove_email(user_id, email_id)
+        except Exception:
+            ok, reason = False, "not_found"
+
+        if not ok:
+            if reason == "is_primary":
+                return _json_error(
+                    "cannot_remove",
+                    "This is your primary email. Set another email as primary first."
+                )
+            if reason == "is_last":
+                return _json_error(
+                    "cannot_remove",
+                    "You cannot remove the last remaining email."
+                )
+            return _json_error("cannot_remove", "Could not remove this email.")
+
+        return _json_ok("Email removed.", section="contact")
+
+    # ------------------------------------------------------------
+    # Phone management
+    # ------------------------------------------------------------
+    @http_api.post("/account/settings/phones/add",
+                   response_class=http_api.HTMLResponse)
+    async def add_phone(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return _json_error("unauthorized", "Session expired.")
+
+        try:
+            allowed = await db_service.has_access(user_id, "account.profile.edit")
+        except Exception:
+            allowed = False
+        if not allowed:
+            return _json_error("no_permission", "You do not have permission.")
+
+        form = await request.form()
+        number = (form.get("phone_number") or "").strip()
+        phone_type = (form.get("phone_type") or "mobile").strip()
+        if not number:
+            return _json_error("invalid_data", "Please enter a phone number.")
+
+        try:
+            ok = await db_service.add_phone(user_id, number, phone_type)
+        except Exception as exc:
+            if logger:
+                logger.log(f"add_phone failed: {exc}", level="ERROR", tag="settings")
+            ok = False
+
+        if not ok:
+            return _json_error(
+                "phone_exists",
+                "This phone number is already registered."
+            )
+
+        return _json_ok("Phone number added.", section="contact")
+
+    @http_api.post("/account/settings/phones/set-primary",
+                   response_class=http_api.HTMLResponse)
+    async def set_primary_phone(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return _json_error("unauthorized", "Session expired.")
+
+        try:
+            allowed = await db_service.has_access(user_id, "account.profile.edit")
+        except Exception:
+            allowed = False
+        if not allowed:
+            return _json_error("no_permission", "You do not have permission.")
+
+        form = await request.form()
+        try:
+            phone_id = int(form.get("phone_id") or 0)
+        except ValueError:
+            phone_id = 0
+        if not phone_id:
+            return _json_error("invalid_data", "Missing phone ID.")
+
+        try:
+            ok = await db_service.set_primary_phone(user_id, phone_id)
+        except Exception:
+            ok = False
+
+        if not ok:
+            return _json_error("update_failed", "Could not set primary phone.")
+
+        await _refresh_session(request, user_id)
+        return _json_ok("Primary phone updated.", section="contact")
+
+    @http_api.post("/account/settings/phones/delete",
+                   response_class=http_api.HTMLResponse)
+    async def delete_phone(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return _json_error("unauthorized", "Session expired.")
+
+        try:
+            allowed = await db_service.has_access(user_id, "account.profile.edit")
+        except Exception:
+            allowed = False
+        if not allowed:
+            return _json_error("no_permission", "You do not have permission.")
+
+        form = await request.form()
+        try:
+            phone_id = int(form.get("phone_id") or 0)
+        except ValueError:
+            phone_id = 0
+        if not phone_id:
+            return _json_error("invalid_data", "Missing phone ID.")
+
+        try:
+            ok, reason = await db_service.remove_phone(user_id, phone_id)
+        except Exception:
+            ok, reason = False, "not_found"
+
+        if not ok:
+            if reason == "is_primary":
+                return _json_error(
+                    "cannot_remove",
+                    "This is your primary phone. Set another phone as primary first."
+                )
+            if reason == "is_last":
+                return _json_error(
+                    "cannot_remove",
+                    "You cannot remove the last remaining phone."
+                )
+            return _json_error("cannot_remove", "Could not remove this phone.")
+
+        return _json_ok("Phone number removed.", section="contact")
+
+    # ------------------------------------------------------------
     # POST /account/settings/partials/{section} — partial loader
     # ------------------------------------------------------------
     PARTIAL_TEMPLATES = {
@@ -672,6 +897,16 @@ def register_routes(
             "delete":       await _has("account.delete"),
         }
 
+        # Additional context for the contact section
+        extra_context = {}
+        if section == "contact":
+            try:
+                extra_context["channels"] = await db_service.list_contact_channels(user_id)
+            except Exception:
+                extra_context["channels"] = {
+                    "emails": [], "phones": [], "addresses": []
+                }
+
         # Render
         try:
             html = await template_service.render(
@@ -681,6 +916,7 @@ def register_routes(
                     "permissions": permissions,
                     "section":     section,
                     "module_name": "account_setting",
+                    **extra_context,
                 },
             )
             return http_api.HTMLResponse(content=html)
