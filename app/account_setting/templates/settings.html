@@ -14,6 +14,16 @@
       user-initials="{{ profile.initials }}"
       show-progress
     >
+      <button slot="start" type="button" class="standalone-menu-btn"
+              id="settingsMobileToggle" aria-label="Open settings menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 7h16"/>
+          <path d="M4 12h10"/>
+          <path d="M4 17h16"/>
+        </svg>
+      </button>
+
       <a slot="actions" class="icon-btn" href="/panel"
          title="Back to Panel" aria-label="Back to Panel">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -34,16 +44,6 @@
           <h1>Account Settings</h1>
           <p>Manage your personal information, security, subscription and more.</p>
         </div>
-
-        <button type="button" class="settings-mobile-menu-btn" id="settingsMobileToggle">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 7h16"/>
-            <path d="M4 12h10"/>
-            <path d="M4 17h16"/>
-          </svg>
-          Menu
-        </button>
       </div>
 
       <!-- ============ FLASH MESSAGE ============ -->
@@ -343,19 +343,26 @@
     return false;
   }
 
-  function updateCancelButton(form) {
-    const cancel = form.querySelector('[data-action="cancel"]');
-    if (!cancel) return;
-    cancel.disabled = !isDirty(form);
+  function updateFormButtons(form) {
+    const dirty   = isDirty(form);
+    const cancel  = form.querySelector('[data-action="cancel"]');
+    const submit  = form.querySelector('button[type="submit"]');
+
+    if (cancel) cancel.disabled = !dirty;
+
+    // Skip disabling submit while it's in loading state
+    if (submit && !submit.classList.contains('is-loading')) {
+      submit.disabled = !dirty;
+    }
   }
 
   function attachFormTracking() {
     document.querySelectorAll('form[data-ajax="true"]').forEach(form => {
       if (form._snapshot) return;
       snapshotForm(form);
-      updateCancelButton(form);
-      form.addEventListener('input', () => updateCancelButton(form));
-      form.addEventListener('change', () => updateCancelButton(form));
+      updateFormButtons(form);
+      form.addEventListener('input', () => updateFormButtons(form));
+      form.addEventListener('change', () => updateFormButtons(form));
     });
   }
 
@@ -433,7 +440,7 @@
           }
         } else {
           snapshotForm(form);
-          updateCancelButton(form);
+          updateFormButtons(form);
           if (data.section === 'password') {
             form.querySelectorAll('input[type="password"]').forEach(el => el.value = '');
           }
@@ -473,7 +480,7 @@
 
     form.reset();
     snapshotForm(form);
-    updateCancelButton(form);
+    updateFormButtons(form);
 
     showFlash('warn', 'Changes discarded',
       'Your edits were reverted to the last saved values.');

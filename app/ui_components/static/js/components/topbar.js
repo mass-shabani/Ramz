@@ -66,6 +66,7 @@ class RamzTopbar extends HTMLElement {
     if (this.#captured) return;
     const children = Array.from(this.children);
     this.#captured = {
+      start:   children.filter(el => el.getAttribute('slot') === 'start'),
       actions: children.filter(el => el.getAttribute('slot') === 'actions'),
       center:  children.filter(el => el.getAttribute('slot') === 'center'),
     };
@@ -74,6 +75,7 @@ class RamzTopbar extends HTMLElement {
   #reapplyCaptured() {
     // If the caller appended children after we already built the tree,
     // move them into the correct slot wrapper.
+    const startWrap   = this.querySelector('.standalone-start');
     const actionsWrap = this.querySelector('.standalone-actions');
     const centerWrap  = this.querySelector('.standalone-center');
     if (!actionsWrap) return;
@@ -81,7 +83,9 @@ class RamzTopbar extends HTMLElement {
     Array.from(this.children).forEach(child => {
       if (child.classList.contains('standalone-topbar-inner')) return;
       const slot = child.getAttribute('slot');
-      if (slot === 'actions' && actionsWrap) {
+      if (slot === 'start' && startWrap) {
+        startWrap.appendChild(child);
+      } else if (slot === 'actions' && actionsWrap) {
         actionsWrap.insertBefore(child, actionsWrap.lastElementChild);
       } else if (slot === 'center' && centerWrap) {
         centerWrap.appendChild(child);
@@ -118,6 +122,15 @@ class RamzTopbar extends HTMLElement {
     brand.setAttribute('subtitle', brandSub);
     brandLink.appendChild(brand);
     header.appendChild(brandLink);
+
+    /* --- Start slot (left side, after brand) --- */
+    const hasStart = this.#captured.start && this.#captured.start.length > 0;
+    if (hasStart) {
+      const startWrap = document.createElement('div');
+      startWrap.className = 'standalone-start';
+      this.#captured.start.forEach(el => startWrap.appendChild(el));
+      header.appendChild(startWrap);
+    }
 
     /* --- Center slot (only if content was provided) --- */
     const hasCenter = this.#captured.center && this.#captured.center.length > 0;
