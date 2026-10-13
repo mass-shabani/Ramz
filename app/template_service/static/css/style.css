@@ -2981,6 +2981,16 @@ content-container {
   .standalone-start { display: none; }
 }
 
+/* Hamburger slot in topbar (before brand, mobile only) */
+.standalone-hamburger {
+  display: flex;
+  align-items: center;
+  margin-right: 4px;
+}
+@media (min-width: 981px) {
+  .standalone-hamburger { display: none; }
+}
+
 /* Menu button in topbar (mobile only) */
 .standalone-menu-btn {
   display: grid;

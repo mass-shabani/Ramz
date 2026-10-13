@@ -66,24 +66,28 @@ class RamzTopbar extends HTMLElement {
     if (this.#captured) return;
     const children = Array.from(this.children);
     this.#captured = {
-      start:   children.filter(el => el.getAttribute('slot') === 'start'),
-      actions: children.filter(el => el.getAttribute('slot') === 'actions'),
-      center:  children.filter(el => el.getAttribute('slot') === 'center'),
+      hamburger: children.filter(el => el.getAttribute('slot') === 'hamburger'),
+      start:     children.filter(el => el.getAttribute('slot') === 'start'),
+      actions:   children.filter(el => el.getAttribute('slot') === 'actions'),
+      center:    children.filter(el => el.getAttribute('slot') === 'center'),
     };
   }
 
   #reapplyCaptured() {
     // If the caller appended children after we already built the tree,
     // move them into the correct slot wrapper.
-    const startWrap   = this.querySelector('.standalone-start');
-    const actionsWrap = this.querySelector('.standalone-actions');
-    const centerWrap  = this.querySelector('.standalone-center');
+    const hamburgerWrap = this.querySelector('.standalone-hamburger');
+    const startWrap     = this.querySelector('.standalone-start');
+    const actionsWrap   = this.querySelector('.standalone-actions');
+    const centerWrap    = this.querySelector('.standalone-center');
     if (!actionsWrap) return;
 
     Array.from(this.children).forEach(child => {
       if (child.classList.contains('standalone-topbar-inner')) return;
       const slot = child.getAttribute('slot');
-      if (slot === 'start' && startWrap) {
+      if (slot === 'hamburger' && hamburgerWrap) {
+        hamburgerWrap.appendChild(child);
+      } else if (slot === 'start' && startWrap) {
         startWrap.appendChild(child);
       } else if (slot === 'actions' && actionsWrap) {
         actionsWrap.insertBefore(child, actionsWrap.lastElementChild);
@@ -111,6 +115,15 @@ class RamzTopbar extends HTMLElement {
     /* --- Header --- */
     const header = document.createElement('header');
     header.className = 'standalone-topbar standalone-topbar-inner';
+
+    /* --- Hamburger slot (before brand, mobile only) --- */
+    const hasHamburger = this.#captured.hamburger && this.#captured.hamburger.length > 0;
+    if (hasHamburger) {
+      const hamburgerWrap = document.createElement('div');
+      hamburgerWrap.className = 'standalone-hamburger';
+      this.#captured.hamburger.forEach(el => hamburgerWrap.appendChild(el));
+      header.appendChild(hamburgerWrap);
+    }
 
     /* --- Brand (link wrapper + ramz-brand inside) --- */
     const brandLink = document.createElement('a');
