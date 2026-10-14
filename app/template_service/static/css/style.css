@@ -4065,6 +4065,15 @@ content-container {
 }
 .session-revoke:hover { background: rgba(244,63,94,0.14); color: #fecdd3; }
 
+.session-item.is-current {
+  background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(16,185,129,0.02));
+  border-color: rgba(16,185,129,0.22);
+}
+.session-item.is-current .session-icon {
+  background: rgba(16,185,129,0.14);
+  color: #34d399;
+}
+
 /* ---------- Plan card (subscription) ---------- */
 .plan-card {
   display: flex;

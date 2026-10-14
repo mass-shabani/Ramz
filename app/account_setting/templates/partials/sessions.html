@@ -1,4 +1,5 @@
-<ramz-card title="Active Sessions" subtitle="Devices currently signed in">
+<ramz-card title="Active Sessions"
+           subtitle="Devices currently signed in to your account">
   <div slot="icon" class="card-icon icon-soft--sky">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
          stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
@@ -13,26 +14,85 @@
     You do not have permission to manage sessions.
   </p>
   {% else %}
+
+  {% if sessions and sessions|length > 0 %}
+
+  <div style="display: flex; justify-content: space-between; align-items: center;
+              margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+    <p style="color: var(--muted); font-size: 13px; margin: 0;">
+      {{ sessions|length }} active session{{ 's' if sessions|length > 1 else '' }}.
+    </p>
+    {% if sessions|length > 1 %}
+    <button type="button" class="btn-ghost"
+            data-action="revoke-other-sessions"
+            style="height: 36px; padding: 0 14px; border-radius: 10px;
+                   font-size: 12px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+           style="width: 14px; height: 14px;">
+        <path d="M16 17l5-5-5-5"/>
+        <path d="M21 12H9"/>
+        <path d="M12 19H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h7"/>
+      </svg>
+      Log out other sessions
+    </button>
+    {% endif %}
+  </div>
+
   <div class="session-list">
-    <div class="session-item">
+    {% for s in sessions %}
+    {% set is_current = (s.session_id == current_session_id) %}
+    <div class="session-item {% if is_current %}is-current{% endif %}">
+
       <span class="session-icon">
+        {% if 'iOS' in (s.device_label or '') or 'Android' in (s.device_label or '') %}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="6" y="2" width="12" height="20" rx="3"/>
+          <path d="M11 18h2"/>
+        </svg>
+        {% else %}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
           <rect x="2" y="4" width="20" height="14" rx="3"/>
           <path d="M8 20h8"/>
         </svg>
+        {% endif %}
       </span>
+
       <div class="session-body">
         <div class="session-name">
-          Current browser
+          {{ s.device_label or 'Unknown device' }}
+          {% if is_current %}
           <span class="current-badge">CURRENT</span>
+          {% endif %}
         </div>
-        <div class="session-meta">This session · Active now</div>
+        <div class="session-meta">
+          {% if s.ip_address %}{{ s.ip_address }}{% endif %}
+          {% if s.last_seen_at %}
+            {% if s.ip_address %} · {% endif %}
+            Last seen {{ s.last_seen_at }}
+          {% endif %}
+        </div>
       </div>
+
+      {% if not is_current %}
+      <button type="button"
+              class="session-revoke"
+              data-action="revoke-session"
+              data-id="{{ s.session_id }}">
+        Revoke
+      </button>
+      {% endif %}
     </div>
+    {% endfor %}
   </div>
-  <p style="color: var(--muted); font-size: 12px; margin-top: 16px;">
-    Full session management will be added in a future update.
+
+  {% else %}
+  <p style="color: var(--muted); font-size: 13px; margin: 0;">
+    No active session records yet. Sessions are created each time you log in.
   </p>
+  {% endif %}
+
   {% endif %}
 </ramz-card>

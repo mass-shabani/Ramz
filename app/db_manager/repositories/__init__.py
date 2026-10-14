@@ -34,6 +34,7 @@ from .subscription_repository import SubscriptionRepository
 from .bank_repository import BankRepository
 from .bank_account_repository import BankAccountRepository
 from .bank_card_repository import BankCardRepository
+from .session_repository import SessionRepository
 
 __all__ = [
     "PeopleRepository",
@@ -51,4 +52,5 @@ __all__ = [
     "BankRepository",
     "BankAccountRepository",
     "BankCardRepository",
+    "SessionRepository",
 ]

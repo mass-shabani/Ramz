@@ -139,6 +139,25 @@ class LoginWorkflow:
                 level="WARNING",
             )
 
+        # 5.5 — Create a session record for this login
+        session_id = self._generate_session_id()
+        if session_id:
+            try:
+                from ..security.session_utils import describe_device
+                await self._db._session_repo.create(
+                    session_id=session_id,
+                    user_id=user.user_id,
+                    ip_address=ip,
+                    user_agent=user_agent,
+                    device_label=describe_device(user_agent),
+                )
+                user.session_id = session_id
+            except Exception as exc:
+                self._log(
+                    f"Failed to create session record: {exc}",
+                    level="WARNING",
+                )
+
         user.password_hash = None
         return user
 
@@ -158,6 +177,13 @@ class LoginWorkflow:
                 username, password, ip, user_agent
             )
         except LoginError:
+            return None
+
+    def _generate_session_id(self) -> Optional[str]:
+        try:
+            from ..security.session_utils import generate_session_id
+            return generate_session_id()
+        except Exception:
             return None
 
     # ----------------------------------------------------------

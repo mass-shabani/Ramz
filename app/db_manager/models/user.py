@@ -52,6 +52,9 @@ class User:
     # Populated only when explicitly requested (login flow)
     password_hash: Optional[str] = None
 
+    # Populated only during the login flow (not stored in DB)
+    session_id: Optional[str] = None
+
     enabled_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

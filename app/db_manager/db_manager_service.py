@@ -53,6 +53,7 @@ class DbManagerService:
         from .repositories.bank_repository import BankRepository
         from .repositories.bank_account_repository import BankAccountRepository
         from .repositories.bank_card_repository import BankCardRepository
+        from .repositories.session_repository import SessionRepository
 
         self._user_repo = UserRepository(self, logger)
         self._people_repo = PeopleRepository(self, logger)
@@ -69,6 +70,7 @@ class DbManagerService:
         self._bank_repo = BankRepository(self, logger)
         self._bank_account_repo = BankAccountRepository(self, logger)
         self._bank_card_repo = BankCardRepository(self, logger)
+        self._session_repo = SessionRepository(self, logger)
 
         # ----------------------------------------------------------
         # Security
@@ -355,6 +357,26 @@ class DbManagerService:
         return await self._profile_workflow.set_bank_card_enabled(
             user_id, card_id, enabled
         )
+
+    # ============================================================
+    # Sessions
+    # ============================================================
+    async def list_active_sessions(self, user_id):
+        return await self._session_repo.list_active_for_user(user_id)
+
+    async def count_active_sessions(self, user_id):
+        return await self._session_repo.count_active_for_user(user_id)
+
+    async def revoke_session(self, session_id):
+        return await self._session_repo.revoke(session_id)
+
+    async def revoke_all_sessions(self, user_id, except_session_id=None):
+        return await self._session_repo.revoke_all_for_user(
+            user_id, except_session_id=except_session_id
+        )
+
+    async def get_session(self, session_id):
+        return await self._session_repo.get_by_id(session_id)
 
     # ============================================================
     # Settings

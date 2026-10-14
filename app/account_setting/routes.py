@@ -1336,6 +1336,86 @@ def register_routes(
 
         return _json_ok(msg, section="banking", reload_section=True)
 
+    # ------------------------------------------------------------
+    # Session management
+    # ------------------------------------------------------------
+    @http_api.post("/account/settings/sessions/revoke",
+                   response_class=http_api.HTMLResponse)
+    async def revoke_session(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return _json_error("unauthorized", "Session expired.")
+
+        try:
+            allowed = await db_service.has_access(user_id, "account.sessions.manage")
+        except Exception:
+            allowed = False
+        if not allowed:
+            return _json_error("no_permission", "You do not have permission.")
+
+        form = await request.form()
+        target_session_id = (form.get("session_id") or "").strip()
+        if not target_session_id:
+            return _json_error("invalid_data", "Missing session ID.")
+
+        current_session_id = request.session.get("session_id")
+        if target_session_id == current_session_id:
+            return _json_error(
+                "is_current",
+                "You cannot revoke your current session from here. "
+                "Use Log Out instead."
+            )
+
+        try:
+            target = await db_service.get_session(target_session_id)
+        except Exception:
+            target = None
+        if not target or int(target.get("user_id", 0)) != user_id:
+            return _json_error("not_found", "Session not found.")
+
+        try:
+            ok = await db_service.revoke_session(target_session_id)
+        except Exception:
+            ok = False
+
+        if not ok:
+            return _json_error("revoke_failed", "Could not revoke this session.")
+
+        return _json_ok(
+            "Session revoked.",
+            section="sessions",
+            reload_section=True,
+        )
+
+    @http_api.post("/account/settings/sessions/revoke-others",
+                   response_class=http_api.HTMLResponse)
+    async def revoke_other_sessions(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return _json_error("unauthorized", "Session expired.")
+
+        try:
+            allowed = await db_service.has_access(user_id, "account.sessions.manage")
+        except Exception:
+            allowed = False
+        if not allowed:
+            return _json_error("no_permission", "You do not have permission.")
+
+        current_session_id = request.session.get("session_id")
+
+        try:
+            await db_service.revoke_all_sessions(
+                user_id, except_session_id=current_session_id
+            )
+        except Exception:
+            return _json_error("revoke_failed", "Could not revoke other sessions.")
+
+        return _json_ok(
+            "All other sessions have been revoked.",
+            section="sessions",
+            reload_section=True,
+        )
+
     @http_api.post("/account/settings/banking/cards/toggle",
                    response_class=http_api.HTMLResponse)
     async def toggle_bank_card(request: http_api.Request):
@@ -1459,6 +1539,13 @@ def register_routes(
                 extra_context["banks"] = await db_service.list_banks()
             except Exception:
                 extra_context["banks"] = []
+
+        elif section == "sessions":
+            try:
+                extra_context["sessions"] = await db_service.list_active_sessions(user_id)
+            except Exception:
+                extra_context["sessions"] = []
+            extra_context["current_session_id"] = request.session.get("session_id")
 
         # Render
         try:

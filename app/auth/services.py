@@ -81,6 +81,11 @@ class AuthService:
                 "email":     user.email,
                 "phone":     user.phone,
             }
+
+        # Store the session id so we can revoke it on logout
+        if getattr(user, "session_id", None):
+            request.session["session_id"] = user.session_id
+
         return None
 
     # ----------------------------------------------------------
@@ -101,6 +106,14 @@ class AuthService:
                     ip=_get_client_ip(request),
                     user_agent=_get_user_agent(request),
                 )
+            except Exception:
+                pass
+
+        # Revoke the session record if present
+        session_id = request.session.get("session_id")
+        if session_id:
+            try:
+                await self.db.revoke_session(session_id)
             except Exception:
                 pass
 
