@@ -17,7 +17,8 @@
 
     <div class="banking-list">
       {% for acc in bank_accounts %}
-      <div class="banking-account">
+      <div class="banking-account {% if not acc.enabled %}is-disabled{% endif %}">
+
         <div class="banking-account-head">
           <div class="banking-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -26,8 +27,16 @@
               <path d="M5 9v12M19 9v12M9 21V9M15 21V9M3 21h18"/>
             </svg>
           </div>
+
           <div class="banking-body">
-            <div class="banking-name">{{ acc.bank_name }} · {{ acc.account_name }}</div>
+            <div class="banking-name">
+              {{ acc.bank_name }} · {{ acc.account_name }}
+              {% if acc.enabled %}
+                <span class="status-badge active">Active</span>
+              {% else %}
+                <span class="status-badge inactive">Inactive</span>
+              {% endif %}
+            </div>
             <div class="banking-meta">
               <span class="mono">•••• {{ acc.account_number[-4:] }}</span>
               {% if acc.iban %}
@@ -35,7 +44,32 @@
               {% endif %}
             </div>
           </div>
+
           <div class="channel-actions">
+            <button type="button"
+                    class="channel-action toggle-action {% if acc.enabled %}on{% else %}off{% endif %}"
+                    data-action="toggle-bank-account"
+                    data-id="{{ acc.bank_account_id }}"
+                    data-enabled="{{ '1' if acc.enabled else '0' }}"
+                    data-cards-count="{{ acc.cards|length }}"
+                    title="{{ 'Disable' if acc.enabled else 'Enable' }} account">
+              {% if acc.enabled %}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18.36 6.64A9 9 0 1 1 5.64 6.64"/>
+                <path d="M12 2v6"/>
+              </svg>
+              Disable
+              {% else %}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="m9 12 2 2 4-4"/>
+              </svg>
+              Enable
+              {% endif %}
+            </button>
+
             <button type="button" class="channel-action"
                     data-action="edit-bank-account"
                     data-id="{{ acc.bank_account_id }}"
@@ -43,6 +77,7 @@
                     data-number="{{ acc.account_number }}"
                     data-name="{{ acc.account_name }}"
                     data-iban="{{ acc.iban or '' }}">Edit</button>
+
             <button type="button" class="channel-action danger"
                     data-action="remove-bank-account"
                     data-id="{{ acc.bank_account_id }}">Remove</button>
@@ -52,7 +87,7 @@
         {# Cards under this account #}
         <div class="banking-cards">
           {% for card in acc.cards %}
-          <div class="banking-card">
+          <div class="banking-card {% if not card.enabled %}is-disabled{% endif %}">
             <div class="banking-card-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
                    stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
@@ -60,16 +95,46 @@
                 <path d="M2 10h20"/>
               </svg>
             </div>
+
             <div class="banking-card-body">
               <div class="banking-card-number">
                 <span class="mono">•••• •••• •••• {{ card.card_number[-4:] }}</span>
+                {% if card.enabled %}
+                  <span class="status-badge active small">Active</span>
+                {% else %}
+                  <span class="status-badge inactive small">Inactive</span>
+                {% endif %}
               </div>
               <div class="banking-card-meta">
                 {{ card.card_holder_name }}
                 {% if card.expiry_date %} · Expires {{ card.expiry_date }}{% endif %}
               </div>
             </div>
+
             <div class="channel-actions">
+              <button type="button"
+                      class="channel-action toggle-action {% if card.enabled %}on{% else %}off{% endif %}"
+                      data-action="toggle-bank-card"
+                      data-id="{{ card.bank_card_id }}"
+                      data-enabled="{{ '1' if card.enabled else '0' }}"
+                      title="{{ 'Disable' if card.enabled else 'Enable' }} card">
+                {% if card.enabled %}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18.36 6.64A9 9 0 1 1 5.64 6.64"/>
+                  <path d="M12 2v6"/>
+                </svg>
+                Disable
+                {% else %}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="9"/>
+                  <path d="m9 12 2 2 4-4"/>
+                </svg>
+                Enable
+                {% endif %}
+              </button>
+
               <button type="button" class="channel-action"
                       data-action="edit-bank-card"
                       data-id="{{ card.bank_card_id }}"
@@ -77,6 +142,7 @@
                       data-number="{{ card.card_number }}"
                       data-holder="{{ card.card_holder_name }}"
                       data-expiry="{{ card.expiry_date or '' }}">Edit</button>
+
               <button type="button" class="channel-action danger"
                       data-action="remove-bank-card"
                       data-id="{{ card.bank_card_id }}">Remove</button>
@@ -84,7 +150,7 @@
           </div>
           {% endfor %}
 
-          {# Add-card form for this account #}
+          {# Add-card form #}
           <details class="add-card-block">
             <summary>+ Add Card</summary>
             <form method="post" action="/account/settings/banking/cards/add"
@@ -118,7 +184,7 @@
               <div class="settings-row">
                 <div class="settings-row-label">
                   <div class="label">Expiry Date</div>
-                  <div class="hint">Optional — format YYYY-MM-DD</div>
+                  <div class="hint">Optional</div>
                 </div>
                 <div class="settings-row-control">
                   <div class="settings-field">
@@ -155,11 +221,9 @@
             data-ajax="true" style="margin-top: 14px;">
         <input type="hidden" name="account_id" value="" />
         <div class="settings-rows">
-
           <div class="settings-row">
             <div class="settings-row-label">
               <div class="label">Bank</div>
-              <div class="hint">Choose from the list</div>
             </div>
             <div class="settings-row-control">
               <div class="settings-field">
@@ -172,11 +236,8 @@
               </div>
             </div>
           </div>
-
           <div class="settings-row">
-            <div class="settings-row-label">
-              <div class="label">Account Number</div>
-            </div>
+            <div class="settings-row-label"><div class="label">Account Number</div></div>
             <div class="settings-row-control">
               <div class="settings-field">
                 <input type="text" name="account_number" required
@@ -184,12 +245,8 @@
               </div>
             </div>
           </div>
-
           <div class="settings-row">
-            <div class="settings-row-label">
-              <div class="label">Account Name</div>
-              <div class="hint">Name on the account</div>
-            </div>
+            <div class="settings-row-label"><div class="label">Account Name</div></div>
             <div class="settings-row-control">
               <div class="settings-field">
                 <input type="text" name="account_name" required
@@ -197,10 +254,8 @@
               </div>
             </div>
           </div>
-
           <div class="settings-row">
-            <div class="settings-row-label">
-              <div class="label">IBAN</div>
+            <div class="settings-row-label"><div class="label">IBAN</div>
               <div class="hint">Optional</div>
             </div>
             <div class="settings-row-control">
@@ -209,9 +264,7 @@
               </div>
             </div>
           </div>
-
         </div>
-
         <div class="settings-actions">
           <button type="button" class="btn-ghost"
                   data-action="cancel-bank-account-edit" hidden>Cancel</button>

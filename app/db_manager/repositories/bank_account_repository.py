@@ -38,11 +38,18 @@ class BankAccountRepository:
         )
 
     async def list_by_contact(self, contact_id: int) -> list[dict]:
+        """
+        Return ALL bank accounts for the contact, including disabled ones.
+
+        The settings UI displays enabled and disabled accounts side by
+        side; disabled accounts are marked with a badge but remain
+        fully editable and removable.
+        """
         if not contact_id:
             return []
         return await self._conn().find_many(
             self.TABLE,
-            where={"contact_id": int(contact_id), "enabled": 1},
+            where={"contact_id": int(contact_id)},
         )
 
     # ----------------------------------------------------------
@@ -92,5 +99,17 @@ class BankAccountRepository:
             self._conn(),
             self.TABLE,
             where={"bank_account_id": int(account_id)},
+        )
+        return result_ok(result)
+
+    async def set_enabled(self, account_id: int, enabled: bool) -> bool:
+        """Set the enabled flag on a single account."""
+        if not account_id:
+            return False
+        result = await db_update(
+            self._conn(),
+            self.TABLE,
+            where={"bank_account_id": int(account_id)},
+            values={"enabled": 1 if enabled else 0},
         )
         return result_ok(result)

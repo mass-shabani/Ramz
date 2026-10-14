@@ -3363,6 +3363,200 @@ content-container {
   padding: 4px 16px 16px;
 }
 
+/* ---------- Banking — status badge ---------- */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 999px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.status-badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.status-badge.active {
+  background: rgba(16,185,129,0.14);
+  color: #34d399;
+  border: 1px solid rgba(16,185,129,0.28);
+}
+.status-badge.inactive {
+  background: rgba(148,163,184,0.14);
+  color: #94a3b8;
+  border: 1px solid rgba(148,163,184,0.24);
+}
+.status-badge.small {
+  font-size: 9px;
+  padding: 2px 7px;
+  margin-left: 6px;
+}
+.status-badge.small::before { width: 5px; height: 5px; }
+
+/* ---------- Banking — disabled state (visual only) ---------- */
+.banking-account.is-disabled {
+  opacity: 0.7;
+}
+.banking-account.is-disabled .banking-icon {
+  background: rgba(148,163,184,0.12);
+  color: #94a3b8;
+}
+.banking-card.is-disabled {
+  opacity: 0.7;
+}
+.banking-card.is-disabled .banking-card-icon {
+  background: rgba(148,163,184,0.12);
+  color: #94a3b8;
+}
+
+/* ---------- Banking — toggle button ---------- */
+.channel-action.toggle-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.channel-action.toggle-action svg { width: 13px; height: 13px; }
+.channel-action.toggle-action.on {
+  color: #fbbf24;
+}
+.channel-action.toggle-action.on:hover {
+  background: rgba(245,158,11,0.14);
+  color: #fde68a;
+}
+.channel-action.toggle-action.off {
+  color: #34d399;
+}
+.channel-action.toggle-action.off:hover {
+  background: rgba(16,185,129,0.14);
+  color: #a7f3d0;
+}
+
+/* ---------- Cascade dialog ---------- */
+.cascade-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(3,6,14,0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  transition: opacity .25s;
+}
+.cascade-dialog-backdrop.show {
+  display: flex;
+  opacity: 1;
+}
+.cascade-dialog {
+  width: 100%;
+  max-width: 440px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(40,54,84,0.98), rgba(28,40,66,0.98));
+  border: 1px solid rgba(129,140,248,0.28);
+  box-shadow:
+    0 30px 70px -18px rgba(0,0,0,0.9),
+    0 0 0 1px rgba(129,140,248,0.10);
+  transform: translateY(-10px) scale(.97);
+  transition: transform .3s cubic-bezier(.34,1.3,.64,1);
+}
+.cascade-dialog-backdrop.show .cascade-dialog {
+  transform: translateY(0) scale(1);
+}
+.cascade-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 22px 24px 16px;
+}
+.cascade-dialog-icon {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+  background: rgba(245,158,11,0.16);
+  color: #fbbf24;
+}
+.cascade-dialog-icon svg { width: 22px; height: 22px; }
+.cascade-dialog-text { min-width: 0; flex: 1; }
+.cascade-dialog-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.cascade-dialog-desc {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+.cascade-dialog-desc strong { color: var(--text); font-weight: 600; }
+.cascade-dialog-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 24px 22px;
+}
+.cascade-dialog-actions button {
+  width: 100%;
+  height: 44px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 600;
+  transition: background .18s, border-color .18s, color .18s, transform .12s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.cascade-dialog-actions button:active { transform: scale(.98); }
+
+.cascade-btn-primary {
+  border: 1px solid transparent;
+  color: #fff;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  box-shadow: 0 10px 22px -10px rgba(99,102,241,1);
+}
+.cascade-btn-primary:hover {
+  box-shadow: 0 14px 28px -12px rgba(99,102,241,1);
+}
+
+.cascade-btn-secondary {
+  border: 1px solid rgba(129,140,248,0.30);
+  color: #c7d2fe;
+  background: rgba(99,102,241,0.12);
+}
+.cascade-btn-secondary:hover {
+  background: rgba(99,102,241,0.20);
+  border-color: rgba(129,140,248,0.55);
+  color: #fff;
+}
+
+.cascade-btn-ghost {
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  background: rgba(30,41,66,0.6);
+}
+.cascade-btn-ghost:hover {
+  background: rgba(40,54,84,0.85);
+  border-color: rgba(129,140,248,0.45);
+  color: var(--text);
+}
+
 @media (max-width: 640px) {
   .channel-item { flex-wrap: wrap; }
   .channel-actions { width: 100%; justify-content: flex-end; margin-top: 6px; }

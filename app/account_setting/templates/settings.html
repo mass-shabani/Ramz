@@ -247,6 +247,37 @@
 
       <div class="settings-nav-backdrop" id="settingsNavBackdrop"></div>
 
+      <!-- ============ CASCADE DIALOG (banking toggle) ============ -->
+      <div class="cascade-dialog-backdrop" id="cascadeDialog" role="dialog" aria-modal="true">
+        <div class="cascade-dialog">
+          <div class="cascade-dialog-head">
+            <span class="cascade-dialog-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M12 8v4"/>
+                <path d="M12 16h.01"/>
+              </svg>
+            </span>
+            <div class="cascade-dialog-text">
+              <div class="cascade-dialog-title" id="cascadeTitle">Disable account?</div>
+              <div class="cascade-dialog-desc" id="cascadeDesc"></div>
+            </div>
+          </div>
+          <div class="cascade-dialog-actions">
+            <button type="button" class="cascade-btn-primary" id="cascadeYes">
+              Yes, include all cards
+            </button>
+            <button type="button" class="cascade-btn-secondary" id="cascadeNo">
+              No, just this account
+            </button>
+            <button type="button" class="cascade-btn-ghost" id="cascadeCancel">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+
     </main>
   </div>
 </div>
@@ -943,6 +974,200 @@
 
     btn.remove();
     details.open = false;
+  });
+
+  /* ============================================================
+     Toggle bank card (simple confirm)
+     ============================================================ */
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-action="toggle-bank-card"]');
+    if (!btn) return;
+
+    e.preventDefault();
+    if (btn.disabled) return;
+
+    const id = btn.dataset.id;
+    const currentlyEnabled = btn.dataset.enabled === '1';
+    const newState = !currentlyEnabled;
+    const verb = newState ? 'enable' : 'disable';
+
+    const ok = window.confirm(
+      `Are you sure you want to ${verb} this card?\n\n` +
+      (newState
+        ? 'It will become available for future actions.'
+        : 'It will be marked as inactive. You can re-enable it anytime.')
+    );
+    if (!ok) return;
+
+    btn.disabled = true;
+    startProgress('bank-toggle');
+
+    try {
+      const fd = new FormData();
+      fd.append('card_id', id);
+      fd.append('enabled', newState ? '1' : '0');
+
+      const resp = await fetch('/account/settings/banking/cards/toggle', {
+        method: 'POST',
+        body: fd,
+        credentials: 'same-origin',
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      });
+
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+
+      if (data.status === 'success') {
+        showFlash('success', 'Card updated', data.message);
+        const activeItem = nav ? nav.querySelector('.settings-nav-item.active') : null;
+        const endpoint = activeItem ? activeItem.dataset.endpoint : null;
+        if (endpoint) {
+          window.dispatchEvent(new CustomEvent('ramz:load-content', {
+            detail: { url: endpoint },
+          }));
+        }
+      } else {
+        showFlash('error', 'Update failed', data.message || 'Try again.');
+      }
+    } catch (err) {
+      console.error('[settings] toggle card failed:', err);
+      showFlash('error', 'Network error', 'Could not reach the server.');
+    } finally {
+      btn.disabled = false;
+      endProgress('bank-toggle');
+    }
+  });
+
+  /* ============================================================
+     Toggle bank account (with cascade dialog if has cards)
+     ============================================================ */
+  const cascadeDialog = document.getElementById('cascadeDialog');
+
+  function showCascadeDialog({ title, desc, yesLabel, noLabel }) {
+    return new Promise((resolve) => {
+      if (!cascadeDialog) {
+        resolve('cancel');
+        return;
+      }
+
+      document.getElementById('cascadeTitle').textContent = title;
+      document.getElementById('cascadeDesc').innerHTML = desc;
+
+      const yesBtn    = document.getElementById('cascadeYes');
+      const noBtn     = document.getElementById('cascadeNo');
+      const cancelBtn = document.getElementById('cascadeCancel');
+
+      yesBtn.textContent = yesLabel;
+      noBtn.textContent  = noLabel;
+
+      function cleanup(choice) {
+        cascadeDialog.classList.remove('show');
+        document.body.classList.remove('no-scroll');
+        yesBtn.removeEventListener('click', onYes);
+        noBtn.removeEventListener('click', onNo);
+        cancelBtn.removeEventListener('click', onCancel);
+        cascadeDialog.removeEventListener('click', onBackdrop);
+        document.removeEventListener('keydown', onEsc);
+        resolve(choice);
+      }
+
+      const onYes    = () => cleanup('yes');
+      const onNo     = () => cleanup('no');
+      const onCancel = () => cleanup('cancel');
+      const onEsc    = (e) => { if (e.key === 'Escape') cleanup('cancel'); };
+      const onBackdrop = (e) => { if (e.target === cascadeDialog) cleanup('cancel'); };
+
+      yesBtn.addEventListener('click', onYes);
+      noBtn.addEventListener('click', onNo);
+      cancelBtn.addEventListener('click', onCancel);
+      cascadeDialog.addEventListener('click', onBackdrop);
+      document.addEventListener('keydown', onEsc);
+
+      cascadeDialog.classList.add('show');
+      document.body.classList.add('no-scroll');
+    });
+  }
+
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-action="toggle-bank-account"]');
+    if (!btn) return;
+
+    e.preventDefault();
+    if (btn.disabled) return;
+
+    const id = btn.dataset.id;
+    const currentlyEnabled = btn.dataset.enabled === '1';
+    const newState = !currentlyEnabled;
+    const cardsCount = parseInt(btn.dataset.cardsCount || '0', 10);
+
+    let cascade = false;
+
+    if (cardsCount > 0) {
+      const verb = newState ? 'enable' : 'disable';
+      const verbTitle = newState ? 'Enable' : 'Disable';
+
+      const choice = await showCascadeDialog({
+        title: `${verbTitle} this bank account?`,
+        desc: `This account has <strong>${cardsCount} card${cardsCount > 1 ? 's' : ''}</strong>. ` +
+              `Would you like to ${verb} ${cardsCount > 1 ? 'them' : 'it'} too?`,
+        yesLabel: `Yes, ${verb} account & cards`,
+        noLabel:  `No, ${verb} account only`,
+      });
+
+      if (choice === 'cancel') return;
+      cascade = (choice === 'yes');
+    } else {
+      const verb = newState ? 'enable' : 'disable';
+      const ok = window.confirm(
+        `Are you sure you want to ${verb} this bank account?`
+      );
+      if (!ok) return;
+    }
+
+    btn.disabled = true;
+    startProgress('bank-toggle');
+
+    try {
+      const fd = new FormData();
+      fd.append('account_id', id);
+      fd.append('enabled', newState ? '1' : '0');
+      fd.append('cascade_cards', cascade ? '1' : '0');
+
+      const resp = await fetch('/account/settings/banking/accounts/toggle', {
+        method: 'POST',
+        body: fd,
+        credentials: 'same-origin',
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      });
+
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+
+      if (data.status === 'success') {
+        showFlash('success', 'Account updated', data.message);
+        const activeItem = nav ? nav.querySelector('.settings-nav-item.active') : null;
+        const endpoint = activeItem ? activeItem.dataset.endpoint : null;
+        if (endpoint) {
+          window.dispatchEvent(new CustomEvent('ramz:load-content', {
+            detail: { url: endpoint },
+          }));
+        }
+      } else {
+        showFlash('error', 'Update failed', data.message || 'Try again.');
+      }
+    } catch (err) {
+      console.error('[settings] toggle account failed:', err);
+      showFlash('error', 'Network error', 'Could not reach the server.');
+    } finally {
+      btn.disabled = false;
+      endProgress('bank-toggle');
+    }
   });
 
   /* ============================================================

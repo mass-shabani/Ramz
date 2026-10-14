@@ -34,11 +34,14 @@ class BankCardRepository:
         )
 
     async def list_by_account(self, account_id: int) -> list[dict]:
+        """
+        Return ALL cards for the account, including disabled ones.
+        """
         if not account_id:
             return []
         return await self._conn().find_many(
             self.TABLE,
-            where={"bank_account_id": int(account_id), "enabled": 1},
+            where={"bank_account_id": int(account_id)},
         )
 
     async def list_by_contact(self, contact_id: int) -> list[dict]:
@@ -52,7 +55,7 @@ class BankCardRepository:
             SELECT c.*
             FROM bank_card c
             JOIN bank_account a ON a.bank_account_id = c.bank_account_id
-            WHERE a.contact_id = ? AND c.enabled = 1 AND a.enabled = 1
+            WHERE a.contact_id = ?
         """
         return await self._conn().fetch_all(sql, (int(contact_id),))
 
@@ -98,5 +101,28 @@ class BankCardRepository:
             self._conn(),
             self.TABLE,
             where={"bank_card_id": int(card_id)},
+        )
+        return result_ok(result)
+
+    async def set_enabled(self, card_id: int, enabled: bool) -> bool:
+        """Set the enabled flag on a single card."""
+        if not card_id:
+            return False
+        result = await db_update(
+            self._conn(),
+            self.TABLE,
+            where={"bank_card_id": int(card_id)},
+            values={"enabled": 1 if enabled else 0},
+        )
+        return result_ok(result)
+
+    async def set_enabled_by_account(self, account_id: int, enabled: bool) -> bool:
+        if not account_id:
+            return False
+        result = await db_update(
+            self._conn(),
+            self.TABLE,
+            where={"bank_account_id": int(account_id)},
+            values={"enabled": 1 if enabled else 0},
         )
         return result_ok(result)

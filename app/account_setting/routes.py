@@ -1283,6 +1283,94 @@ def register_routes(
         return _json_ok("Card removed.", section="banking", reload_section=True)
 
     # ------------------------------------------------------------
+    # Banking — enable/disable
+    # ------------------------------------------------------------
+    @http_api.post("/account/settings/banking/accounts/toggle",
+                   response_class=http_api.HTMLResponse)
+    async def toggle_bank_account(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return _json_error("unauthorized", "Session expired.")
+
+        try:
+            allowed = await db_service.has_access(user_id, "account.banking.manage")
+        except Exception:
+            allowed = False
+        if not allowed:
+            return _json_error("no_permission", "You do not have permission.")
+
+        form = await request.form()
+        try:
+            account_id = int(form.get("account_id") or 0)
+        except ValueError:
+            account_id = 0
+        if not account_id:
+            return _json_error("invalid_data", "Missing account ID.")
+
+        enabled_str = (form.get("enabled") or "").strip().lower()
+        enabled = enabled_str in ("1", "true", "yes")
+
+        cascade_str = (form.get("cascade_cards") or "").strip().lower()
+        cascade = cascade_str in ("1", "true", "yes")
+
+        try:
+            ok = await db_service.set_bank_account_enabled(
+                user_id, account_id, enabled, cascade
+            )
+        except Exception:
+            ok = False
+
+        if not ok:
+            return _json_error("update_failed", "Could not update account status.")
+
+        action = "enabled" if enabled else "disabled"
+        msg = f"Bank account {action}."
+        if cascade:
+            msg += " All cards were updated too."
+
+        return _json_ok(msg, section="banking", reload_section=True)
+
+    @http_api.post("/account/settings/banking/cards/toggle",
+                   response_class=http_api.HTMLResponse)
+    async def toggle_bank_card(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return _json_error("unauthorized", "Session expired.")
+
+        try:
+            allowed = await db_service.has_access(user_id, "account.banking.manage")
+        except Exception:
+            allowed = False
+        if not allowed:
+            return _json_error("no_permission", "You do not have permission.")
+
+        form = await request.form()
+        try:
+            card_id = int(form.get("card_id") or 0)
+        except ValueError:
+            card_id = 0
+        if not card_id:
+            return _json_error("invalid_data", "Missing card ID.")
+
+        enabled_str = (form.get("enabled") or "").strip().lower()
+        enabled = enabled_str in ("1", "true", "yes")
+
+        try:
+            ok = await db_service.set_bank_card_enabled(user_id, card_id, enabled)
+        except Exception:
+            ok = False
+
+        if not ok:
+            return _json_error("update_failed", "Could not update card status.")
+
+        action = "enabled" if enabled else "disabled"
+        return _json_ok(
+            f"Card {action}.",
+            section="banking",
+            reload_section=True,
+        )
+
+    # ------------------------------------------------------------
     # POST /account/settings/partials/{section} — partial loader
     # ------------------------------------------------------------
     PARTIAL_TEMPLATES = {

@@ -845,6 +845,95 @@ class ProfileWorkflow:
             self._log(f"remove_bank_card failed: {exc}", level="ERROR")
             return False
 
+    # ============================================================
+    # Banking — enable/disable
+    # ============================================================
+    async def set_bank_account_enabled(
+        self,
+        user_id: int,
+        account_id: int,
+        enabled: bool,
+        cascade_cards: bool = False,
+    ) -> bool:
+        """
+        Enable or disable a bank account.
+
+        Parameters
+        ----------
+        cascade_cards : bool
+            If True, also set the same enabled state on every card
+            belonging to this account.
+
+        Returns True on success.
+        """
+        if not user_id or not account_id:
+            return False
+
+        user = await self._db._user_repo.get_by_id(user_id)
+        if not user:
+            return False
+
+        people = await self._db._people_repo.get_by_id(user.people_id)
+        contact_id = int(people["contact_id"]) if people else 0
+        if not contact_id:
+            return False
+
+        account = await self._db._bank_account_repo.get_by_id(account_id)
+        if not account or int(account.get("contact_id", 0)) != contact_id:
+            return False
+
+        try:
+            ok = await self._db._bank_account_repo.set_enabled(
+                account_id, enabled
+            )
+            if not ok:
+                return False
+
+            if cascade_cards:
+                await self._db._bank_card_repo.set_enabled_by_account(
+                    account_id, enabled
+                )
+
+            return True
+        except Exception as exc:
+            self._log(f"set_bank_account_enabled failed: {exc}", level="ERROR")
+            return False
+
+    async def set_bank_card_enabled(
+        self,
+        user_id: int,
+        card_id: int,
+        enabled: bool,
+    ) -> bool:
+        """Enable or disable a single bank card."""
+        if not user_id or not card_id:
+            return False
+
+        user = await self._db._user_repo.get_by_id(user_id)
+        if not user:
+            return False
+
+        people = await self._db._people_repo.get_by_id(user.people_id)
+        contact_id = int(people["contact_id"]) if people else 0
+        if not contact_id:
+            return False
+
+        card = await self._db._bank_card_repo.get_by_id(card_id)
+        if not card:
+            return False
+
+        account = await self._db._bank_account_repo.get_by_id(
+            card.get("bank_account_id")
+        )
+        if not account or int(account.get("contact_id", 0)) != contact_id:
+            return False
+
+        try:
+            return await self._db._bank_card_repo.set_enabled(card_id, enabled)
+        except Exception as exc:
+            self._log(f"set_bank_card_enabled failed: {exc}", level="ERROR")
+            return False
+
 
 # --------------------------------------------------------------
 # Helpers

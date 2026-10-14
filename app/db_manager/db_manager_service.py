@@ -344,6 +344,18 @@ class DbManagerService:
     async def remove_bank_card(self, user_id, card_id):
         return await self._profile_workflow.remove_bank_card(user_id, card_id)
 
+    async def set_bank_account_enabled(
+        self, user_id, account_id, enabled, cascade_cards=False
+    ):
+        return await self._profile_workflow.set_bank_account_enabled(
+            user_id, account_id, enabled, cascade_cards
+        )
+
+    async def set_bank_card_enabled(self, user_id, card_id, enabled):
+        return await self._profile_workflow.set_bank_card_enabled(
+            user_id, card_id, enabled
+        )
+
     # ============================================================
     # Settings
     # ============================================================
