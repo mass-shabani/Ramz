@@ -49,6 +49,8 @@ class DbManagerService:
         from .repositories.email_repository import EmailRepository
         from .repositories.phone_repository import PhoneRepository
         from .repositories.address_repository import AddressRepository
+        from .repositories.address_type_repository import AddressTypeRepository
+        from .repositories.phone_type_repository import PhoneTypeRepository
         from .repositories.subscription_repository import SubscriptionRepository
         from .repositories.bank_repository import BankRepository
         from .repositories.bank_account_repository import BankAccountRepository
@@ -66,6 +68,8 @@ class DbManagerService:
         self._email_repo = EmailRepository(self, logger)
         self._phone_repo = PhoneRepository(self, logger)
         self._address_repo = AddressRepository(self, logger)
+        self._address_type_repo = AddressTypeRepository(self, logger)
+        self._phone_type_repo = PhoneTypeRepository(self, logger)
         self._subscription_repo = SubscriptionRepository(self, logger)
         self._bank_repo = BankRepository(self, logger)
         self._bank_account_repo = BankAccountRepository(self, logger)
@@ -308,6 +312,14 @@ class DbManagerService:
     async def list_banks(self):
         """Return all enabled banks (for the selector)."""
         return await self._profile_workflow.list_banks()
+
+    async def list_address_types(self):
+        """Return all enabled address types."""
+        return await self._profile_workflow.list_address_types()
+
+    async def list_phone_types(self):
+        """Return all enabled phone types."""
+        return await self._profile_workflow.list_phone_types()
 
     async def list_bank_accounts(self, user_id):
         """Return all bank accounts + their cards for the user."""

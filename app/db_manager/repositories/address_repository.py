@@ -57,24 +57,20 @@ class AddressRepository:
         state_province: Optional[str] = None,
         postal_code: Optional[str] = None,
         country: str = "Iran",
-        address_type: str = "home",
+        address_type_id: int = 1,
     ) -> Optional[int]:
         if not contact_id or not address_line1:
             return None
 
-        allowed = {"home", "work", "billing", "shipping"}
-        if address_type not in allowed:
-            address_type = "home"
-
         result = await db_insert(self._conn(), self.TABLE, {
-            "contact_id":     int(contact_id),
-            "address_line1":  address_line1,
-            "address_line2":  address_line2,
-            "city":           city,
-            "state_province": state_province,
-            "postal_code":    postal_code,
-            "country":        country,
-            "address_type":   address_type,
+            "contact_id":       int(contact_id),
+            "address_line1":    address_line1,
+            "address_line2":    address_line2,
+            "city":             city,
+            "state_province":   state_province,
+            "postal_code":      postal_code,
+            "country":          country,
+            "address_type_id":  int(address_type_id) if address_type_id else 1,
         })
         return result_last_id(result)
 
@@ -84,7 +80,7 @@ class AddressRepository:
 
         allowed = {
             "address_line1", "address_line2", "city",
-            "state_province", "postal_code", "country", "address_type",
+            "state_province", "postal_code", "country", "address_type_id",
         }
         values = {k: v for k, v in fields.items() if k in allowed}
         if not values:
@@ -107,3 +103,19 @@ class AddressRepository:
             where={"address_id": int(address_id)},
         )
         return result_ok(result)
+
+    async def list_by_contact_with_type(self, contact_id: int) -> list[dict]:
+        """
+        Return addresses for the contact, each enriched with `type_name`
+        from the address_type lookup table.
+        """
+        if not contact_id:
+            return []
+        sql = """
+            SELECT a.*, at.type_name
+            FROM post_address a
+            JOIN address_type at ON at.address_type_id = a.address_type_id
+            WHERE a.contact_id = ?
+            ORDER BY a.address_id ASC
+        """
+        return await self._conn().fetch_all(sql, (int(contact_id),))

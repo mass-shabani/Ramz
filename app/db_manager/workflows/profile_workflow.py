@@ -256,13 +256,17 @@ class ProfileWorkflow:
         for e in emails:
             e["is_primary"] = (int(e.get("email_id") or 0) == (user.email_id or 0))
 
-        # Phones
-        phones = await self._db._phone_repo.list_by_contact(contact_id)
+        # Phones (with type name)
+        phones = await self._db._phone_repo.list_by_contact_with_type(contact_id)
         for p in phones:
             p["is_primary"] = (int(p.get("phone_id") or 0) == (user.phone_id or 0))
+            # Normalize field name for backward-compat with template
+            p["phone_type"] = p.get("type_name") or "mobile"
 
-        # Addresses — no primary concept here, they are a plain list
-        addresses = await self._db._address_repo.list_by_contact(contact_id)
+        # Addresses (with type name)
+        addresses = await self._db._address_repo.list_by_contact_with_type(contact_id)
+        for a in addresses:
+            a["address_type"] = a.get("type_name") or "home"
 
         return {
             "emails":    emails,
@@ -410,11 +414,24 @@ class ProfileWorkflow:
         if not contact_id:
             return False
 
+        # Resolve type name → id (fallback to "mobile")
+        type_row = None
+        try:
+            type_row = await self._db._phone_type_repo.get_by_name(phone_type)
+        except Exception:
+            pass
+        if not type_row:
+            try:
+                type_row = await self._db._phone_type_repo.get_by_name("mobile")
+            except Exception:
+                pass
+        phone_type_id = int(type_row["phone_type_id"]) if type_row else 1
+
         try:
             new_id = await self._db._phone_repo.create(
                 contact_id=contact_id,
                 phone_number=phone_number,
-                phone_type=phone_type,
+                phone_type_id=phone_type_id,
                 is_verified=False,
             )
             return bool(new_id)
@@ -512,9 +529,18 @@ class ProfileWorkflow:
         if not contact_id:
             return False
 
-        allowed_types = {"home", "work", "billing", "shipping"}
-        if address_type not in allowed_types:
-            address_type = "home"
+        # Resolve type name → id (fallback to "home")
+        type_row = None
+        try:
+            type_row = await self._db._address_type_repo.get_by_name(address_type)
+        except Exception:
+            pass
+        if not type_row:
+            try:
+                type_row = await self._db._address_type_repo.get_by_name("home")
+            except Exception:
+                pass
+        address_type_id = int(type_row["address_type_id"]) if type_row else 1
 
         try:
             new_id = await self._db._address_repo.create(
@@ -525,7 +551,7 @@ class ProfileWorkflow:
                 state_province=state_province,
                 postal_code=postal_code,
                 country=country,
-                address_type=address_type,
+                address_type_id=address_type_id,
             )
             return bool(new_id)
         except Exception as exc:
@@ -556,6 +582,17 @@ class ProfileWorkflow:
         target = await self._db._address_repo.get_by_id(address_id)
         if not target or int(target.get("contact_id", 0)) != contact_id:
             return False
+
+        # Convert address_type name → id if present
+        if "address_type" in data:
+            type_name = data.pop("address_type")
+            type_row = None
+            try:
+                type_row = await self._db._address_type_repo.get_by_name(type_name)
+            except Exception:
+                pass
+            if type_row:
+                data["address_type_id"] = int(type_row["address_type_id"])
 
         try:
             return await self._db._address_repo.update(address_id, **data)
@@ -601,6 +638,22 @@ class ProfileWorkflow:
             return await self._db._bank_repo.list_enabled()
         except Exception as exc:
             self._log(f"list_banks failed: {exc}", level="ERROR")
+            return []
+
+    async def list_address_types(self) -> list[dict]:
+        """Return all enabled address types for the selector."""
+        try:
+            return await self._db._address_type_repo.list_enabled()
+        except Exception as exc:
+            self._log(f"list_address_types failed: {exc}", level="ERROR")
+            return []
+
+    async def list_phone_types(self) -> list[dict]:
+        """Return all enabled phone types for the selector."""
+        try:
+            return await self._db._phone_type_repo.list_enabled()
+        except Exception as exc:
+            self._log(f"list_phone_types failed: {exc}", level="ERROR")
             return []
 
     # ============================================================

@@ -48,21 +48,17 @@ class PhoneRepository:
         self,
         contact_id: int,
         phone_number: str,
-        phone_type: str = "mobile",
+        phone_type_id: int = 1,
         is_verified: bool = False,
     ) -> Optional[int]:
         if not contact_id or not phone_number:
             return None
 
-        allowed = {"mobile", "home", "work", "fax"}
-        if phone_type not in allowed:
-            phone_type = "mobile"
-
         result = await db_insert(self._conn(), self.TABLE, {
-            "contact_id":   int(contact_id),
-            "phone_number": phone_number,
-            "phone_type":   phone_type,
-            "is_verified":  1 if is_verified else 0,
+            "contact_id":    int(contact_id),
+            "phone_number":  phone_number,
+            "phone_type_id": int(phone_type_id) if phone_type_id else 1,
+            "is_verified":   1 if is_verified else 0,
         })
         return result_last_id(result)
 
@@ -101,3 +97,19 @@ class PhoneRepository:
             where={"phone_id": int(phone_id)},
         )
         return result_ok(result)
+
+    async def list_by_contact_with_type(self, contact_id: int) -> list[dict]:
+        """
+        Return phones for the contact, each enriched with `type_name`
+        from the phone_type lookup table.
+        """
+        if not contact_id:
+            return []
+        sql = """
+            SELECT p.*, pt.type_name
+            FROM phone p
+            JOIN phone_type pt ON pt.phone_type_id = p.phone_type_id
+            WHERE p.contact_id = ?
+            ORDER BY p.phone_id ASC
+        """
+        return await self._conn().fetch_all(sql, (int(contact_id),))
