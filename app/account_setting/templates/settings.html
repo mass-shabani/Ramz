@@ -584,7 +584,7 @@
     const id = btn.dataset.id;
     if (!id) return;
 
-    // Confirmation for destructive actions
+    // Destructive actions: ask for extra confirmation first
     const appDialog = document.getElementById('appDialog');
     if (action.startsWith('remove-')) {
       const ok = await appDialog.confirm({
@@ -597,6 +597,28 @@
       });
       if (!ok) return;
     }
+
+    if (action === 'revoke-session') {
+      const ok = await appDialog.confirm({
+        title: 'Revoke this session?',
+        message: 'That device will be signed out immediately.',
+        confirmLabel: 'Revoke',
+        cancelLabel: 'Cancel',
+        variant: 'danger',
+        icon: 'warning',
+      });
+      if (!ok) return;
+    }
+
+    // Now ask for the password (for all these sensitive actions)
+    const password = await appDialog.passwordConfirm({
+      title: 'Confirm with password',
+      message: 'Enter your account password to confirm this action.',
+      confirmLabel: 'Confirm',
+      cancelLabel: 'Cancel',
+      icon: 'lock',
+    });
+    if (!password) return;
 
     // Map action → endpoint + param name
     const map = {
@@ -618,6 +640,7 @@
     try {
       const formData = new FormData();
       formData.append(cfg.param, id);
+      formData.append('password', password);
 
       const resp = await fetch(cfg.url, {
         method: 'POST',
@@ -632,7 +655,7 @@
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
 
-        if (data.status === 'success') {
+      if (data.status === 'success') {
         showFlash('success', 'Changes saved', data.message);
 
         if (data.user_update) {
@@ -649,20 +672,21 @@
             detail: { url: endpoint },
           }));
         }
+      } else if (data.code === 'invalid_password') {
+        await appDialog.alert({
+          title: 'Action not allowed',
+          message: data.message || 'The password you entered is incorrect.',
+          closeLabel: 'Got it',
+          icon: 'danger',
+        });
+      } else if (data.code === 'password_required') {
+        await appDialog.alert({
+          title: 'Password required',
+          message: data.message,
+          closeLabel: 'OK',
+          icon: 'warning',
+        });
       } else {
-        // Additional confirmation for revoking a session
-        if (action === 'revoke-session') {
-          const appDialog = document.getElementById('appDialog');
-          const ok = await appDialog.confirm({
-            title: 'Revoke this session?',
-            message: 'That device will be signed out immediately.',
-            confirmLabel: 'Revoke',
-            cancelLabel: 'Cancel',
-            variant: 'danger',
-            icon: 'warning',
-          });
-          if (!ok) return;
-        }
         // Special-case: bank account with cards → explicit dialog
         const appDialog = document.getElementById('appDialog');
         if (data.code === 'has_cards') {
@@ -1013,6 +1037,15 @@
     });
     if (!ok) return;
 
+    const password = await appDialog.passwordConfirm({
+      title: 'Confirm with password',
+      message: 'Enter your account password to confirm this action.',
+      confirmLabel: 'Confirm',
+      cancelLabel: 'Cancel',
+      icon: 'lock',
+    });
+    if (!password) return;
+
     btn.disabled = true;
     startProgress('bank-toggle');
 
@@ -1020,6 +1053,7 @@
       const fd = new FormData();
       fd.append('card_id', id);
       fd.append('enabled', newState ? '1' : '0');
+      fd.append('password', password);
 
       const resp = await fetch('/account/settings/banking/cards/toggle', {
         method: 'POST',
@@ -1043,6 +1077,13 @@
             detail: { url: endpoint },
           }));
         }
+      } else if (data.code === 'invalid_password') {
+        await appDialog.alert({
+          title: 'Action not allowed',
+          message: data.message || 'The password you entered is incorrect.',
+          closeLabel: 'Got it',
+          icon: 'danger',
+        });
       } else {
         showFlash('error', 'Update failed', data.message || 'Try again.');
       }
@@ -1104,6 +1145,15 @@
       if (!ok) return;
     }
 
+    const password = await appDialog.passwordConfirm({
+      title: 'Confirm with password',
+      message: 'Enter your account password to confirm this action.',
+      confirmLabel: 'Confirm',
+      cancelLabel: 'Cancel',
+      icon: 'lock',
+    });
+    if (!password) return;
+
     btn.disabled = true;
     startProgress('bank-toggle');
 
@@ -1112,6 +1162,7 @@
       fd.append('account_id', id);
       fd.append('enabled', newState ? '1' : '0');
       fd.append('cascade_cards', cascade ? '1' : '0');
+      fd.append('password', password);
 
       const resp = await fetch('/account/settings/banking/accounts/toggle', {
         method: 'POST',
@@ -1135,6 +1186,13 @@
             detail: { url: endpoint },
           }));
         }
+      } else if (data.code === 'invalid_password') {
+        await appDialog.alert({
+          title: 'Action not allowed',
+          message: data.message,
+          closeLabel: 'Got it',
+          icon: 'danger',
+        });
       } else {
         showFlash('error', 'Update failed', data.message || 'Try again.');
       }
@@ -1169,12 +1227,24 @@
     });
     if (!ok) return;
 
+    const password = await appDialog.passwordConfirm({
+      title: 'Confirm with password',
+      message: 'Enter your account password to confirm this action.',
+      confirmLabel: 'Confirm',
+      cancelLabel: 'Cancel',
+      icon: 'lock',
+    });
+    if (!password) return;
+
     btn.disabled = true;
     startProgress('sessions');
 
     try {
+      const fd = new FormData();
+      fd.append('password', password);
       const resp = await fetch('/account/settings/sessions/revoke-others', {
         method: 'POST',
+        body: fd,
         credentials: 'same-origin',
         headers: {
           'Accept': 'application/json',
@@ -1193,6 +1263,13 @@
             detail: { url: endpoint },
           }));
         }
+      } else if (data.code === 'invalid_password') {
+        await appDialog.alert({
+          title: 'Action not allowed',
+          message: data.message,
+          closeLabel: 'Got it',
+          icon: 'danger',
+        });
       } else {
         showFlash('error', 'Update failed', data.message || 'Try again.');
       }

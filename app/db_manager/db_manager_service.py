@@ -385,6 +385,33 @@ class DbManagerService:
         """
         return await self._session_repo.is_valid(session_id)
 
+    async def verify_current_user_password(self, user_id, password):
+        """
+        Verify that the given plaintext password matches the current
+        user's stored hash. Used for sensitive actions like banking
+        changes or session revocation.
+
+        Returns True if the password is correct.
+        """
+        if not user_id or not password:
+            return False
+
+        try:
+            user = await self._user_repo.get_by_id(
+                user_id, include_password=True
+            )
+        except Exception:
+            return False
+
+        if not user or not user.password_hash:
+            return False
+
+        try:
+            from .security.password import verify_password
+            return verify_password(password, user.password_hash)
+        except Exception:
+            return False
+
     # ============================================================
     # Settings
     # ============================================================

@@ -4,28 +4,21 @@ import { defineComponent } from '../_base.js';
  * <ramz-dialog>
  *
  * Promise-based modal dialog for confirmations, choices, and messages.
- * Replaces native window.confirm(), window.alert() and custom
- * inline dialogs with a consistent, styled UI.
  *
  * Public API:
- *   • ask({title, desc, buttons, cancelValue, icon}) -> Promise<string>
- *   • confirm({title, message, confirmLabel, cancelLabel, variant, icon}) -> Promise<bool>
- *   • alert({title, message, closeLabel, icon}) -> Promise<void>
+ *   • ask({...})                     -> Promise<string>       (button value)
+ *   • confirm({...})                 -> Promise<bool>
+ *   • alert({...})                   -> Promise<void>
+ *   • passwordConfirm({...})         -> Promise<string|null>  (password or null)
  *
- * Buttons format:
- *   { value: string, label: string, variant: 'primary'|'secondary'|'ghost'|'danger' }
- *
- * Only one dialog can be open at a time. Calling ask() while another
- * dialog is open rejects the promise.
- *
- * Note on `desc`: it is injected as HTML and must be trusted (our own
- * code produces it). Do not interpolate user-provided strings here.
+ * Only one dialog can be open at a time.
  */
 class RamzDialog extends HTMLElement {
   #resolver = null;
   #busy = false;
   #refs = {};
   #cancelValue = 'cancel';
+  #passwordInput = null;
 
   connectedCallback() {
     this._render();
@@ -54,6 +47,7 @@ class RamzDialog extends HTMLElement {
     return new Promise((resolve) => {
       this.#busy = true;
       this.#resolver = resolve;
+      this._resetPasswordMode();
       this._populate({ title, desc, buttons, cancelValue, icon });
       this._show();
     });
@@ -96,6 +90,56 @@ class RamzDialog extends HTMLElement {
     });
   }
 
+  /**
+   * Show a dialog with a password input. The promise resolves with
+   * the password string (on confirm) or null (on cancel/escape).
+   */
+  passwordConfirm({
+    title = 'Confirm with password',
+    message = '',
+    confirmLabel = 'Confirm',
+    cancelLabel = 'Cancel',
+    icon = 'warning',
+  } = {}) {
+    if (this.#busy) {
+      return Promise.resolve(null);
+    }
+
+    return new Promise((resolve) => {
+      this.#busy = true;
+      this.#resolver = (value) => resolve(value);
+
+      // Enable password mode
+      this.#refs.body.hidden = false;
+      this.#refs.body.innerHTML = `
+        <input type="password"
+               class="cascade-dialog-password-input"
+               autocomplete="current-password"
+               placeholder="Enter your password" />
+      `;
+      this.#passwordInput = this.#refs.body.querySelector('input');
+      this.#passwordInput.addEventListener('keydown', this._onPasswordKey);
+
+      this._populate({
+        title,
+        desc: message,
+        icon,
+        buttons: [
+          { value: '__password__', label: confirmLabel, variant: 'primary' },
+          { value: '__cancel__',   label: cancelLabel,  variant: 'ghost' },
+        ],
+        cancelValue: '__cancel__',
+      });
+
+      this._show();
+
+      // Autofocus the input after the transition begins
+      setTimeout(() => {
+        this.#passwordInput && this.#passwordInput.focus();
+      }, 200);
+    });
+  }
+
   close(value = 'cancel') {
     this._resolve(value);
   }
@@ -114,6 +158,7 @@ class RamzDialog extends HTMLElement {
               <div class="cascade-dialog-desc" data-role="desc"></div>
             </div>
           </div>
+          <div class="cascade-dialog-body" data-role="body" hidden></div>
           <div class="cascade-dialog-actions" data-role="actions"></div>
         </div>
       </div>
@@ -126,6 +171,7 @@ class RamzDialog extends HTMLElement {
       icon:     this.querySelector('[data-role="icon"]'),
       title:    this.querySelector('[data-role="title"]'),
       desc:     this.querySelector('[data-role="desc"]'),
+      body:     this.querySelector('[data-role="body"]'),
       actions:  this.querySelector('[data-role="actions"]'),
     };
   }
@@ -150,19 +196,36 @@ class RamzDialog extends HTMLElement {
     }
   }
 
+  _resetPasswordMode() {
+    if (this.#passwordInput) {
+      this.#passwordInput.removeEventListener('keydown', this._onPasswordKey);
+      this.#passwordInput = null;
+    }
+    if (this.#refs.body) {
+      this.#refs.body.hidden = true;
+      this.#refs.body.innerHTML = '';
+    }
+  }
+
+  _onPasswordKey = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      this._resolve('__password__');
+    }
+  };
+
   _populate({ title, desc, buttons, cancelValue, icon }) {
     this.#cancelValue = cancelValue || 'cancel';
 
     this.#refs.title.textContent = title || '';
-    // Trusted HTML — only our own code provides it
     this.#refs.desc.innerHTML = desc || '';
 
-    // Icon
     const ICONS = {
       warning: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4"/><path d="M12 16h.01"/>',
       danger:  '<path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>',
       info:    '<circle cx="12" cy="12" r="9"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
       success: '<circle cx="12" cy="12" r="9"/><path d="m9 12 2 2 4-4"/>',
+      lock:    '<rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
     };
     const svgPath = ICONS[icon] || ICONS.warning;
     this.#refs.icon.innerHTML = `
@@ -172,11 +235,9 @@ class RamzDialog extends HTMLElement {
       </svg>
     `;
 
-    // Icon color variant
-    this.#refs.icon.classList.remove('is-warning', 'is-danger', 'is-info', 'is-success');
+    this.#refs.icon.classList.remove('is-warning', 'is-danger', 'is-info', 'is-success', 'is-lock');
     this.#refs.icon.classList.add(`is-${icon || 'warning'}`);
 
-    // Buttons
     this.#refs.actions.innerHTML = '';
     const list = (buttons && buttons.length)
       ? buttons
@@ -204,10 +265,41 @@ class RamzDialog extends HTMLElement {
 
   _resolve(value) {
     if (!this.#busy) return;
+
     const resolver = this.#resolver;
     this.#resolver = null;
     this.#busy = false;
+
+    // Special password-mode values
+    if (value === '__password__') {
+      const pwd = this.#passwordInput ? this.#passwordInput.value : '';
+      if (!pwd || !pwd.trim()) {
+        // Don't close — user pressed confirm with empty input
+        this.#busy = true;
+        this.#resolver = resolver;
+        if (this.#passwordInput) {
+          this.#passwordInput.classList.add('is-invalid');
+          this.#passwordInput.focus();
+          setTimeout(() => this.#passwordInput && this.#passwordInput.classList.remove('is-invalid'), 800);
+        }
+        return;
+      }
+      this._hide();
+      this._resetPasswordMode();
+      if (resolver) resolver(pwd);
+      return;
+    }
+
+    if (value === '__cancel__') {
+      this._hide();
+      this._resetPasswordMode();
+      if (resolver) resolver(null);
+      return;
+    }
+
+    // Normal mode
     this._hide();
+    this._resetPasswordMode();
     if (resolver) resolver(value);
   }
 }

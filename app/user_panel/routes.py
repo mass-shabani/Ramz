@@ -66,7 +66,7 @@ def _initials(name: str) -> str:
 # ============================================================
 # Session guard
 # ============================================================
-def _check_session(request, db_service, auth_service, logger):
+async def _check_session(request, db_service, auth_service, logger):
     """
     Return None if the session is valid.
     Return a response (RedirectResponse or JSON 401) if not.

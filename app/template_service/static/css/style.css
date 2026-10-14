@@ -3510,6 +3510,43 @@ content-container {
   color: var(--text-dim);
 }
 .cascade-dialog-desc strong { color: var(--text); font-weight: 600; }
+
+/* Dialog body (password input) */
+.cascade-dialog-body {
+  padding: 0 24px 16px;
+}
+.cascade-dialog-password-input {
+  width: 100%;
+  height: 48px;
+  padding: 0 15px;
+  border-radius: 13px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--field-bg);
+  border: 1px solid var(--field-border);
+  outline: none;
+  transition: border-color .2s, box-shadow .2s, background .2s;
+}
+.cascade-dialog-password-input::placeholder {
+  color: #5f6b84;
+}
+.cascade-dialog-password-input:focus {
+  background: rgba(30, 42, 70, 0.85);
+  border-color: rgba(99, 102, 241, 0.75);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+}
+.cascade-dialog-password-input.is-invalid {
+  border-color: rgba(244, 63, 94, 0.65);
+  background: rgba(52, 22, 34, 0.55);
+  box-shadow: 0 0 0 4px rgba(244, 63, 94, 0.12);
+}
+
+/* Icon color variant for lock */
+.cascade-dialog-icon.is-lock {
+  background: rgba(99,102,241,0.16);
+  color: #a5b4fc;
+}
 .cascade-dialog-actions {
   display: flex;
   flex-direction: column;

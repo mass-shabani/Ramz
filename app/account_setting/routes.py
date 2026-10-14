@@ -334,6 +334,34 @@ def register_routes(
                 ip = client.host
         return ip, ua
 
+    async def _require_password(form, user_id):
+        """
+        Verify that the password field in `form` matches the current
+        user's stored password.
+
+        Returns None on success, or a JSON error response on failure.
+        """
+        password = (form.get("password") or "").strip()
+        if not password:
+            return _json_error(
+                "password_required",
+                "Please enter your password to confirm this action."
+            )
+
+        try:
+            ok = await db_service.verify_current_user_password(user_id, password)
+        except Exception:
+            ok = False
+
+        if not ok:
+            return _json_error(
+                "invalid_password",
+                "The password you entered is incorrect. "
+                "The action was not performed."
+            )
+
+        return None
+
     def _wants_json(request):
         """Return True if the request explicitly accepts JSON."""
         headers = getattr(request, "headers", None)
@@ -1062,6 +1090,11 @@ def register_routes(
             return _json_error("no_permission", "You do not have permission.")
 
         form = await request.form()
+
+        err = await _require_password(form, user_id)
+        if err:
+            return err
+
         bank_id_str = (form.get("bank_id") or "").strip()
         account_number = (form.get("account_number") or "").strip()
         account_name = (form.get("account_name") or "").strip()
@@ -1104,6 +1137,11 @@ def register_routes(
             return _json_error("no_permission", "You do not have permission.")
 
         form = await request.form()
+
+        err = await _require_password(form, user_id)
+        if err:
+            return err
+
         try:
             account_id = int(form.get("account_id") or 0)
         except ValueError:
@@ -1155,6 +1193,11 @@ def register_routes(
             return _json_error("no_permission", "You do not have permission.")
 
         form = await request.form()
+
+        err = await _require_password(form, user_id)
+        if err:
+            return err
+
         try:
             account_id = int(form.get("account_id") or 0)
         except ValueError:
@@ -1196,6 +1239,11 @@ def register_routes(
             return _json_error("no_permission", "You do not have permission.")
 
         form = await request.form()
+
+        err = await _require_password(form, user_id)
+        if err:
+            return err
+
         try:
             account_id = int(form.get("account_id") or 0)
         except ValueError:
@@ -1239,6 +1287,11 @@ def register_routes(
             return _json_error("no_permission", "You do not have permission.")
 
         form = await request.form()
+
+        err = await _require_password(form, user_id)
+        if err:
+            return err
+
         try:
             card_id = int(form.get("card_id") or 0)
         except ValueError:
@@ -1287,6 +1340,11 @@ def register_routes(
             return _json_error("no_permission", "You do not have permission.")
 
         form = await request.form()
+
+        err = await _require_password(form, user_id)
+        if err:
+            return err
+
         try:
             card_id = int(form.get("card_id") or 0)
         except ValueError:
@@ -1322,6 +1380,11 @@ def register_routes(
             return _json_error("no_permission", "You do not have permission.")
 
         form = await request.form()
+
+        err = await _require_password(form, user_id)
+        if err:
+            return err
+
         try:
             account_id = int(form.get("account_id") or 0)
         except ValueError:
@@ -1370,6 +1433,11 @@ def register_routes(
             return _json_error("no_permission", "You do not have permission.")
 
         form = await request.form()
+
+        err = await _require_password(form, user_id)
+        if err:
+            return err
+
         target_session_id = (form.get("session_id") or "").strip()
         if not target_session_id:
             return _json_error("invalid_data", "Missing session ID.")
@@ -1417,6 +1485,12 @@ def register_routes(
         if not allowed:
             return _json_error("no_permission", "You do not have permission.")
 
+        form = await request.form()
+
+        err = await _require_password(form, user_id)
+        if err:
+            return err
+
         current_session_id = request.session.get("session_id")
 
         try:
@@ -1447,6 +1521,11 @@ def register_routes(
             return _json_error("no_permission", "You do not have permission.")
 
         form = await request.form()
+
+        err = await _require_password(form, user_id)
+        if err:
+            return err
+
         try:
             card_id = int(form.get("card_id") or 0)
         except ValueError:
