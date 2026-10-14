@@ -381,38 +381,68 @@
     const submitBtn = form.querySelector('button[type="submit"]');
     const originalText = submitBtn ? submitBtn.innerHTML : '';
 
-    if (submitBtn) {
-      submitBtn.disabled = true;
-      submitBtn.classList.add('is-loading');
-    }
+    // Detect whether this form requires password confirmation
+    const needsPassword = form.dataset.requirePassword === 'true';
 
-    // Start progress bar
-    startProgress('form-save');
-    await new Promise(r => setTimeout(r, 30));
+    // -----------------------------------------------------------------
+    // Step 1 — Confirmation dialog (always)
+    // -----------------------------------------------------------------
+    const confirmTitle = needsPassword
+      ? 'Confirm this action?'
+      : 'Save changes?';
+    const confirmMessage = needsPassword
+      ? 'This action will be applied immediately. You will be asked for your password in the next step.'
+      : 'Your updates will be stored immediately.';
 
-    // Confirm
     const appDialog = document.getElementById('appDialog');
     const proceed = await appDialog.confirm({
-      title: 'Save changes?',
-      message: 'Your updates will be stored immediately.',
-      confirmLabel: 'Save',
+      title: confirmTitle,
+      message: confirmMessage,
+      confirmLabel: 'Continue',
       cancelLabel: 'Cancel',
       variant: 'primary',
       icon: 'info',
     });
-
     if (!proceed) {
+      // reset state
       if (submitBtn) {
         submitBtn.disabled = false;
         submitBtn.classList.remove('is-loading');
         submitBtn.innerHTML = originalText;
       }
-      endProgress('form-save');
       return;
     }
 
+    // -----------------------------------------------------------------
+    // Step 2 — Password prompt (only if required)
+    // -----------------------------------------------------------------
+    let password = null;
+    if (needsPassword) {
+      password = await appDialog.passwordConfirm({
+        title: 'Confirm with password',
+        message: 'Enter your account password to complete this action.',
+        confirmLabel: 'Confirm',
+        cancelLabel: 'Cancel',
+        icon: 'lock',
+      });
+      if (!password) return;
+    }
+
+    // -----------------------------------------------------------------
+    // Step 3 — Submit
+    // -----------------------------------------------------------------
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.classList.add('is-loading');
+    }
+
+    startProgress('form-save');
+
     try {
       const formData = new FormData(form);
+      if (password) {
+        formData.append('password', password);
+      }
 
       const resp = await fetch(form.action, {
         method: 'POST',
@@ -453,6 +483,28 @@
             form.querySelectorAll('input[type="password"]').forEach(el => el.value = '');
           }
         }
+      } else if (data.code === 'invalid_password') {
+        await appDialog.alert({
+          title: 'Action not allowed',
+          message: data.message || 'The password you entered is incorrect. '
+                                 + 'The action was not performed.',
+          closeLabel: 'Got it',
+          icon: 'danger',
+        });
+      } else if (data.code === 'password_required') {
+        await appDialog.alert({
+          title: 'Password required',
+          message: data.message || 'Please enter your password to confirm this action.',
+          closeLabel: 'OK',
+          icon: 'warning',
+        });
+      } else if (data.code === 'has_cards') {
+        await appDialog.alert({
+          title: 'Cannot remove account',
+          message: data.message,
+          closeLabel: 'Got it',
+          icon: 'warning',
+        });
       } else {
         showFlash('error',
           data.code === 'no_permission' ? 'Access denied' : 'Update failed',
