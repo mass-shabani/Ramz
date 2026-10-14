@@ -3557,6 +3557,36 @@ content-container {
   color: var(--text);
 }
 
+/* Danger button variant */
+.cascade-btn-danger {
+  border: 1px solid rgba(244,63,94,0.5);
+  color: #fecdd3;
+  background: rgba(244,63,94,0.14);
+}
+.cascade-btn-danger:hover {
+  background: rgba(244,63,94,0.24);
+  border-color: rgba(244,63,94,0.75);
+  color: #fff;
+}
+
+/* Icon color variants */
+.cascade-dialog-icon.is-warning {
+  background: rgba(245,158,11,0.16);
+  color: #fbbf24;
+}
+.cascade-dialog-icon.is-danger {
+  background: rgba(244,63,94,0.16);
+  color: #fb7185;
+}
+.cascade-dialog-icon.is-info {
+  background: rgba(99,102,241,0.16);
+  color: #a5b4fc;
+}
+.cascade-dialog-icon.is-success {
+  background: rgba(16,185,129,0.16);
+  color: #34d399;
+}
+
 @media (max-width: 640px) {
   .channel-item { flex-wrap: wrap; }
   .channel-actions { width: 100%; justify-content: flex-end; margin-top: 6px; }

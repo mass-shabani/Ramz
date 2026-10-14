@@ -717,32 +717,49 @@ class ProfileWorkflow:
             self._log(f"update_bank_account failed: {exc}", level="ERROR")
             return False
 
-    async def remove_bank_account(self, user_id: int, account_id: int) -> bool:
+    async def remove_bank_account(self, user_id: int, account_id: int) -> tuple:
         """
-        Remove a bank account and all its cards (cascade via FK).
-        No restrictions — user may remove all accounts.
+        Remove a bank account.
+
+        Rules:
+            • Cannot remove an account that still has cards.
+              The user must delete the cards first.
+
+        Returns
+        -------
+        tuple (ok: bool, reason: str)
+            reason is one of: "ok", "has_cards", "not_found"
         """
         if not user_id or not account_id:
-            return False
+            return False, "not_found"
 
         user = await self._db._user_repo.get_by_id(user_id)
         if not user:
-            return False
+            return False, "not_found"
 
         people = await self._db._people_repo.get_by_id(user.people_id)
         contact_id = int(people["contact_id"]) if people else 0
         if not contact_id:
-            return False
+            return False, "not_found"
 
         target = await self._db._bank_account_repo.get_by_id(account_id)
         if not target or int(target.get("contact_id", 0)) != contact_id:
-            return False
+            return False, "not_found"
+
+        # Refuse to remove if any cards still reference this account
+        try:
+            cards = await self._db._bank_card_repo.list_by_account(account_id)
+        except Exception:
+            cards = []
+        if cards:
+            return False, "has_cards"
 
         try:
-            return await self._db._bank_account_repo.delete(account_id)
+            ok = await self._db._bank_account_repo.delete(account_id)
+            return (ok, "ok" if ok else "not_found")
         except Exception as exc:
             self._log(f"remove_bank_account failed: {exc}", level="ERROR")
-            return False
+            return False, "not_found"
 
     # ============================================================
     # Banking — cards

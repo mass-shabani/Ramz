@@ -1147,11 +1147,17 @@ def register_routes(
             return _json_error("invalid_data", "Missing account ID.")
 
         try:
-            ok = await db_service.remove_bank_account(user_id, account_id)
+            ok, reason = await db_service.remove_bank_account(user_id, account_id)
         except Exception:
-            ok = False
+            ok, reason = False, "not_found"
 
         if not ok:
+            if reason == "has_cards":
+                return _json_error(
+                    "has_cards",
+                    "This bank account still has cards. "
+                    "Please remove all cards first, then delete the account."
+                )
             return _json_error("cannot_remove", "Could not remove this bank account.")
 
         return _json_ok("Bank account removed.", section="banking", reload_section=True)
