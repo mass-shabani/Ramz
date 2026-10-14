@@ -3217,6 +3217,152 @@ content-container {
   padding: 4px 16px 16px;
 }
 
+/* ---------- Banking (nested accounts + cards) ---------- */
+.banking-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.banking-account {
+  border-radius: 14px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  overflow: hidden;
+}
+.banking-account-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.banking-icon {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, rgba(99,102,241,0.18), rgba(168,85,247,0.12));
+  color: #a5b4fc;
+}
+.banking-icon svg { width: 20px; height: 20px; }
+.banking-body { flex: 1; min-width: 0; }
+.banking-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 3px;
+}
+.banking-meta {
+  font-size: 11.5px;
+  color: var(--muted);
+  letter-spacing: 0.4px;
+}
+.banking-meta .mono {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+/* Cards nested under an account */
+.banking-cards {
+  padding: 10px 12px 14px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(0,0,0,0.10);
+}
+.banking-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+.banking-card-icon {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: rgba(99,102,241,0.14);
+  color: #a5b4fc;
+}
+.banking-card-icon svg { width: 16px; height: 16px; }
+.banking-card-body { flex: 1; min-width: 0; }
+.banking-card-number {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.5px;
+}
+.banking-card-number .mono {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+.banking-card-meta {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+
+/* Collapsible add-card block inside an account */
+.add-card-block {
+  margin-top: 4px;
+  border-radius: 10px;
+  border: 1px dashed rgba(129,140,248,0.28);
+  overflow: hidden;
+  background: rgba(99,102,241,0.03);
+}
+.add-card-block > summary {
+  cursor: pointer;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #a5b4fc;
+  list-style: none;
+  transition: background .18s, color .18s;
+}
+.add-card-block > summary::-webkit-details-marker { display: none; }
+.add-card-block > summary:hover {
+  background: rgba(99,102,241,0.08);
+  color: #c7d2fe;
+}
+.add-card-block > form {
+  padding: 4px 14px 12px;
+}
+
+/* Collapsible add-account block */
+.add-account-block {
+  margin-top: 16px;
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color .18s, background .18s;
+}
+.add-account-block[open] {
+  border-color: rgba(129,140,248,0.28);
+  background: rgba(99,102,241,0.03);
+}
+.add-account-block > summary {
+  cursor: pointer;
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #a5b4fc;
+  list-style: none;
+  transition: background .18s, color .18s;
+}
+.add-account-block > summary::-webkit-details-marker { display: none; }
+.add-account-block > summary:hover {
+  background: rgba(99,102,241,0.08);
+  color: #c7d2fe;
+}
+.add-account-block > form {
+  padding: 4px 16px 16px;
+}
+
 @media (max-width: 640px) {
   .channel-item { flex-wrap: wrap; }
   .channel-actions { width: 100%; justify-content: flex-end; margin-top: 6px; }

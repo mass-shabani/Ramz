@@ -592,6 +592,259 @@ class ProfileWorkflow:
             self._log(f"remove_address failed: {exc}", level="ERROR")
             return False
 
+    # ============================================================
+    # Banking — banks lookup
+    # ============================================================
+    async def list_banks(self) -> list[dict]:
+        """Return all enabled banks for the selector."""
+        try:
+            return await self._db._bank_repo.list_enabled()
+        except Exception as exc:
+            self._log(f"list_banks failed: {exc}", level="ERROR")
+            return []
+
+    # ============================================================
+    # Banking — accounts
+    # ============================================================
+    async def list_bank_accounts(self, user_id: int) -> list[dict]:
+        """
+        Return all bank accounts for the user's contact, each enriched
+        with the bank name and its list of cards.
+        """
+        if not user_id:
+            return []
+
+        user = await self._db._user_repo.get_by_id(user_id)
+        if not user:
+            return []
+
+        people = await self._db._people_repo.get_by_id(user.people_id)
+        contact_id = int(people["contact_id"]) if people else 0
+        if not contact_id:
+            return []
+
+        try:
+            accounts = await self._db._bank_account_repo.list_by_contact(contact_id)
+        except Exception as exc:
+            self._log(f"list_bank_accounts failed: {exc}", level="ERROR")
+            return []
+
+        # Enrich each account with bank_name + cards
+        for acc in accounts:
+            bank = None
+            try:
+                bank = await self._db._bank_repo.get_by_id(acc.get("bank_id"))
+            except Exception:
+                pass
+            acc["bank_name"] = (bank or {}).get("bank_name") or "Unknown bank"
+
+            try:
+                acc["cards"] = await self._db._bank_card_repo.list_by_account(
+                    acc["bank_account_id"]
+                )
+            except Exception:
+                acc["cards"] = []
+
+        return accounts
+
+    async def add_bank_account(
+        self,
+        user_id: int,
+        bank_id: int,
+        account_number: str,
+        account_name: str,
+        iban: Optional[str] = None,
+    ) -> bool:
+        if not user_id or not bank_id or not account_number or not account_name:
+            return False
+
+        user = await self._db._user_repo.get_by_id(user_id)
+        if not user:
+            return False
+
+        people = await self._db._people_repo.get_by_id(user.people_id)
+        contact_id = int(people["contact_id"]) if people else 0
+        if not contact_id:
+            return False
+
+        # Verify the bank exists
+        bank = await self._db._bank_repo.get_by_id(bank_id)
+        if not bank:
+            return False
+
+        try:
+            new_id = await self._db._bank_account_repo.create(
+                contact_id=contact_id,
+                bank_id=bank_id,
+                account_number=account_number,
+                account_name=account_name,
+                iban=iban,
+            )
+            return bool(new_id)
+        except Exception as exc:
+            self._log(f"add_bank_account failed: {exc}", level="ERROR")
+            return False
+
+    async def update_bank_account(
+        self, user_id: int, account_id: int, data: dict
+    ) -> bool:
+        if not user_id or not account_id or not data:
+            return False
+
+        user = await self._db._user_repo.get_by_id(user_id)
+        if not user:
+            return False
+
+        people = await self._db._people_repo.get_by_id(user.people_id)
+        contact_id = int(people["contact_id"]) if people else 0
+        if not contact_id:
+            return False
+
+        target = await self._db._bank_account_repo.get_by_id(account_id)
+        if not target or int(target.get("contact_id", 0)) != contact_id:
+            return False
+
+        # If bank_id is being changed, verify the new bank exists
+        new_bank_id = data.get("bank_id")
+        if new_bank_id:
+            bank = await self._db._bank_repo.get_by_id(new_bank_id)
+            if not bank:
+                return False
+
+        try:
+            return await self._db._bank_account_repo.update(account_id, **data)
+        except Exception as exc:
+            self._log(f"update_bank_account failed: {exc}", level="ERROR")
+            return False
+
+    async def remove_bank_account(self, user_id: int, account_id: int) -> bool:
+        """
+        Remove a bank account and all its cards (cascade via FK).
+        No restrictions — user may remove all accounts.
+        """
+        if not user_id or not account_id:
+            return False
+
+        user = await self._db._user_repo.get_by_id(user_id)
+        if not user:
+            return False
+
+        people = await self._db._people_repo.get_by_id(user.people_id)
+        contact_id = int(people["contact_id"]) if people else 0
+        if not contact_id:
+            return False
+
+        target = await self._db._bank_account_repo.get_by_id(account_id)
+        if not target or int(target.get("contact_id", 0)) != contact_id:
+            return False
+
+        try:
+            return await self._db._bank_account_repo.delete(account_id)
+        except Exception as exc:
+            self._log(f"remove_bank_account failed: {exc}", level="ERROR")
+            return False
+
+    # ============================================================
+    # Banking — cards
+    # ============================================================
+    async def add_bank_card(
+        self,
+        user_id: int,
+        account_id: int,
+        card_number: str,
+        card_holder_name: str,
+        expiry_date: Optional[str] = None,
+    ) -> bool:
+        if not user_id or not account_id or not card_number or not card_holder_name:
+            return False
+
+        user = await self._db._user_repo.get_by_id(user_id)
+        if not user:
+            return False
+
+        people = await self._db._people_repo.get_by_id(user.people_id)
+        contact_id = int(people["contact_id"]) if people else 0
+        if not contact_id:
+            return False
+
+        # Verify the account belongs to this contact
+        account = await self._db._bank_account_repo.get_by_id(account_id)
+        if not account or int(account.get("contact_id", 0)) != contact_id:
+            return False
+
+        try:
+            new_id = await self._db._bank_card_repo.create(
+                bank_account_id=account_id,
+                card_number=card_number,
+                card_holder_name=card_holder_name,
+                expiry_date=expiry_date,
+            )
+            return bool(new_id)
+        except Exception as exc:
+            self._log(f"add_bank_card failed: {exc}", level="ERROR")
+            return False
+
+    async def update_bank_card(
+        self, user_id: int, card_id: int, data: dict
+    ) -> bool:
+        if not user_id or not card_id or not data:
+            return False
+
+        user = await self._db._user_repo.get_by_id(user_id)
+        if not user:
+            return False
+
+        people = await self._db._people_repo.get_by_id(user.people_id)
+        contact_id = int(people["contact_id"]) if people else 0
+        if not contact_id:
+            return False
+
+        card = await self._db._bank_card_repo.get_by_id(card_id)
+        if not card:
+            return False
+
+        # Card must belong to an account of this contact
+        account = await self._db._bank_account_repo.get_by_id(
+            card.get("bank_account_id")
+        )
+        if not account or int(account.get("contact_id", 0)) != contact_id:
+            return False
+
+        try:
+            return await self._db._bank_card_repo.update(card_id, **data)
+        except Exception as exc:
+            self._log(f"update_bank_card failed: {exc}", level="ERROR")
+            return False
+
+    async def remove_bank_card(self, user_id: int, card_id: int) -> bool:
+        if not user_id or not card_id:
+            return False
+
+        user = await self._db._user_repo.get_by_id(user_id)
+        if not user:
+            return False
+
+        people = await self._db._people_repo.get_by_id(user.people_id)
+        contact_id = int(people["contact_id"]) if people else 0
+        if not contact_id:
+            return False
+
+        card = await self._db._bank_card_repo.get_by_id(card_id)
+        if not card:
+            return False
+
+        account = await self._db._bank_account_repo.get_by_id(
+            card.get("bank_account_id")
+        )
+        if not account or int(account.get("contact_id", 0)) != contact_id:
+            return False
+
+        try:
+            return await self._db._bank_card_repo.delete(card_id)
+        except Exception as exc:
+            self._log(f"remove_bank_card failed: {exc}", level="ERROR")
+            return False
+
 
 # --------------------------------------------------------------
 # Helpers

@@ -1029,6 +1029,260 @@ def register_routes(
         )
 
     # ------------------------------------------------------------
+    # Bank accounts
+    # ------------------------------------------------------------
+    @http_api.post("/account/settings/banking/accounts/add",
+                   response_class=http_api.HTMLResponse)
+    async def add_bank_account(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return _json_error("unauthorized", "Session expired.")
+
+        try:
+            allowed = await db_service.has_access(user_id, "account.banking.manage")
+        except Exception:
+            allowed = False
+        if not allowed:
+            return _json_error("no_permission", "You do not have permission.")
+
+        form = await request.form()
+        bank_id_str = (form.get("bank_id") or "").strip()
+        account_number = (form.get("account_number") or "").strip()
+        account_name = (form.get("account_name") or "").strip()
+        iban = (form.get("iban") or "").strip() or None
+
+        try:
+            bank_id = int(bank_id_str)
+        except ValueError:
+            bank_id = 0
+
+        if not bank_id or not account_number or not account_name:
+            return _json_error("invalid_data", "Bank, account number and account name are required.")
+
+        try:
+            ok = await db_service.add_bank_account(
+                user_id, bank_id, account_number, account_name, iban
+            )
+        except Exception as exc:
+            if logger:
+                logger.log(f"add_bank_account failed: {exc}", level="ERROR", tag="settings")
+            ok = False
+
+        if not ok:
+            return _json_error("add_failed", "Could not add bank account.")
+
+        return _json_ok("Bank account added.", section="banking", reload_section=True)
+
+    @http_api.post("/account/settings/banking/accounts/update",
+                   response_class=http_api.HTMLResponse)
+    async def update_bank_account(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return _json_error("unauthorized", "Session expired.")
+
+        try:
+            allowed = await db_service.has_access(user_id, "account.banking.manage")
+        except Exception:
+            allowed = False
+        if not allowed:
+            return _json_error("no_permission", "You do not have permission.")
+
+        form = await request.form()
+        try:
+            account_id = int(form.get("account_id") or 0)
+        except ValueError:
+            account_id = 0
+        if not account_id:
+            return _json_error("invalid_data", "Missing account ID.")
+
+        try:
+            bank_id = int(form.get("bank_id") or 0)
+        except ValueError:
+            bank_id = 0
+
+        data = {
+            "bank_id":        bank_id or None,
+            "account_number": (form.get("account_number") or "").strip(),
+            "account_name":   (form.get("account_name") or "").strip(),
+            "iban":           (form.get("iban") or "").strip() or None,
+        }
+        # Remove empty account_number/account_name from update (not allowed)
+        if not data["account_number"]:
+            return _json_error("invalid_data", "Account number is required.")
+        if not data["account_name"]:
+            return _json_error("invalid_data", "Account name is required.")
+        if not data["bank_id"]:
+            data.pop("bank_id")
+
+        try:
+            ok = await db_service.update_bank_account(user_id, account_id, data)
+        except Exception:
+            ok = False
+
+        if not ok:
+            return _json_error("update_failed", "Could not update bank account.")
+
+        return _json_ok("Bank account updated.", section="banking", reload_section=True)
+
+    @http_api.post("/account/settings/banking/accounts/delete",
+                   response_class=http_api.HTMLResponse)
+    async def delete_bank_account(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return _json_error("unauthorized", "Session expired.")
+
+        try:
+            allowed = await db_service.has_access(user_id, "account.banking.manage")
+        except Exception:
+            allowed = False
+        if not allowed:
+            return _json_error("no_permission", "You do not have permission.")
+
+        form = await request.form()
+        try:
+            account_id = int(form.get("account_id") or 0)
+        except ValueError:
+            account_id = 0
+        if not account_id:
+            return _json_error("invalid_data", "Missing account ID.")
+
+        try:
+            ok = await db_service.remove_bank_account(user_id, account_id)
+        except Exception:
+            ok = False
+
+        if not ok:
+            return _json_error("cannot_remove", "Could not remove this bank account.")
+
+        return _json_ok("Bank account removed.", section="banking", reload_section=True)
+
+    # ------------------------------------------------------------
+    # Bank cards
+    # ------------------------------------------------------------
+    @http_api.post("/account/settings/banking/cards/add",
+                   response_class=http_api.HTMLResponse)
+    async def add_bank_card(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return _json_error("unauthorized", "Session expired.")
+
+        try:
+            allowed = await db_service.has_access(user_id, "account.banking.manage")
+        except Exception:
+            allowed = False
+        if not allowed:
+            return _json_error("no_permission", "You do not have permission.")
+
+        form = await request.form()
+        try:
+            account_id = int(form.get("account_id") or 0)
+        except ValueError:
+            account_id = 0
+        card_number = (form.get("card_number") or "").strip().replace(" ", "").replace("-", "")
+        card_holder = (form.get("card_holder_name") or "").strip()
+        expiry = (form.get("expiry_date") or "").strip() or None
+
+        if not account_id or not card_number or not card_holder:
+            return _json_error("invalid_data", "Account, card number and holder name are required.")
+
+        if not (13 <= len(card_number) <= 19) or not card_number.isdigit():
+            return _json_error("invalid_card", "Card number must be 13–19 digits.")
+
+        try:
+            ok = await db_service.add_bank_card(
+                user_id, account_id, card_number, card_holder, expiry
+            )
+        except Exception as exc:
+            if logger:
+                logger.log(f"add_bank_card failed: {exc}", level="ERROR", tag="settings")
+            ok = False
+
+        if not ok:
+            return _json_error("add_failed", "Could not add card. It may already be registered.")
+
+        return _json_ok("Card added.", section="banking", reload_section=True)
+
+    @http_api.post("/account/settings/banking/cards/update",
+                   response_class=http_api.HTMLResponse)
+    async def update_bank_card(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return _json_error("unauthorized", "Session expired.")
+
+        try:
+            allowed = await db_service.has_access(user_id, "account.banking.manage")
+        except Exception:
+            allowed = False
+        if not allowed:
+            return _json_error("no_permission", "You do not have permission.")
+
+        form = await request.form()
+        try:
+            card_id = int(form.get("card_id") or 0)
+        except ValueError:
+            card_id = 0
+        if not card_id:
+            return _json_error("invalid_data", "Missing card ID.")
+
+        card_number = (form.get("card_number") or "").strip().replace(" ", "").replace("-", "")
+        card_holder = (form.get("card_holder_name") or "").strip()
+        expiry = (form.get("expiry_date") or "").strip() or None
+
+        if not card_number or not card_holder:
+            return _json_error("invalid_data", "Card number and holder name are required.")
+
+        if not (13 <= len(card_number) <= 19) or not card_number.isdigit():
+            return _json_error("invalid_card", "Card number must be 13–19 digits.")
+
+        data = {
+            "card_number":      card_number,
+            "card_holder_name": card_holder,
+            "expiry_date":      expiry,
+        }
+
+        try:
+            ok = await db_service.update_bank_card(user_id, card_id, data)
+        except Exception:
+            ok = False
+
+        if not ok:
+            return _json_error("update_failed", "Could not update card.")
+
+        return _json_ok("Card updated.", section="banking", reload_section=True)
+
+    @http_api.post("/account/settings/banking/cards/delete",
+                   response_class=http_api.HTMLResponse)
+    async def delete_bank_card(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return _json_error("unauthorized", "Session expired.")
+
+        try:
+            allowed = await db_service.has_access(user_id, "account.banking.manage")
+        except Exception:
+            allowed = False
+        if not allowed:
+            return _json_error("no_permission", "You do not have permission.")
+
+        form = await request.form()
+        try:
+            card_id = int(form.get("card_id") or 0)
+        except ValueError:
+            card_id = 0
+        if not card_id:
+            return _json_error("invalid_data", "Missing card ID.")
+
+        try:
+            ok = await db_service.remove_bank_card(user_id, card_id)
+        except Exception:
+            ok = False
+
+        if not ok:
+            return _json_error("cannot_remove", "Could not remove this card.")
+
+        return _json_ok("Card removed.", section="banking", reload_section=True)
+
+    # ------------------------------------------------------------
     # POST /account/settings/partials/{section} — partial loader
     # ------------------------------------------------------------
     PARTIAL_TEMPLATES = {
@@ -1102,6 +1356,15 @@ def register_routes(
                 extra_context["channels"] = {
                     "emails": [], "phones": [], "addresses": []
                 }
+        elif section == "banking":
+            try:
+                extra_context["bank_accounts"] = await db_service.list_bank_accounts(user_id)
+            except Exception:
+                extra_context["bank_accounts"] = []
+            try:
+                extra_context["banks"] = await db_service.list_banks()
+            except Exception:
+                extra_context["banks"] = []
 
         # Render
         try:

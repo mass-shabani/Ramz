@@ -1,19 +1,232 @@
-<ramz-card title="Banking" subtitle="Bank accounts and cards">
-  <div slot="icon" class="card-icon icon-soft--indigo">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-         stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="2" y="5" width="20" height="14" rx="3"/>
-      <path d="M2 10h20"/>
-    </svg>
-  </div>
+<div style="display: flex; flex-direction: column; gap: 20px;">
 
-  {% if not permissions.banking %}
-  <p style="color: var(--muted); font-size: 13px; margin: 0;">
-    You do not have permission to manage banking information.
-  </p>
-  {% else %}
-  <p style="color: var(--muted); font-size: 13px; margin: 0;">
-    Banking management UI will be added in a future update.
-  </p>
-  {% endif %}
-</ramz-card>
+  <ramz-card title="Bank Accounts" subtitle="Accounts and cards on your profile">
+    <div slot="icon" class="card-icon icon-soft--indigo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="5" width="20" height="14" rx="3"/>
+        <path d="M2 10h20"/>
+      </svg>
+    </div>
+
+    {% if not permissions.banking %}
+    <p style="color: var(--muted); font-size: 13px; margin: 0;">
+      You do not have permission to manage banking information.
+    </p>
+    {% else %}
+
+    <div class="banking-list">
+      {% for acc in bank_accounts %}
+      <div class="banking-account">
+        <div class="banking-account-head">
+          <div class="banking-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9 12 3l9 6"/>
+              <path d="M5 9v12M19 9v12M9 21V9M15 21V9M3 21h18"/>
+            </svg>
+          </div>
+          <div class="banking-body">
+            <div class="banking-name">{{ acc.bank_name }} · {{ acc.account_name }}</div>
+            <div class="banking-meta">
+              <span class="mono">•••• {{ acc.account_number[-4:] }}</span>
+              {% if acc.iban %}
+                · <span class="mono">IBAN •••• {{ acc.iban[-4:] }}</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="channel-actions">
+            <button type="button" class="channel-action"
+                    data-action="edit-bank-account"
+                    data-id="{{ acc.bank_account_id }}"
+                    data-bank-id="{{ acc.bank_id }}"
+                    data-number="{{ acc.account_number }}"
+                    data-name="{{ acc.account_name }}"
+                    data-iban="{{ acc.iban or '' }}">Edit</button>
+            <button type="button" class="channel-action danger"
+                    data-action="remove-bank-account"
+                    data-id="{{ acc.bank_account_id }}">Remove</button>
+          </div>
+        </div>
+
+        {# Cards under this account #}
+        <div class="banking-cards">
+          {% for card in acc.cards %}
+          <div class="banking-card">
+            <div class="banking-card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="5" width="20" height="14" rx="3"/>
+                <path d="M2 10h20"/>
+              </svg>
+            </div>
+            <div class="banking-card-body">
+              <div class="banking-card-number">
+                <span class="mono">•••• •••• •••• {{ card.card_number[-4:] }}</span>
+              </div>
+              <div class="banking-card-meta">
+                {{ card.card_holder_name }}
+                {% if card.expiry_date %} · Expires {{ card.expiry_date }}{% endif %}
+              </div>
+            </div>
+            <div class="channel-actions">
+              <button type="button" class="channel-action"
+                      data-action="edit-bank-card"
+                      data-id="{{ card.bank_card_id }}"
+                      data-account-id="{{ acc.bank_account_id }}"
+                      data-number="{{ card.card_number }}"
+                      data-holder="{{ card.card_holder_name }}"
+                      data-expiry="{{ card.expiry_date or '' }}">Edit</button>
+              <button type="button" class="channel-action danger"
+                      data-action="remove-bank-card"
+                      data-id="{{ card.bank_card_id }}">Remove</button>
+            </div>
+          </div>
+          {% endfor %}
+
+          {# Add-card form for this account #}
+          <details class="add-card-block">
+            <summary>+ Add Card</summary>
+            <form method="post" action="/account/settings/banking/cards/add"
+                  data-ajax="true" style="margin-top: 12px;">
+              <input type="hidden" name="account_id" value="{{ acc.bank_account_id }}" />
+              <input type="hidden" name="card_id" value="" />
+              <div class="settings-row">
+                <div class="settings-row-label">
+                  <div class="label">Card Number</div>
+                </div>
+                <div class="settings-row-control">
+                  <div class="settings-field">
+                    <input type="text" name="card_number" required
+                           inputmode="numeric"
+                           placeholder="1234 5678 9012 3456"
+                           pattern="[0-9\s\-]{13,19}" />
+                  </div>
+                </div>
+              </div>
+              <div class="settings-row">
+                <div class="settings-row-label">
+                  <div class="label">Holder Name</div>
+                </div>
+                <div class="settings-row-control">
+                  <div class="settings-field">
+                    <input type="text" name="card_holder_name" required
+                           placeholder="As printed on the card" />
+                  </div>
+                </div>
+              </div>
+              <div class="settings-row">
+                <div class="settings-row-label">
+                  <div class="label">Expiry Date</div>
+                  <div class="hint">Optional — format YYYY-MM-DD</div>
+                </div>
+                <div class="settings-row-control">
+                  <div class="settings-field">
+                    <input type="date" name="expiry_date" />
+                  </div>
+                </div>
+              </div>
+              <div class="settings-actions">
+                <button type="submit" class="btn-primary">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                       stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 5v14M5 12h14"/>
+                  </svg>
+                  <span>Add Card</span>
+                </button>
+              </div>
+            </form>
+          </details>
+        </div>
+      </div>
+      {% endfor %}
+
+      {% if not bank_accounts %}
+      <p style="color: var(--muted); font-size: 13px; margin: 0;">
+        No bank account on file. Add one below.
+      </p>
+      {% endif %}
+    </div>
+
+    {# Add/Edit Account form #}
+    <details class="add-account-block" id="bankAccountFormBlock" style="margin-top: 16px;">
+      <summary id="bankAccountFormSummary">+ Add Bank Account</summary>
+      <form method="post" action="/account/settings/banking/accounts/add"
+            data-ajax="true" style="margin-top: 14px;">
+        <input type="hidden" name="account_id" value="" />
+        <div class="settings-rows">
+
+          <div class="settings-row">
+            <div class="settings-row-label">
+              <div class="label">Bank</div>
+              <div class="hint">Choose from the list</div>
+            </div>
+            <div class="settings-row-control">
+              <div class="settings-field">
+                <select name="bank_id" required>
+                  <option value="">— Select a bank —</option>
+                  {% for bank in banks %}
+                  <option value="{{ bank.bank_id }}">{{ bank.bank_name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-label">
+              <div class="label">Account Number</div>
+            </div>
+            <div class="settings-row-control">
+              <div class="settings-field">
+                <input type="text" name="account_number" required
+                       placeholder="Account number" />
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-label">
+              <div class="label">Account Name</div>
+              <div class="hint">Name on the account</div>
+            </div>
+            <div class="settings-row-control">
+              <div class="settings-field">
+                <input type="text" name="account_name" required
+                       placeholder="Full name" />
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-label">
+              <div class="label">IBAN</div>
+              <div class="hint">Optional</div>
+            </div>
+            <div class="settings-row-control">
+              <div class="settings-field">
+                <input type="text" name="iban" placeholder="IBAN" />
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="settings-actions">
+          <button type="button" class="btn-ghost"
+                  data-action="cancel-bank-account-edit" hidden>Cancel</button>
+          <button type="submit" class="btn-primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            <span id="bankAccountSubmitText">Add Account</span>
+          </button>
+        </div>
+      </form>
+    </details>
+
+    {% endif %}
+  </ramz-card>
+
+</div>

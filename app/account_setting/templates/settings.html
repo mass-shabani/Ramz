@@ -565,6 +565,7 @@
       'set-primary-email', 'remove-email',
       'set-primary-phone', 'remove-phone',
       'remove-address',
+      'remove-bank-account', 'remove-bank-card',
     ];
     if (!CHANNEL_ACTIONS.includes(action)) return;
 
@@ -585,11 +586,13 @@
 
     // Map action → endpoint + param name
     const map = {
-      'set-primary-email':  { url: '/account/settings/emails/set-primary', param: 'email_id' },
-      'remove-email':       { url: '/account/settings/emails/delete',      param: 'email_id' },
-      'set-primary-phone':  { url: '/account/settings/phones/set-primary', param: 'phone_id' },
-      'remove-phone':       { url: '/account/settings/phones/delete',      param: 'phone_id' },
-      'remove-address':     { url: '/account/settings/addresses/delete',   param: 'address_id' },
+      'set-primary-email':   { url: '/account/settings/emails/set-primary',          param: 'email_id' },
+      'remove-email':        { url: '/account/settings/emails/delete',               param: 'email_id' },
+      'set-primary-phone':   { url: '/account/settings/phones/set-primary',          param: 'phone_id' },
+      'remove-phone':        { url: '/account/settings/phones/delete',               param: 'phone_id' },
+      'remove-address':      { url: '/account/settings/addresses/delete',            param: 'address_id' },
+      'remove-bank-account': { url: '/account/settings/banking/accounts/delete',     param: 'account_id' },
+      'remove-bank-card':    { url: '/account/settings/banking/cards/delete',        param: 'card_id' },
     };
     const cfg = map[action];
     if (!cfg) return;
@@ -792,6 +795,154 @@
 
     // Close details
     block.open = false;
+  });
+
+  /* ============================================================
+     Bank account edit
+     ============================================================ */
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action="edit-bank-account"]');
+    if (!btn) return;
+
+    e.preventDefault();
+
+    const block = document.getElementById('bankAccountFormBlock');
+    if (!block) return;
+
+    block.open = true;
+
+    const form = block.querySelector('form');
+    if (!form) return;
+
+    const setVal = (name, value) => {
+      const el = form.querySelector(`[name="${name}"]`);
+      if (el) el.value = value || '';
+    };
+    setVal('account_id',      btn.dataset.id || '');
+    setVal('bank_id',         btn.dataset.bankId || '');
+    setVal('account_number',  btn.dataset.number || '');
+    setVal('account_name',    btn.dataset.name || '');
+    setVal('iban',            btn.dataset.iban || '');
+
+    form.action = '/account/settings/banking/accounts/update';
+
+    const txt = document.getElementById('bankAccountSubmitText');
+    if (txt) txt.textContent = 'Update Account';
+
+    const summary = document.getElementById('bankAccountFormSummary');
+    if (summary) summary.textContent = 'Edit Bank Account';
+
+    const cancelBtn = form.querySelector('[data-action="cancel-bank-account-edit"]');
+    if (cancelBtn) cancelBtn.hidden = false;
+
+    block.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action="cancel-bank-account-edit"]');
+    if (!btn) return;
+
+    e.preventDefault();
+
+    const block = document.getElementById('bankAccountFormBlock');
+    if (!block) return;
+
+    const form = block.querySelector('form');
+    if (!form) return;
+
+    form.reset();
+    form.action = '/account/settings/banking/accounts/add';
+
+    const txt = document.getElementById('bankAccountSubmitText');
+    if (txt) txt.textContent = 'Add Account';
+
+    const summary = document.getElementById('bankAccountFormSummary');
+    if (summary) summary.textContent = '+ Add Bank Account';
+
+    btn.hidden = true;
+    block.open = false;
+  });
+
+  /* ============================================================
+     Bank card edit (per-account form)
+     ============================================================ */
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action="edit-bank-card"]');
+    if (!btn) return;
+
+    e.preventDefault();
+
+    const accountId = btn.dataset.accountId;
+    if (!accountId) return;
+
+    // Find the add-card form inside the same account block
+    const accountBlock = btn.closest('.banking-account');
+    if (!accountBlock) return;
+
+    const details = accountBlock.querySelector('.add-card-block');
+    if (!details) return;
+
+    details.open = true;
+
+    const form = details.querySelector('form');
+    if (!form) return;
+
+    const setVal = (name, value) => {
+      const el = form.querySelector(`[name="${name}"]`);
+      if (el) el.value = value || '';
+    };
+    setVal('card_id',          btn.dataset.id || '');
+    setVal('card_number',      btn.dataset.number || '');
+    setVal('card_holder_name', btn.dataset.holder || '');
+    setVal('expiry_date',      btn.dataset.expiry || '');
+
+    form.action = '/account/settings/banking/cards/update';
+
+    const txt = form.querySelector('button[type="submit"] span');
+    if (txt) txt.textContent = 'Update Card';
+
+    // Add cancel button if missing
+    if (!form.querySelector('[data-action="cancel-bank-card-edit"]')) {
+      const actions = form.querySelector('.settings-actions');
+      if (actions) {
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'btn-ghost';
+        cancelBtn.setAttribute('data-action', 'cancel-bank-card-edit');
+        cancelBtn.textContent = 'Cancel';
+        actions.insertBefore(cancelBtn, actions.firstChild);
+      }
+    }
+
+    details.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action="cancel-bank-card-edit"]');
+    if (!btn) return;
+
+    e.preventDefault();
+
+    const accountBlock = btn.closest('.banking-account');
+    if (!accountBlock) return;
+
+    const details = accountBlock.querySelector('.add-card-block');
+    if (!details) return;
+
+    const form = details.querySelector('form');
+    if (!form) return;
+
+    form.reset();
+    form.action = '/account/settings/banking/cards/add';
+
+    const idField = form.querySelector('[name="card_id"]');
+    if (idField) idField.value = '';
+
+    const txt = form.querySelector('button[type="submit"] span');
+    if (txt) txt.textContent = 'Add Card';
+
+    btn.remove();
+    details.open = false;
   });
 
   /* ============================================================

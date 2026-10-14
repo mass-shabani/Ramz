@@ -31,6 +31,9 @@ from .email_repository import EmailRepository
 from .phone_repository import PhoneRepository
 from .address_repository import AddressRepository
 from .subscription_repository import SubscriptionRepository
+from .bank_repository import BankRepository
+from .bank_account_repository import BankAccountRepository
+from .bank_card_repository import BankCardRepository
 
 __all__ = [
     "PeopleRepository",
@@ -45,4 +48,7 @@ __all__ = [
     "PhoneRepository",
     "AddressRepository",
     "SubscriptionRepository",
+    "BankRepository",
+    "BankAccountRepository",
+    "BankCardRepository",
 ]

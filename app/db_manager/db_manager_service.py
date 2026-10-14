@@ -50,6 +50,9 @@ class DbManagerService:
         from .repositories.phone_repository import PhoneRepository
         from .repositories.address_repository import AddressRepository
         from .repositories.subscription_repository import SubscriptionRepository
+        from .repositories.bank_repository import BankRepository
+        from .repositories.bank_account_repository import BankAccountRepository
+        from .repositories.bank_card_repository import BankCardRepository
 
         self._user_repo = UserRepository(self, logger)
         self._people_repo = PeopleRepository(self, logger)
@@ -63,6 +66,9 @@ class DbManagerService:
         self._phone_repo = PhoneRepository(self, logger)
         self._address_repo = AddressRepository(self, logger)
         self._subscription_repo = SubscriptionRepository(self, logger)
+        self._bank_repo = BankRepository(self, logger)
+        self._bank_account_repo = BankAccountRepository(self, logger)
+        self._bank_card_repo = BankCardRepository(self, logger)
 
         # ----------------------------------------------------------
         # Security
@@ -293,6 +299,50 @@ class DbManagerService:
 
     async def remove_address(self, user_id, address_id):
         return await self._profile_workflow.remove_address(user_id, address_id)
+
+    # ============================================================
+    # Banking
+    # ============================================================
+    async def list_banks(self):
+        """Return all enabled banks (for the selector)."""
+        return await self._profile_workflow.list_banks()
+
+    async def list_bank_accounts(self, user_id):
+        """Return all bank accounts + their cards for the user."""
+        return await self._profile_workflow.list_bank_accounts(user_id)
+
+    async def add_bank_account(
+        self, user_id, bank_id, account_number, account_name, iban=None
+    ):
+        return await self._profile_workflow.add_bank_account(
+            user_id, bank_id, account_number, account_name, iban
+        )
+
+    async def update_bank_account(self, user_id, account_id, data):
+        return await self._profile_workflow.update_bank_account(
+            user_id, account_id, data
+        )
+
+    async def remove_bank_account(self, user_id, account_id):
+        return await self._profile_workflow.remove_bank_account(
+            user_id, account_id
+        )
+
+    async def add_bank_card(
+        self, user_id, account_id, card_number, card_holder_name,
+        expiry_date=None,
+    ):
+        return await self._profile_workflow.add_bank_card(
+            user_id, account_id, card_number, card_holder_name, expiry_date
+        )
+
+    async def update_bank_card(self, user_id, card_id, data):
+        return await self._profile_workflow.update_bank_card(
+            user_id, card_id, data
+        )
+
+    async def remove_bank_card(self, user_id, card_id):
+        return await self._profile_workflow.remove_bank_card(user_id, card_id)
 
     # ============================================================
     # Settings
