@@ -101,6 +101,8 @@
           <div class="settings-field" style="display: flex; gap: 8px;">
             <input type="email" name="email_address"
                    placeholder="new-email@example.com" required
+                   pattern="[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}"
+                   title="Please enter a valid email like you@example.com"
                    style="flex: 1;" />
             <button type="submit" class="btn-primary" id="addEmailBtn" disabled>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -217,6 +219,9 @@
           <div class="settings-field" style="display: flex; gap: 8px;">
             <input type="tel" name="phone_number"
                    placeholder="+1 555 000 0000" required
+                   inputmode="tel"
+                   pattern="\+?[0-9\s\-().]{7,20}"
+                   title="7–20 digits, optional leading +"
                    style="flex: 1;" />
             <select name="phone_type" style="max-width: 120px;">
               <option value="mobile">Mobile</option>

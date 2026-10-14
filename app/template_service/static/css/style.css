@@ -3398,6 +3398,14 @@ content-container {
   border-color: rgba(99, 102, 241, 0.75);
   box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
 }
+.settings-field input.is-invalid {
+  border-color: rgba(244, 63, 94, 0.55);
+  background: rgba(52, 22, 34, 0.4);
+}
+.settings-field input.is-invalid:focus {
+  border-color: rgba(244, 63, 94, 0.85);
+  box-shadow: 0 0 0 4px rgba(244, 63, 94, 0.15);
+}
 .settings-field select {
   appearance: none;
   -webkit-appearance: none;

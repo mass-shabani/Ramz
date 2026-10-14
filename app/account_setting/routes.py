@@ -4,6 +4,54 @@ Account Setting Routes
 GET /account/settings — renders the authenticated user's settings page.
 """
 from typing import Any
+import re
+
+
+# ============================================================
+# Validation helpers
+# ============================================================
+
+# Conservative email regex.
+#   - Local part: letters, digits, . _ % + -
+#   - Domain:     letters, digits, . -
+#   - TLD:        at least 2 letters
+# This rejects inputs like "foo@bar" (no TLD) and "foo@bar.c" (1-char TLD).
+EMAIL_RE = re.compile(
+    r"^[A-Za-z0-9._%+\-]+@"
+    r"[A-Za-z0-9](?:[A-Za-z0-9\-]{0,61}[A-Za-z0-9])?"
+    r"(?:\.[A-Za-z0-9](?:[A-Za-z0-9\-]{0,61}[A-Za-z0-9])?)*"
+    r"\.[A-Za-z]{2,}$"
+)
+
+# Phone: optional leading "+", then digits, spaces, hyphens, parens, dots.
+PHONE_ALLOWED_RE = re.compile(r"^\+?[0-9\s\-().]+$")
+
+
+def is_valid_email(address: str) -> bool:
+    """Return True if the string looks like a plausible email address."""
+    if not isinstance(address, str):
+        return False
+    address = address.strip()
+    if not address or len(address) > 254:
+        return False
+    return bool(EMAIL_RE.match(address))
+
+
+def is_valid_phone(number: str) -> bool:
+    """
+    Return True if the string looks like a plausible phone number.
+
+    Accepts international formats with digits, spaces, hyphens,
+    parentheses, and an optional leading "+". Requires between 7
+    and 20 digits total.
+    """
+    if not isinstance(number, str):
+        return False
+    number = number.strip()
+    if not number or not PHONE_ALLOWED_RE.match(number):
+        return False
+    digits = sum(1 for c in number if c.isdigit())
+    return 7 <= digits <= 20
 
 
 def register_routes(
@@ -626,8 +674,11 @@ def register_routes(
 
         form = await request.form()
         address = (form.get("email_address") or "").strip()
-        if not address or "@" not in address:
-            return _json_error("invalid_email", "Please enter a valid email address.")
+        if not is_valid_email(address):
+            return _json_error(
+                "invalid_email",
+                "Please enter a valid email address (e.g. you@example.com)."
+            )
 
         try:
             ok = await db_service.add_email(user_id, address)
@@ -642,7 +693,11 @@ def register_routes(
                 "This email is already registered."
             )
 
-        return _json_ok("Email added.", section="contact")
+        return _json_ok(
+            "Email added.",
+            section="contact",
+            reload_section=True,   # force partial reload so the list updates
+        )
 
     @http_api.post("/account/settings/emails/set-primary",
                    response_class=http_api.HTMLResponse)
@@ -739,8 +794,12 @@ def register_routes(
         form = await request.form()
         number = (form.get("phone_number") or "").strip()
         phone_type = (form.get("phone_type") or "mobile").strip()
-        if not number:
-            return _json_error("invalid_data", "Please enter a phone number.")
+        if not is_valid_phone(number):
+            return _json_error(
+                "invalid_phone",
+                "Please enter a valid phone number (7–20 digits, "
+                "optional leading +, spaces and hyphens allowed)."
+            )
 
         try:
             ok = await db_service.add_phone(user_id, number, phone_type)
@@ -755,7 +814,11 @@ def register_routes(
                 "This phone number is already registered."
             )
 
-        return _json_ok("Phone number added.", section="contact")
+        return _json_ok(
+            "Phone number added.",
+            section="contact",
+            reload_section=True,   # force partial reload so the list updates
+        )
 
     @http_api.post("/account/settings/phones/set-primary",
                    response_class=http_api.HTMLResponse)

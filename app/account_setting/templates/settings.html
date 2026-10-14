@@ -651,32 +651,51 @@
     }
   });
 
-  /* ============================================================
-     Enable/disable Add buttons based on input content
-     ============================================================ */
+  /* ------------------------------------------------------------
+     Add-button tracking with client-side validation
+     ------------------------------------------------------------ */
+  const EMAIL_PATTERN = /^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$/;
+
+  function isEmailValid(value) {
+    if (!value) return false;
+    if (value.length > 254) return false;
+    return EMAIL_PATTERN.test(value.trim());
+  }
+
+  function isPhoneValid(value) {
+    if (!value) return false;
+    const v = value.trim();
+    if (!/^\+?[0-9\s\-().]+$/.test(v)) return false;
+    const digits = (v.match(/\d/g) || []).length;
+    return digits >= 7 && digits <= 20;
+  }
+
   function attachAddButtonTracking() {
-    const emailForm  = document.querySelector('form[action="/account/settings/emails/add"]');
-    const phoneForm  = document.querySelector('form[action="/account/settings/phones/add"]');
+    const emailForm = document.querySelector('form[action="/account/settings/emails/add"]');
+    const phoneForm = document.querySelector('form[action="/account/settings/phones/add"]');
 
-    if (emailForm) {
-      const input = emailForm.querySelector('input[name="email_address"]');
-      const btn   = emailForm.querySelector('button[type="submit"]');
-      if (input && btn) {
-        const check = () => { btn.disabled = !input.value.trim(); };
-        input.addEventListener('input', check);
-        check();
-      }
+    function bind(form, inputName, validator) {
+      if (!form) return;
+      const input = form.querySelector(`input[name="${inputName}"]`);
+      const btn   = form.querySelector('button[type="submit"]');
+      if (!input || !btn) return;
+
+      const check = () => {
+        const valid = validator(input.value);
+        btn.disabled = !valid;
+        // Optional visual feedback: red border when non-empty but invalid
+        if (input.value && !valid) {
+          input.classList.add('is-invalid');
+        } else {
+          input.classList.remove('is-invalid');
+        }
+      };
+      input.addEventListener('input', check);
+      check();
     }
 
-    if (phoneForm) {
-      const input = phoneForm.querySelector('input[name="phone_number"]');
-      const btn   = phoneForm.querySelector('button[type="submit"]');
-      if (input && btn) {
-        const check = () => { btn.disabled = !input.value.trim(); };
-        input.addEventListener('input', check);
-        check();
-      }
-    }
+    bind(emailForm, 'email_address', isEmailValid);
+    bind(phoneForm, 'phone_number',  isPhoneValid);
   }
 
   /* ============================================================
