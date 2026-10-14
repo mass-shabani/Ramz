@@ -64,6 +64,71 @@ def _initials(name: str) -> str:
 
 
 # ============================================================
+# Session guard
+# ============================================================
+def _check_session(request, db_service, auth_service, logger):
+    """
+    Return None if the session is valid.
+    Return a response (RedirectResponse or JSON 401) if not.
+    """
+    user = _get_current_user(request)
+    if not user:
+        return None   # handled by caller-specific redirect
+
+    user_id = user.get("user_id") if isinstance(user, dict) else None
+    if not user_id:
+        try:
+            request.session.clear()
+        except Exception:
+            pass
+        return None
+
+    # 1. Enabled check
+    try:
+        enabled = db_service and await db_service.is_user_enabled(user_id)
+    except Exception:
+        enabled = True
+
+    if not enabled:
+        if logger:
+            logger.log(
+                f"Session invalidated for user_id={user_id} (disabled)",
+                level="WARNING", tag="panel",
+            )
+        try:
+            request.session.clear()
+        except Exception:
+            pass
+        return "session_invalid"
+
+    # 2. Revoked session check
+    try:
+        session_id = request.session.get("session_id")
+    except Exception:
+        session_id = None
+
+    if session_id and db_service:
+        try:
+            valid = await db_service.is_session_valid(session_id)
+        except Exception:
+            valid = True
+
+        if not valid:
+            if logger:
+                logger.log(
+                    f"Session revoked for user_id={user_id}",
+                    level="WARNING", tag="panel",
+                )
+            try:
+                request.session.clear()
+            except Exception:
+                pass
+            return "session_invalid"
+
+    return None
+
+
+# ============================================================
 # Route registration
 # ============================================================
 def register_routes(
@@ -96,43 +161,11 @@ def register_routes(
         if not current_user:
             return http_api.RedirectResponse(url="/login", status_code=302)
 
-        # Validate session: user must still exist and be enabled
-        user_id = None
-        if isinstance(current_user, dict):
-            user_id = current_user.get("user_id")
-
-        if not user_id:
-            try:
-                request.session.clear()
-            except Exception:
-                pass
-            return http_api.RedirectResponse(url="/login", status_code=302)
-
-        if db_service:
-            try:
-                enabled = await db_service.is_user_enabled(user_id)
-            except Exception as exc:
-                # Fail open: a transient DB error must not eject every user
-                if logger:
-                    logger.log(
-                        f"Session check failed for user_id={user_id}: {exc}",
-                        level="ERROR",
-                        tag="panel",
-                    )
-                enabled = True
-
-            if not enabled:
-                if logger:
-                    logger.log(
-                        f"Session invalidated for user_id={user_id} (disabled)",
-                        level="WARNING",
-                        tag="panel",
-                    )
-                try:
-                    request.session.clear()
-                except Exception:
-                    pass
-                return http_api.RedirectResponse(url="/login", status_code=302)
+        # Full session validation (enabled + not revoked)
+        check = await _check_session(request, db_service, None, logger)
+        if check == "session_invalid":
+            # Revoked or disabled → back to home
+            return http_api.RedirectResponse(url="/", status_code=302)
 
         try:
             html_content = await panel_service.render_panel_view(
@@ -177,31 +210,18 @@ def register_routes(
         """
         current_user = _get_current_user(request)
         if not current_user:
-            return http_api.HTMLResponse(
-                content="<div class='card'><p>Session expired. Please sign in again.</p></div>",
+            return http_api.JSONResponse(
+                content={"status": "session_revoked", "message": "Session expired."},
                 status_code=401,
             )
 
-        # Validate: user must still exist and be enabled
-        user_id = None
-        if isinstance(current_user, dict):
-            user_id = current_user.get("user_id")
-
-        if user_id and db_service:
-            try:
-                enabled = await db_service.is_user_enabled(user_id)
-            except Exception:
-                enabled = True
-
-            if not enabled:
-                try:
-                    request.session.clear()
-                except Exception:
-                    pass
-                return http_api.HTMLResponse(
-                    content="<div class='card'><p>Your session has expired. Please sign in again.</p></div>",
-                    status_code=401,
-                )
+        # Full session validation
+        check = await _check_session(request, db_service, None, logger)
+        if check == "session_invalid":
+            return http_api.JSONResponse(
+                content={"status": "session_revoked", "message": "Session revoked."},
+                status_code=401,
+            )
 
         # --- Look up the partial template ---
         template_name = VIEW_TEMPLATES.get(view)

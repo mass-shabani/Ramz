@@ -127,13 +127,14 @@ class AuthService:
         """
         Check whether the current session is still valid.
 
-        A session becomes invalid if:
+        A session is invalid if:
             • No user is stored in the session
-            • The stored user_id is missing or malformed
-            • The user has been disabled since the session started
+            • The stored user_id is missing
+            • The user has been disabled
+            • The tracked session_id has been revoked
 
-        When invalid, the session is cleared so the next request is
-        treated as a fresh visitor.
+        On invalid, the session is cleared so the next request is a
+        fresh visitor.
 
         Returns True if the session is valid, False otherwise.
         """
@@ -148,22 +149,53 @@ class AuthService:
 
         user_id = user_data.get("user_id") if isinstance(user_data, dict) else None
         if not user_id:
-            request.session.clear()
+            try:
+                request.session.clear()
+            except Exception:
+                pass
             return False
 
+        # 1. User must still be enabled
         try:
             enabled = await self.db.is_user_enabled(user_id)
         except Exception:
-            # If we can't check, keep the user logged in (fail open).
-            return True
+            enabled = True   # fail open
 
         if not enabled:
             self._log(
                 f"Session invalidated for user_id={user_id} (disabled)",
                 level="WARNING",
             )
-            request.session.clear()
+            try:
+                request.session.clear()
+            except Exception:
+                pass
             return False
+
+        # 2. Tracked session must still be valid (not revoked)
+        session_id = None
+        try:
+            session_id = request.session.get("session_id")
+        except Exception:
+            pass
+
+        if session_id:
+            try:
+                valid = await self.db.is_session_valid(session_id)
+            except Exception:
+                valid = True   # fail open
+
+            if not valid:
+                self._log(
+                    f"Session revoked for user_id={user_id} "
+                    f"(session_id={session_id[:8]}...)",
+                    level="WARNING",
+                )
+                try:
+                    request.session.clear()
+                except Exception:
+                    pass
+                return False
 
         return True
 

@@ -76,53 +76,15 @@ def register_routes(
             1. Session must contain a user.
             2. The user must still be enabled.
             3. If access control is set up, the user must have the
-               'account.setting.view' permission.
+                'account.setting.view' permission.
         """
-        # 1. Session must contain a user
-        current_user = (
-            request.session.get("user")
-            if hasattr(request, "session")
-            else None
-        )
-        if not current_user:
-            return http_api.RedirectResponse(url="/login", status_code=302)
+        # Full session guard
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return redirect
 
-        user_id = (
-            current_user.get("user_id")
-            if isinstance(current_user, dict)
-            else None
-        )
-        if not user_id:
-            try:
-                request.session.clear()
-            except Exception:
-                pass
-            return http_api.RedirectResponse(url="/login", status_code=302)
-
-        # 2. Session validation — user must still be enabled
-        try:
-            enabled = await db_service.is_user_enabled(user_id)
-        except Exception as exc:
-            if logger:
-                logger.log(
-                    f"Session check failed for user_id={user_id}: {exc}",
-                    level="ERROR",
-                    tag="settings",
-                )
-            enabled = True
-
-        if not enabled:
-            if logger:
-                logger.log(
-                    f"Session invalidated for user_id={user_id} (disabled)",
-                    level="WARNING",
-                    tag="settings",
-                )
-            try:
-                request.session.clear()
-            except Exception:
-                pass
-            return http_api.RedirectResponse(url="/login", status_code=302)
+        # Re-fetch current_user after guard (session may have been cleared)
+        current_user = request.session.get("user")
 
         # 3. Access check (optional)
         try:
@@ -227,15 +189,55 @@ def register_routes(
     # ------------------------------------------------------------
     async def _ensure_authenticated(request):
         """
-        Return (user_id, None) on success, or (None, response) if the
-        request should be redirected.
+        Return (user_id, None) on success.
+        Return (None, response) if the request should be redirected or
+        rejected (revoked/disabled session).
+
+        The type of response depends on whether this is an AJAX request:
+            • AJAX → 401 JSON with status="session_revoked"
+            • HTML → 302 redirect to "/"
         """
         current_user = (
             request.session.get("user")
             if hasattr(request, "session")
             else None
         )
+
+        def _is_ajax():
+            headers = getattr(request, "headers", None)
+            if not headers:
+                return False
+            accept = headers.get("accept", "") or ""
+            xrw = headers.get("x-requested-with", "") or ""
+            return ("application/json" in accept.lower()
+                    or "xmlhttprequest" in xrw.lower())
+
+        def _reject(reason):
+            try:
+                request.session.clear()
+            except Exception:
+                pass
+            if _is_ajax():
+                return None, http_api.JSONResponse(
+                    content={
+                        "status": "session_revoked",
+                        "message": "Your session is no longer valid.",
+                        "reason": reason,
+                    },
+                    status_code=401,
+                )
+            return None, http_api.RedirectResponse(url="/", status_code=302)
+
         if not current_user:
+            if _is_ajax():
+                return None, http_api.JSONResponse(
+                    content={
+                        "status": "session_revoked",
+                        "message": "Not signed in.",
+                        "reason": "no_user",
+                    },
+                    status_code=401,
+                )
             return None, http_api.RedirectResponse(
                 url="/login", status_code=302
             )
@@ -246,27 +248,41 @@ def register_routes(
             else None
         )
         if not user_id:
-            try:
-                request.session.clear()
-            except Exception:
-                pass
-            return None, http_api.RedirectResponse(
-                url="/login", status_code=302
-            )
+            return _reject("no_user_id")
 
+        # 1. Enabled check
         try:
             enabled = await db_service.is_user_enabled(user_id)
         except Exception:
             enabled = True
 
         if not enabled:
+            if logger:
+                logger.log(
+                    f"Session invalidated for user_id={user_id} (disabled)",
+                    level="WARNING", tag="settings",
+                )
+            return _reject("disabled")
+
+        # 2. Revoked session check
+        try:
+            session_id = request.session.get("session_id")
+        except Exception:
+            session_id = None
+
+        if session_id:
             try:
-                request.session.clear()
+                valid = await db_service.is_session_valid(session_id)
             except Exception:
-                pass
-            return None, http_api.RedirectResponse(
-                url="/login", status_code=302
-            )
+                valid = True
+
+            if not valid:
+                if logger:
+                    logger.log(
+                        f"Session revoked for user_id={user_id}",
+                        level="WARNING", tag="settings",
+                    )
+                return _reject("revoked")
 
         return user_id, None
 
@@ -1480,10 +1496,14 @@ def register_routes(
         # Auth guards
         user_id, redirect = await _ensure_authenticated(request)
         if redirect:
-            return http_api.HTMLResponse(
-                content="<div class='card'><p>Session expired.</p></div>",
-                status_code=401,
-            )
+            # _ensure_authenticated already returns JSON for AJAX, plain redirect for HTML
+            # If redirect is a 401 HTMLResponse, normalize to JSON for consistency
+            if hasattr(redirect, 'status_code') and redirect.status_code == 401:
+                return http_api.JSONResponse(
+                    content={"status": "session_revoked", "message": "Session expired."},
+                    status_code=401,
+                )
+            return redirect
 
         # Validate section
         template_name = PARTIAL_TEMPLATES.get(section)

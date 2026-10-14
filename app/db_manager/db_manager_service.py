@@ -378,6 +378,13 @@ class DbManagerService:
     async def get_session(self, session_id):
         return await self._session_repo.get_by_id(session_id)
 
+    async def is_session_valid(self, session_id):
+        """
+        Return True if the session exists and is not revoked.
+        Used by route guards to detect revoked sessions.
+        """
+        return await self._session_repo.is_valid(session_id)
+
     # ============================================================
     # Settings
     # ============================================================

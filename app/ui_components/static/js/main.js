@@ -89,3 +89,43 @@ document.addEventListener('keydown', (e) => {
   document.querySelectorAll('ramz-sidebar')
     .forEach(s => s.close?.());
 });
+
+/* ==========================================================================
+   Global fetch interceptor — handles revoked sessions
+   ==========================================================================
+   Any 401 response with a JSON body containing {"status": "session_revoked"}
+   triggers an immediate redirect to the home page.
+
+   This keeps all AJAX-based interactions consistent: when an admin (or
+   the user from another device) revokes a session, the affected browser
+   is ejected on the next request.
+   ========================================================================== */
+
+(function installSessionRevokedInterceptor() {
+  if (window.__ramzSessionInterceptorInstalled) return;
+  window.__ramzSessionInterceptorInstalled = true;
+
+  const originalFetch = window.fetch;
+
+  window.fetch = async function (...args) {
+    const response = await originalFetch.apply(this, args);
+
+    if (response.status === 401) {
+      // Clone so the original response can still be read by the caller
+      try {
+        const clone = response.clone();
+        const data = await clone.json();
+        if (data && data.status === 'session_revoked') {
+          // Give a brief moment for any pending UI updates, then hard-redirect
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 50);
+        }
+      } catch (_) {
+        // Not JSON, or body already consumed — ignore
+      }
+    }
+
+    return response;
+  };
+})();

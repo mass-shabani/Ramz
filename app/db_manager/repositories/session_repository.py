@@ -14,9 +14,16 @@ class SessionRepository:
     TABLE = "user_session"
     DEFAULT_LIFETIME_DAYS = 30
 
+    # How long a validity result stays cached (seconds).
+    # Lower = faster reaction to revoke; higher = fewer DB hits.
+    VALIDITY_CACHE_TTL = 15.0
+
     def __init__(self, db_service, logger=None):
         self._db = db_service
         self._logger = logger
+        # Cache for session validity (avoids DB hit on every request)
+        # Map: session_id -> (timestamp_monotonic, is_valid)
+        self._validity_cache: dict[str, tuple[float, bool]] = {}
 
     def _conn(self):
         return self._db.connection()
@@ -85,6 +92,7 @@ class SessionRepository:
                 where={"session_id": session_id},
                 values={"revoked": 1},
             )
+            self.invalidate_validity_cache(session_id)
             return result_ok(result)
         except Exception as exc:
             self._log(f"session revoke failed: {exc}", level="ERROR")
@@ -108,6 +116,7 @@ class SessionRepository:
                     "WHERE user_id = ? AND revoked = 0"
                 )
                 await self._conn().execute(sql, (int(user_id),))
+            self.invalidate_validity_cache()
             return True
         except Exception as exc:
             self._log(f"revoke_all_for_user failed: {exc}", level="ERROR")
@@ -122,6 +131,7 @@ class SessionRepository:
                 self.TABLE,
                 where={"session_id": session_id},
             )
+            self.invalidate_validity_cache(session_id)
             return result_ok(result)
         except Exception as exc:
             self._log(f"session delete failed: {exc}", level="ERROR")
@@ -150,6 +160,53 @@ class SessionRepository:
             self.TABLE,
             where={"session_id": session_id},
         )
+
+    async def is_valid(self, session_id: str) -> bool:
+        """
+        Return True if the session exists and is not revoked.
+
+        Result is cached for VALIDITY_CACHE_TTL seconds so this can be
+        called on every request without overwhelming the database.
+        The cache is invalidated when the session is revoked via
+        `revoke()` or `revoke_all_for_user()`.
+        """
+        if not session_id:
+            return False
+
+        import time as _time
+        now = _time.monotonic()
+
+        cached = self._validity_cache.get(session_id)
+        if cached and (now - cached[0]) < self.VALIDITY_CACHE_TTL:
+            return cached[1]
+
+        try:
+            row = await self._conn().find_one(
+                self.TABLE,
+                where={"session_id": session_id},
+            )
+        except Exception:
+            # On DB error, fail open (don't log the user out)
+            return True
+
+        if not row:
+            self._validity_cache[session_id] = (now, False)
+            return False
+
+        valid = (int(row.get("revoked", 0)) == 0)
+        self._validity_cache[session_id] = (now, valid)
+        return valid
+
+    def invalidate_validity_cache(self, session_id: Optional[str] = None) -> None:
+        """
+        Drop the validity cache for a session, or all sessions if None.
+        Called internally after revoke/delete to make the change take
+        effect immediately for the next request.
+        """
+        if session_id is None:
+            self._validity_cache.clear()
+            return
+        self._validity_cache.pop(session_id, None)
 
     async def list_active_for_user(self, user_id: int) -> list[dict]:
         if not user_id:
