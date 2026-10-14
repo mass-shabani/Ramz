@@ -2518,17 +2518,18 @@ content-container {
    ========================================================================== */
 
 .standalone-topbar {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 40;
   height: 76px;
-  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
   padding: 0 28px;
-  background: rgba(10, 15, 28, 0.72);
+  background: rgba(10, 15, 28, 0.85);
   backdrop-filter: blur(22px) saturate(150%);
   -webkit-backdrop-filter: blur(22px) saturate(150%);
   border-bottom: 1px solid var(--border-soft);
@@ -2580,7 +2581,8 @@ content-container {
   width: 100%;
   max-width: 1240px;
   margin: 0 auto;
-  padding: 32px 28px 60px;
+  /* 76px topbar height + 32px original padding */
+  padding: 108px 28px 60px;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -2923,7 +2925,11 @@ content-container {
 /* ---------- Responsive ---------- */
 @media (max-width: 640px) {
   .standalone-topbar { padding: 0 16px; height: 68px; }
-  .standalone-content { padding: 20px 16px 44px; gap: 16px; }
+  .standalone-content {
+    /* 68px topbar height + 20px original padding */
+    padding: 88px 16px 44px;
+    gap: 16px;
+  }
   .page-head h1 { font-size: 21px; }
   .user-name { display: none; }
   .user-chip { padding: 0 8px; gap: 0; }
@@ -3585,6 +3591,66 @@ content-container {
 .cascade-dialog-icon.is-success {
   background: rgba(16,185,129,0.16);
   color: #34d399;
+}
+
+/* ---------- Banking — mobile responsive ---------- */
+@media (max-width: 640px) {
+
+  /* Account head — actions wrap to a second row */
+  .banking-account-head {
+    flex-wrap: wrap;
+    row-gap: 10px;
+    padding: 12px 14px;
+  }
+  .banking-account-head .channel-actions {
+    flex: 1 1 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255,255,255,0.04);
+  }
+
+  /* Card — actions wrap to a second row */
+  .banking-card {
+    flex-wrap: wrap;
+    row-gap: 8px;
+    padding: 10px 12px;
+  }
+  .banking-card .channel-actions {
+    flex: 1 1 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255,255,255,0.04);
+  }
+
+  /* Slightly smaller icons on mobile */
+  .banking-icon { width: 38px; height: 38px; border-radius: 10px; }
+  .banking-icon svg { width: 18px; height: 18px; }
+  .banking-card-icon { width: 32px; height: 32px; border-radius: 9px; }
+  .banking-card-icon svg { width: 15px; height: 15px; }
+
+  /* Reduce nested padding */
+  .banking-cards {
+    padding: 8px 10px 12px 14px;
+    gap: 6px;
+  }
+
+  /* Buttons a bit smaller */
+  .channel-action {
+    font-size: 11.5px;
+    padding: 5px 9px;
+  }
+  .channel-action.toggle-action svg {
+    width: 12px; height: 12px;
+  }
+
+  /* Reduce the bank name font on very narrow screens */
+  .banking-name { font-size: 13px; }
+  .banking-card-number { font-size: 12px; }
+
+  /* Add-card form padding */
+  .add-card-block > form { padding: 4px 12px 12px; }
 }
 
 @media (max-width: 640px) {
