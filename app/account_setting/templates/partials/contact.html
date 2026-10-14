@@ -245,7 +245,7 @@
   </ramz-card>
 
   <!-- ============ ADDRESSES ============ -->
-  <ramz-card title="Address" subtitle="Your mailing address">
+  <ramz-card title="Addresses" subtitle="Mailing addresses on your account">
     <div slot="icon" class="card-icon icon-soft--amber">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
            stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
@@ -259,9 +259,165 @@
       You do not have permission to edit this section.
     </p>
     {% else %}
-    <p style="color: var(--muted); font-size: 13px; margin: 0;">
-      Multi-address management will be added in a future update.
-    </p>
+
+    <div class="channel-list">
+      {% for addr in channels.addresses %}
+      <div class="channel-item">
+        <div class="channel-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
+        </div>
+
+        <div class="channel-body">
+          <div class="channel-value">
+            {{ addr.address_line1 }}{% if addr.address_line2 %}, {{ addr.address_line2 }}{% endif %}
+          </div>
+          <div class="channel-meta">
+            {% if addr.city or addr.state_province or addr.postal_code %}
+              {{ addr.city }}{% if addr.state_province %}, {{ addr.state_province }}{% endif %}
+              {% if addr.postal_code %} — {{ addr.postal_code }}{% endif %}
+              ·
+            {% endif %}
+            <span style="text-transform: capitalize;">{{ addr.address_type }}</span>
+            {% if addr.country %} · {{ addr.country }}{% endif %}
+          </div>
+        </div>
+
+        <div class="channel-actions">
+          <button type="button" class="channel-action"
+                  data-action="edit-address"
+                  data-id="{{ addr.address_id }}"
+                  data-line1="{{ addr.address_line1 or '' }}"
+                  data-line2="{{ addr.address_line2 or '' }}"
+                  data-city="{{ addr.city or '' }}"
+                  data-state="{{ addr.state_province or '' }}"
+                  data-postal="{{ addr.postal_code or '' }}"
+                  data-country="{{ addr.country or '' }}"
+                  data-type="{{ addr.address_type or 'home' }}">Edit</button>
+          <button type="button" class="channel-action danger"
+                  data-action="remove-address"
+                  data-id="{{ addr.address_id }}">Remove</button>
+        </div>
+      </div>
+      {% endfor %}
+
+      {% if not channels.addresses %}
+      <p style="color: var(--muted); font-size: 13px; margin: 0;">
+        No address on file.
+      </p>
+      {% endif %}
+    </div>
+
+    {# Add new address — collapsible form #}
+    <details class="add-address-block" id="addAddressBlock" style="margin-top: 16px;">
+      <summary> Add Address</summary>
+      <form method="post" action="/account/settings/addresses/add"
+            data-ajax="true" style="margin-top: 14px;">
+        <input type="hidden" name="address_id" value="" />
+        <div class="settings-rows">
+
+          <div class="settings-row">
+            <div class="settings-row-label">
+              <div class="label">Address Line 1</div>
+              <div class="hint">Street and number</div>
+            </div>
+            <div class="settings-row-control">
+              <div class="settings-field">
+                <input type="text" name="address_line1" required
+                       placeholder="Street and number" />
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-label">
+              <div class="label">Address Line 2</div>
+              <div class="hint">Apartment, floor (optional)</div>
+            </div>
+            <div class="settings-row-control">
+              <div class="settings-field">
+                <input type="text" name="address_line2" placeholder="Optional" />
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-label">
+              <div class="label">City</div>
+            </div>
+            <div class="settings-row-control">
+              <div class="settings-field">
+                <input type="text" name="city" />
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-label">
+              <div class="label">State / Province</div>
+            </div>
+            <div class="settings-row-control">
+              <div class="settings-field">
+                <input type="text" name="state_province" />
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-label">
+              <div class="label">Postal Code</div>
+            </div>
+            <div class="settings-row-control">
+              <div class="settings-field">
+                <input type="text" name="postal_code" />
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-label">
+              <div class="label">Country</div>
+            </div>
+            <div class="settings-row-control">
+              <div class="settings-field">
+                <input type="text" name="country" value="Iran" />
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-label">
+              <div class="label">Address Type</div>
+            </div>
+            <div class="settings-row-control">
+              <div class="settings-field">
+                <select name="address_type">
+                  <option value="home" selected>Home</option>
+                  <option value="work">Work</option>
+                  <option value="billing">Billing</option>
+                  <option value="shipping">Shipping</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="settings-actions">
+          <button type="submit" class="btn-primary" id="addressFormSubmitBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            <span id="addressFormSubmitText">Add Address</span>
+          </button>
+        </div>
+      </form>
+    </details>
+
     {% endif %}
   </ramz-card>
 

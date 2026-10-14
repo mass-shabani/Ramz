@@ -896,6 +896,139 @@ def register_routes(
         return _json_ok("Phone number removed.", section="contact")
 
     # ------------------------------------------------------------
+    # Address management (no primary concept)
+    # ------------------------------------------------------------
+    @http_api.post("/account/settings/addresses/add",
+                   response_class=http_api.HTMLResponse)
+    async def add_address(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return _json_error("unauthorized", "Session expired.")
+
+        try:
+            allowed = await db_service.has_access(user_id, "account.profile.edit")
+        except Exception:
+            allowed = False
+        if not allowed:
+            return _json_error("no_permission", "You do not have permission.")
+
+        form = await request.form()
+        line1 = (form.get("address_line1") or "").strip()
+        if not line1:
+            return _json_error("invalid_data", "Street address is required.")
+
+        try:
+            ok = await db_service.add_address(
+                user_id,
+                address_line1=line1,
+                address_line2=(form.get("address_line2") or "").strip() or None,
+                city=(form.get("city") or "").strip() or None,
+                state_province=(form.get("state_province") or "").strip() or None,
+                postal_code=(form.get("postal_code") or "").strip() or None,
+                country=(form.get("country") or "Iran").strip(),
+                address_type=(form.get("address_type") or "home").strip(),
+            )
+        except Exception as exc:
+            if logger:
+                logger.log(f"add_address failed: {exc}", level="ERROR", tag="settings")
+            ok = False
+
+        if not ok:
+            return _json_error("add_failed", "Could not add address.")
+
+        return _json_ok(
+            "Address added.",
+            section="contact",
+            reload_section=True,
+        )
+
+    @http_api.post("/account/settings/addresses/update",
+                   response_class=http_api.HTMLResponse)
+    async def update_address(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return _json_error("unauthorized", "Session expired.")
+
+        try:
+            allowed = await db_service.has_access(user_id, "account.profile.edit")
+        except Exception:
+            allowed = False
+        if not allowed:
+            return _json_error("no_permission", "You do not have permission.")
+
+        form = await request.form()
+        try:
+            address_id = int(form.get("address_id") or 0)
+        except ValueError:
+            address_id = 0
+        if not address_id:
+            return _json_error("invalid_data", "Missing address ID.")
+
+        line1 = (form.get("address_line1") or "").strip()
+        if not line1:
+            return _json_error("invalid_data", "Street address is required.")
+
+        data = {
+            "address_line1":  line1,
+            "address_line2":  (form.get("address_line2") or "").strip() or None,
+            "city":           (form.get("city") or "").strip() or None,
+            "state_province": (form.get("state_province") or "").strip() or None,
+            "postal_code":    (form.get("postal_code") or "").strip() or None,
+            "country":        (form.get("country") or "Iran").strip(),
+            "address_type":   (form.get("address_type") or "home").strip(),
+        }
+
+        try:
+            ok = await db_service.update_address(user_id, address_id, data)
+        except Exception:
+            ok = False
+
+        if not ok:
+            return _json_error("update_failed", "Could not update address.")
+
+        return _json_ok(
+            "Address updated.",
+            section="contact",
+            reload_section=True,
+        )
+
+    @http_api.post("/account/settings/addresses/delete",
+                   response_class=http_api.HTMLResponse)
+    async def delete_address(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return _json_error("unauthorized", "Session expired.")
+
+        try:
+            allowed = await db_service.has_access(user_id, "account.profile.edit")
+        except Exception:
+            allowed = False
+        if not allowed:
+            return _json_error("no_permission", "You do not have permission.")
+
+        form = await request.form()
+        try:
+            address_id = int(form.get("address_id") or 0)
+        except ValueError:
+            address_id = 0
+        if not address_id:
+            return _json_error("invalid_data", "Missing address ID.")
+
+        try:
+            ok = await db_service.remove_address(user_id, address_id)
+        except Exception:
+            ok = False
+
+        if not ok:
+            return _json_error("cannot_remove", "Could not remove this address.")
+
+        return _json_ok(
+            "Address removed.",
+            section="contact",
+            reload_section=True,
+        )
+
+    # ------------------------------------------------------------
     # POST /account/settings/partials/{section} — partial loader
     # ------------------------------------------------------------
     PARTIAL_TEMPLATES = {

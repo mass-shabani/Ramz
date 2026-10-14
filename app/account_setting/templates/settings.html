@@ -564,6 +564,7 @@
     const CHANNEL_ACTIONS = [
       'set-primary-email', 'remove-email',
       'set-primary-phone', 'remove-phone',
+      'remove-address',
     ];
     if (!CHANNEL_ACTIONS.includes(action)) return;
 
@@ -588,6 +589,7 @@
       'remove-email':       { url: '/account/settings/emails/delete',      param: 'email_id' },
       'set-primary-phone':  { url: '/account/settings/phones/set-primary', param: 'phone_id' },
       'remove-phone':       { url: '/account/settings/phones/delete',      param: 'phone_id' },
+      'remove-address':     { url: '/account/settings/addresses/delete',   param: 'address_id' },
     };
     const cfg = map[action];
     if (!cfg) return;
@@ -697,6 +699,100 @@
     bind(emailForm, 'email_address', isEmailValid);
     bind(phoneForm, 'phone_number',  isPhoneValid);
   }
+
+  /* ============================================================
+     Address edit — prefill form and switch to update mode
+     ============================================================ */
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action="edit-address"]');
+    if (!btn) return;
+
+    e.preventDefault();
+
+    const block = document.getElementById('addAddressBlock');
+    if (!block) return;
+
+    // Open the details
+    block.open = true;
+
+    const form = block.querySelector('form');
+    if (!form) return;
+
+    const dataset = btn.dataset;
+
+    // Fill form fields
+    const setVal = (name, value) => {
+      const el = form.querySelector(`[name="${name}"]`);
+      if (el) el.value = value || '';
+    };
+    setVal('address_id',     dataset.id || '');
+    setVal('address_line1',  dataset.line1 || '');
+    setVal('address_line2',  dataset.line2 || '');
+    setVal('city',           dataset.city || '');
+    setVal('state_province', dataset.state || '');
+    setVal('postal_code',    dataset.postal || '');
+    setVal('country',        dataset.country || 'Iran');
+    setVal('address_type',   dataset.type || 'home');
+
+    // Change form action to update
+    form.action = '/account/settings/addresses/update';
+
+    // Change button text
+    const txt = document.getElementById('addressFormSubmitText');
+    if (txt) txt.textContent = 'Update Address';
+
+    // Add cancel button (only once)
+    if (!form.querySelector('[data-action="cancel-address-edit"]')) {
+      const actions = form.querySelector('.settings-actions');
+      if (actions) {
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'btn-ghost';
+        cancelBtn.setAttribute('data-action', 'cancel-address-edit');
+        cancelBtn.textContent = 'Cancel';
+        actions.insertBefore(cancelBtn, actions.firstChild);
+      }
+    }
+
+    // Scroll to form
+    block.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  /* ============================================================
+     Address edit — cancel
+     ============================================================ */
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action="cancel-address-edit"]');
+    if (!btn) return;
+
+    e.preventDefault();
+
+    const block = document.getElementById('addAddressBlock');
+    if (!block) return;
+
+    const form = block.querySelector('form');
+    if (!form) return;
+
+    // Reset form
+    form.reset();
+
+    // Set action back to add
+    form.action = '/account/settings/addresses/add';
+
+    // Hide the address_id field
+    const idField = form.querySelector('[name="address_id"]');
+    if (idField) idField.value = '';
+
+    // Change button text back
+    const txt = document.getElementById('addressFormSubmitText');
+    if (txt) txt.textContent = 'Add Address';
+
+    // Remove cancel button
+    btn.remove();
+
+    // Close details
+    block.open = false;
+  });
 
   /* ============================================================
      Attach tracking after each partial load

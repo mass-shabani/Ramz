@@ -281,6 +281,19 @@ class DbManagerService:
     async def set_primary_phone(self, user_id, phone_id):
         return await self._profile_workflow.set_primary_phone(user_id, phone_id)
 
+    async def add_address(self, user_id, address_line1, **kwargs):
+        return await self._profile_workflow.add_address(
+            user_id, address_line1, **kwargs
+        )
+
+    async def update_address(self, user_id, address_id, data):
+        return await self._profile_workflow.update_address(
+            user_id, address_id, data
+        )
+
+    async def remove_address(self, user_id, address_id):
+        return await self._profile_workflow.remove_address(user_id, address_id)
+
     # ============================================================
     # Settings
     # ============================================================

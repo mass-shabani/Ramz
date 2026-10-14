@@ -261,7 +261,7 @@ class ProfileWorkflow:
         for p in phones:
             p["is_primary"] = (int(p.get("phone_id") or 0) == (user.phone_id or 0))
 
-        # Addresses
+        # Addresses — no primary concept here, they are a plain list
         addresses = await self._db._address_repo.list_by_contact(contact_id)
 
         return {
@@ -478,6 +478,118 @@ class ProfileWorkflow:
             return await self._db._user_repo.update_phone_id(user_id, phone_id)
         except Exception as exc:
             self._log(f"set_primary_phone failed: {exc}", level="ERROR")
+            return False
+
+    # ============================================================
+    # Multi-address management
+    # ============================================================
+    async def add_address(
+        self,
+        user_id: int,
+        address_line1: str,
+        address_line2: Optional[str] = None,
+        city: Optional[str] = None,
+        state_province: Optional[str] = None,
+        postal_code: Optional[str] = None,
+        country: str = "Iran",
+        address_type: str = "home",
+    ) -> bool:
+        """
+        Add a new address to the user's contact.
+
+        Addresses have no "primary" concept in the current schema —
+        they are a plain list. The caller manages them freely.
+        """
+        if not user_id or not address_line1:
+            return False
+
+        user = await self._db._user_repo.get_by_id(user_id)
+        if not user:
+            return False
+
+        people = await self._db._people_repo.get_by_id(user.people_id)
+        contact_id = int(people["contact_id"]) if people else 0
+        if not contact_id:
+            return False
+
+        allowed_types = {"home", "work", "billing", "shipping"}
+        if address_type not in allowed_types:
+            address_type = "home"
+
+        try:
+            new_id = await self._db._address_repo.create(
+                contact_id=contact_id,
+                address_line1=address_line1,
+                address_line2=address_line2,
+                city=city,
+                state_province=state_province,
+                postal_code=postal_code,
+                country=country,
+                address_type=address_type,
+            )
+            return bool(new_id)
+        except Exception as exc:
+            self._log(f"add_address failed: {exc}", level="ERROR")
+            return False
+
+    async def update_address(
+        self, user_id: int, address_id: int, data: dict
+    ) -> bool:
+        """
+        Update an existing address.
+
+        The address must belong to the current user's contact. Only
+        whitelisted fields are accepted by the repository layer.
+        """
+        if not user_id or not address_id or not data:
+            return False
+
+        user = await self._db._user_repo.get_by_id(user_id)
+        if not user:
+            return False
+
+        people = await self._db._people_repo.get_by_id(user.people_id)
+        contact_id = int(people["contact_id"]) if people else 0
+        if not contact_id:
+            return False
+
+        target = await self._db._address_repo.get_by_id(address_id)
+        if not target or int(target.get("contact_id", 0)) != contact_id:
+            return False
+
+        try:
+            return await self._db._address_repo.update(address_id, **data)
+        except Exception as exc:
+            self._log(f"update_address failed: {exc}", level="ERROR")
+            return False
+
+    async def remove_address(self, user_id: int, address_id: int) -> bool:
+        """
+        Remove an address.
+
+        No restrictions: the user may remove every address they own.
+        Returns True on success, False on any failure.
+        """
+        if not user_id or not address_id:
+            return False
+
+        user = await self._db._user_repo.get_by_id(user_id)
+        if not user:
+            return False
+
+        people = await self._db._people_repo.get_by_id(user.people_id)
+        contact_id = int(people["contact_id"]) if people else 0
+        if not contact_id:
+            return False
+
+        target = await self._db._address_repo.get_by_id(address_id)
+        if not target or int(target.get("contact_id", 0)) != contact_id:
+            return False
+
+        try:
+            return await self._db._address_repo.delete(address_id)
+        except Exception as exc:
+            self._log(f"remove_address failed: {exc}", level="ERROR")
             return False
 
 
