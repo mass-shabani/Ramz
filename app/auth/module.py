@@ -22,6 +22,7 @@ class AuthModule(IModule):
 
         # Central database service
         db_service = context.services.get("app_db_service")
+        message_service = context.services.get("message_service")
 
         if logger:
             logger.log("Auth module started", tag="auth")
@@ -59,6 +60,59 @@ class AuthModule(IModule):
             order=999,
         )
 
+        # ------------------------------------------------------------
+        # Helper: render a "page closed" error page
+        # ------------------------------------------------------------
+        async def _render_closed_page(status_code, title, message):
+            """
+            Render a styled error page for a closed feature.
+
+            Uses `message_service` if available, otherwise falls back
+            to `template_service` error.html, and as a last resort to
+            plain HTML.
+            """
+            # 1. Prefer message_service
+            if message_service:
+                try:
+                    html = await message_service.render_message(
+                        status_code=status_code,
+                        title=title,
+                        message=message,
+                        message_type="warning",
+                    )
+                    return http_api.HTMLResponse(
+                        content=html, status_code=status_code
+                    )
+                except Exception as exc:
+                    if logger:
+                        logger.log(
+                            f"message_service.render_message failed: {exc}",
+                            level="WARNING", tag="auth",
+                        )
+
+            # 2. Fallback to template_service error.html
+            try:
+                html = await template_service.render(
+                    "error.html",
+                    context={
+                        "status_code": status_code,
+                        "title":       title,
+                        "message":     message,
+                        "module_name": "template_service",
+                    },
+                )
+                return http_api.HTMLResponse(
+                    content=html, status_code=status_code
+                )
+            except Exception:
+                pass
+
+            # 3. Plain text last resort
+            return http_api.HTMLResponse(
+                content=f"<h1>{status_code}</h1><p>{title}</p><p>{message}</p>",
+                status_code=status_code,
+            )
+
         @http_api.get("/login", response_class=http_api.HTMLResponse)
         async def login_page(request: http_api.Request):
             """Display the login page (guarded by auth.login.view)."""
@@ -74,10 +128,14 @@ class AuthModule(IModule):
             # 2. Check public access
             allowed = await db_service.has_public_access("auth.login.view")
             if not allowed:
-                # Login page closed by admin — likely a misconfiguration
-                return http_api.HTMLResponse(
-                    content="<h1>Login is temporarily unavailable</h1>",
+                return await _render_closed_page(
                     status_code=503,
+                    title="Login is temporarily unavailable",
+                    message=(
+                        "The login page is currently closed by an "
+                        "administrator. Please try again later or "
+                        "contact support."
+                    ),
                 )
 
             html = await template_service.render(
@@ -154,12 +212,14 @@ class AuthModule(IModule):
             # 2. Check public access
             allowed = await db_service.has_public_access("auth.signup.view")
             if not allowed:
-                return http_api.HTMLResponse(
-                    content=(
-                        "<h1>Sign-up is currently closed</h1>"
-                        "<p>Please contact an administrator.</p>"
-                    ),
+                return await _render_closed_page(
                     status_code=403,
+                    title="Sign-up is currently closed",
+                    message=(
+                        "New account registration is currently disabled. "
+                        "Please contact an administrator if you need "
+                        "access."
+                    ),
                 )
 
             html = await template_service.render(
@@ -180,9 +240,14 @@ class AuthModule(IModule):
             # Guard again — admin may have closed signup between GET and POST
             allowed = await db_service.has_public_access("auth.signup.view")
             if not allowed:
-                return http_api.HTMLResponse(
-                    content="<h1>Sign-up is currently closed</h1>",
+                return await _render_closed_page(
                     status_code=403,
+                    title="Sign-up is currently closed",
+                    message=(
+                        "New account registration is currently disabled. "
+                        "Please contact an administrator if you need "
+                        "access."
+                    ),
                 )
 
             form_data = await request.form()

@@ -114,7 +114,7 @@ class SignupWorkflow:
 
         try:
             conn = self._db.connection()
-            async with conn.begin_transaction():
+            async with conn.transaction():
                 # 4.1 — contact hub
                 contact_id = await self._db._contact_repo.create()
                 if not contact_id:
@@ -144,10 +144,23 @@ class SignupWorkflow:
 
                 # 4.4 — phone (optional)
                 if data.phone:
+                    # Resolve type name "mobile" → phone_type_id
+                    phone_type_id = 1   # fallback
+                    try:
+                        type_row = await self._db._phone_type_repo.get_by_name("mobile")
+                        if type_row:
+                            phone_type_id = int(type_row["phone_type_id"])
+                        else:
+                            types = await self._db._phone_type_repo.list_enabled()
+                            if types:
+                                phone_type_id = int(types[0]["phone_type_id"])
+                    except Exception:
+                        pass
+
                     phone_id = await self._db._phone_repo.create(
                         contact_id=contact_id,
                         phone_number=data.phone,
-                        phone_type="mobile",
+                        phone_type_id=phone_type_id,
                         is_verified=False,
                     )
                     if not phone_id:
