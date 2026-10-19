@@ -31,7 +31,7 @@
   ],
   "system": {
     "auto_shutdown": false,
-    "auto_shutdown_delay": 100.00
+    "auto_shutdown_delay": 100.0
   },
   "database": {
     "connections": [
@@ -82,15 +82,26 @@
       "log_level": "info"
     },
     "cors": {
-      "origins": ["*"],
+      "origins": [
+        "*"
+      ],
       "credentials": true,
-      "methods": ["*"],
-      "headers": ["*"]
+      "methods": [
+        "*"
+      ],
+      "headers": [
+        "*"
+      ]
     },
     "gzip": {
       "enabled": true,
       "minimum_size": 1000
     },
-    "trusted_hosts": ["*"]
+    "trusted_hosts": [
+      "*"
+    ]
+  },
+  "debug": {
+    "access_control": false
   }
 }

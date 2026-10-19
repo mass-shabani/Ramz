@@ -28,9 +28,10 @@ class AccessChecker:
     USER_ROLE_TTL    = 60.0     # shorter — role changes must reflect quickly
     ROLE_FORM_TTL    = 60.0
 
-    def __init__(self, db_service, logger=None):
+    def __init__(self, db_service, logger=None, debug=False):
         self._db = db_service
         self._logger = logger
+        self._debug = bool(debug)
 
         # Cache: user_id (int) -> (timestamp, role_id_str_or_None)
         self._user_role_cache: dict[int, tuple[float, Optional[str]]] = {}
@@ -109,7 +110,8 @@ class AccessChecker:
 
         role_id = await self.get_user_role_id(user_id)
         if role_id is None:
-            self._log(
+            if self._debug:
+                self._log(
                 f"Access denied: user_id={user_id} form='{form_id}' "
                 f"reason=user_has_no_role"
             )
@@ -123,7 +125,7 @@ class AccessChecker:
         row = await self._db._form_access_repo.get_full_access_one(
             role_id=role_id, form_id=form_id
         )
-        if not row:
+        if not row and self._debug:
             self._log(
                 f"Access denied: user_id={user_id} form='{form_id}' "
                 f"role_id='{role_id}' reason=no_matching_row"
@@ -150,7 +152,8 @@ class AccessChecker:
         """
         condition = await self.get_form_condition(user_id, form_id)
         if condition is None:
-            self._log(
+            if self._debug:
+                self._log(
                 f"Access denied: user_id={user_id} form='{form_id}' "
                 f"reason=no_grant_in_form_access"
             )
@@ -159,7 +162,8 @@ class AccessChecker:
         # "Closed" is a special condition meaning "no access at all",
         # regardless of what the caller asked for.
         if _is_closed(condition):
-            self._log(
+            if self._debug:
+                self._log(
                 f"Access denied: user_id={user_id} form='{form_id}' "
                 f"reason=condition_is_Closed"
             )
@@ -169,7 +173,8 @@ class AccessChecker:
             return True
 
         if condition != required_condition:
-            self._log(
+            if self._debug:
+                self._log(
                 f"Access denied: user_id={user_id} form='{form_id}' "
                 f"reason=condition_mismatch (have='{condition}' "
                 f"need='{required_condition}')"

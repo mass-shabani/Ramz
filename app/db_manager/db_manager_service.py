@@ -31,9 +31,10 @@ class DbManagerService:
     # Name of the connection declared in app_settings.json
     DEFAULT_CONNECTION = "default"
 
-    def __init__(self, database_service, logger=None):
+    def __init__(self, database_service, logger=None, access_debug=False):
         self._db = database_service
         self._logger = logger
+        self._access_debug = bool(access_debug)
 
         # ----------------------------------------------------------
         # Repositories
@@ -80,7 +81,7 @@ class DbManagerService:
         # Security
         # ----------------------------------------------------------
         from .security.access import AccessChecker
-        self._access = AccessChecker(self, logger)
+        self._access = AccessChecker(self, logger, debug=self._access_debug)
 
         # ----------------------------------------------------------
         # Workflows
