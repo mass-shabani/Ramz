@@ -24,6 +24,7 @@ class UserProfileModule(IModule):
         http_api         = context.services.get("http_api")
         template_service = context.services.get("template_service")
         db_service       = context.services.get("app_db_service")
+        message_service  = context.services.get("message_service")
 
         if logger:
             logger.log("User Profile module starting…", tag="profile")
@@ -76,7 +77,13 @@ class UserProfileModule(IModule):
         # ------------------------------------------------------------
         # Routes
         # ------------------------------------------------------------
-        register_routes(http_api, template_service, db_service, logger)
+        register_routes(
+            http_api,
+            template_service,
+            db_service,
+            logger,
+            message_service=message_service,
+        )
 
         if logger:
             logger.log("User Profile module started", tag="profile")

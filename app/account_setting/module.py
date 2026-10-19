@@ -25,6 +25,7 @@ class AccountSettingModule(IModule):
         http_api         = context.services.get("http_api")
         template_service = context.services.get("template_service")
         db_service       = context.services.get("app_db_service")
+        message_service  = context.services.get("message_service")
 
         if logger:
             logger.log("Account Setting module starting…", tag="settings")
@@ -80,7 +81,13 @@ class AccountSettingModule(IModule):
         # ------------------------------------------------------------
         # Routes
         # ------------------------------------------------------------
-        register_routes(http_api, template_service, db_service, logger)
+        register_routes(
+            http_api,
+            template_service,
+            db_service,
+            logger,
+            message_service=message_service,
+        )
 
         if logger:
             logger.log("Account Setting module started", tag="settings")

@@ -11,10 +11,58 @@ def register_routes(
     template_service: Any,
     db_service: Any,
     logger: Any,
+    message_service: Any = None,
 ):
     """
     Register the /profile route.
     """
+
+    async def _render_error_page(status_code, title, message):
+        """
+        Render a styled error page (uses message_service first, then
+        template_service error.html, then plain HTML).
+        """
+        # 1. Prefer message_service
+        if message_service:
+            try:
+                html = await message_service.render_message(
+                    status_code=status_code,
+                    title=title,
+                    message=message,
+                    message_type="error",
+                )
+                return http_api.HTMLResponse(
+                    content=html, status_code=status_code
+                )
+            except Exception as exc:
+                if logger:
+                    logger.log(
+                        f"message_service.render_message failed: {exc}",
+                        level="WARNING", tag="profile",
+                    )
+
+        # 2. Fallback to template_service error.html
+        try:
+            html = await template_service.render(
+                "error.html",
+                context={
+                    "status_code": status_code,
+                    "title":       title,
+                    "message":     message,
+                    "module_name": "template_service",
+                },
+            )
+            return http_api.HTMLResponse(
+                content=html, status_code=status_code
+            )
+        except Exception:
+            pass
+
+        # 3. Plain text last resort
+        return http_api.HTMLResponse(
+            content=f"<h1>{status_code}</h1><p>{title}</p><p>{message}</p>",
+            status_code=status_code,
+        )
 
     # ------------------------------------------------------------
     # GET /profile — full profile page
@@ -85,10 +133,14 @@ def register_routes(
             allowed = True   # fail open
 
         if not allowed:
-            return http_api.HTMLResponse(
-                content="<h1>Access denied</h1>"
-                        "<p>You do not have permission to view this page.</p>",
+            return await _render_error_page(
                 status_code=403,
+                title="Access denied",
+                message=(
+                    "You do not have permission to view this page. "
+                    "If you believe this is a mistake, please contact "
+                    "an administrator."
+                ),
             )
 
         # ------------------------------------------------------------
@@ -106,9 +158,10 @@ def register_routes(
             profile = None
 
         if profile is None:
-            return http_api.HTMLResponse(
-                content="<h1>Profile not found</h1>",
+            return await _render_error_page(
                 status_code=404,
+                title="Profile not found",
+                message="The requested profile could not be found.",
             )
 
         # ------------------------------------------------------------
@@ -148,7 +201,8 @@ def register_routes(
                     level="ERROR",
                     tag="profile",
                 )
-            return http_api.HTMLResponse(
-                content="<h1>Error</h1><p>Failed to render profile page.</p>",
+            return await _render_error_page(
                 status_code=500,
+                title="Internal error",
+                message="Failed to render the profile page. Please try again later.",
             )

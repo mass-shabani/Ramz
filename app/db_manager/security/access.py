@@ -109,6 +109,10 @@ class AccessChecker:
 
         role_id = await self.get_user_role_id(user_id)
         if role_id is None:
+            self._log(
+                f"Access denied: user_id={user_id} form='{form_id}' "
+                f"reason=user_has_no_role"
+            )
             return None
 
         key = (role_id, form_id)
@@ -119,6 +123,11 @@ class AccessChecker:
         row = await self._db._form_access_repo.get_full_access_one(
             role_id=role_id, form_id=form_id
         )
+        if not row:
+            self._log(
+                f"Access denied: user_id={user_id} form='{form_id}' "
+                f"role_id='{role_id}' reason=no_matching_row"
+            )
         condition_name = row.get("condition_name") if row else None
         self._role_form_cache[key] = (self._now(), condition_name)
         return condition_name
@@ -141,16 +150,33 @@ class AccessChecker:
         """
         condition = await self.get_form_condition(user_id, form_id)
         if condition is None:
+            self._log(
+                f"Access denied: user_id={user_id} form='{form_id}' "
+                f"reason=no_grant_in_form_access"
+            )
             return False
 
         # "Closed" is a special condition meaning "no access at all",
         # regardless of what the caller asked for.
         if _is_closed(condition):
+            self._log(
+                f"Access denied: user_id={user_id} form='{form_id}' "
+                f"reason=condition_is_Closed"
+            )
             return False
 
         if required_condition is None:
             return True
-        return condition == required_condition
+
+        if condition != required_condition:
+            self._log(
+                f"Access denied: user_id={user_id} form='{form_id}' "
+                f"reason=condition_mismatch (have='{condition}' "
+                f"need='{required_condition}')"
+            )
+            return False
+
+        return True
 
     async def has_role_access(
         self,
