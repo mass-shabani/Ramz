@@ -26,11 +26,10 @@ class User:
     only when the corresponding join was performed.
     """
 
-    # --- From the `user` table ---
+    # --- Required fields ---
     user_id: int
     username: str
     enabled: bool
-    role_id: Optional[str] = None  # TEXT in DB (was int)
 
     # --- From the joined `people` table ---
     people_id: int
@@ -38,6 +37,7 @@ class User:
     last_name: str
 
     # --- Optional fields (populated by specific queries) ---
+    role_id: Optional[str] = None
     email_id: Optional[int] = None
     phone_id: Optional[int] = None
     email: Optional[str] = None
