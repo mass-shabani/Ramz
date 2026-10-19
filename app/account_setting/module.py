@@ -1,7 +1,7 @@
 """
 Account Setting Module
 
-Provides the standalone `/account/settings` page where the authenticated
+Provides the standalone `/settings/account` page where the authenticated
 user can edit personal information, security, subscription, banking,
 sessions, and delete their account.
 
@@ -17,7 +17,7 @@ from .routes import register_routes
 class AccountSettingModule(IModule):
     """
     Account Setting module.
-    Registers the /account/settings route and the settings template.
+    Registers the /settings/account route and the settings template.
     """
 
     async def start(self, context: ModuleContext):

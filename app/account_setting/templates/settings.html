@@ -124,7 +124,7 @@
           <a class="settings-nav-item {% if section == 'personal' %}active{% endif %}"
              href="?section=personal"
              data-section="personal"
-             data-endpoint="/account/settings/partials/personal">
+             data-endpoint="/settings/account/partials/personal">
             <span class="settings-nav-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
                    stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
@@ -138,7 +138,7 @@
           <a class="settings-nav-item {% if section == 'contact' %}active{% endif %}"
              href="?section=contact"
              data-section="contact"
-             data-endpoint="/account/settings/partials/contact">
+             data-endpoint="/settings/account/partials/contact">
             <span class="settings-nav-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
                    stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
@@ -152,7 +152,7 @@
           <a class="settings-nav-item {% if section == 'password' %}active{% endif %}"
              href="?section=password"
              data-section="password"
-             data-endpoint="/account/settings/partials/password">
+             data-endpoint="/settings/account/partials/password">
             <span class="settings-nav-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
                    stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
@@ -166,7 +166,7 @@
           <a class="settings-nav-item {% if section == 'twofa' %}active{% endif %}"
              href="?section=twofa"
              data-section="twofa"
-             data-endpoint="/account/settings/partials/twofa">
+             data-endpoint="/settings/account/partials/twofa">
             <span class="settings-nav-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
                    stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
@@ -179,7 +179,7 @@
           <a class="settings-nav-item {% if section == 'subscription' %}active{% endif %}"
              href="?section=subscription"
              data-section="subscription"
-             data-endpoint="/account/settings/partials/subscription">
+             data-endpoint="/settings/account/partials/subscription">
             <span class="settings-nav-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
                    stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
@@ -192,7 +192,7 @@
           <a class="settings-nav-item {% if section == 'banking' %}active{% endif %}"
              href="?section=banking"
              data-section="banking"
-             data-endpoint="/account/settings/partials/banking">
+             data-endpoint="/settings/account/partials/banking">
             <span class="settings-nav-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
                    stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
@@ -206,7 +206,7 @@
           <a class="settings-nav-item {% if section == 'sessions' %}active{% endif %}"
              href="?section=sessions"
              data-section="sessions"
-             data-endpoint="/account/settings/partials/sessions">
+             data-endpoint="/settings/account/partials/sessions">
             <span class="settings-nav-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
                    stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
@@ -223,7 +223,7 @@
           <a class="settings-nav-item danger {% if section == 'danger' %}active{% endif %}"
              href="?section=danger"
              data-section="danger"
-             data-endpoint="/account/settings/partials/danger">
+             data-endpoint="/settings/account/partials/danger">
             <span class="settings-nav-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
                    stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
@@ -239,7 +239,7 @@
         <!-- ============ AJAX CONTENT ============ -->
         <div class="settings-content">
           <content-container
-            initial-endpoint="/account/settings/partials/{{ section }}"
+            initial-endpoint="/settings/account/partials/{{ section }}"
           ></content-container>
         </div>
 
@@ -674,14 +674,14 @@
 
     // Map action → endpoint + param name
     const map = {
-      'set-primary-email':   { url: '/account/settings/emails/set-primary',          param: 'email_id' },
-      'remove-email':        { url: '/account/settings/emails/delete',               param: 'email_id' },
-      'set-primary-phone':   { url: '/account/settings/phones/set-primary',          param: 'phone_id' },
-      'remove-phone':        { url: '/account/settings/phones/delete',               param: 'phone_id' },
-      'remove-address':      { url: '/account/settings/addresses/delete',            param: 'address_id' },
-      'remove-bank-account': { url: '/account/settings/banking/accounts/delete',     param: 'account_id' },
-      'remove-bank-card':    { url: '/account/settings/banking/cards/delete',        param: 'card_id' },
-      'revoke-session':      { url: '/account/settings/sessions/revoke',             param: 'session_id' },
+      'set-primary-email':   { url: '/settings/account/emails/set-primary',          param: 'email_id' },
+      'remove-email':        { url: '/settings/account/emails/delete',               param: 'email_id' },
+      'set-primary-phone':   { url: '/settings/account/phones/set-primary',          param: 'phone_id' },
+      'remove-phone':        { url: '/settings/account/phones/delete',               param: 'phone_id' },
+      'remove-address':      { url: '/settings/account/addresses/delete',            param: 'address_id' },
+      'remove-bank-account': { url: '/settings/account/banking/accounts/delete',     param: 'account_id' },
+      'remove-bank-card':    { url: '/settings/account/banking/cards/delete',        param: 'card_id' },
+      'revoke-session':      { url: '/settings/account/sessions/revoke',             param: 'session_id' },
     };
     const cfg = map[action];
     if (!cfg) return;
@@ -792,8 +792,8 @@
   }
 
   function attachAddButtonTracking() {
-    const emailForm = document.querySelector('form[action="/account/settings/emails/add"]');
-    const phoneForm = document.querySelector('form[action="/account/settings/phones/add"]');
+    const emailForm = document.querySelector('form[action="/settings/account/emails/add"]');
+    const phoneForm = document.querySelector('form[action="/settings/account/phones/add"]');
 
     function bind(form, inputName, validator) {
       if (!form) return;
@@ -854,7 +854,7 @@
     setVal('address_type',   dataset.type || 'home');
 
     // Change form action to update
-    form.action = '/account/settings/addresses/update';
+    form.action = '/settings/account/addresses/update';
 
     // Change button text
     const txt = document.getElementById('addressFormSubmitText');
@@ -896,7 +896,7 @@
     form.reset();
 
     // Set action back to add
-    form.action = '/account/settings/addresses/add';
+    form.action = '/settings/account/addresses/add';
 
     // Hide the address_id field
     const idField = form.querySelector('[name="address_id"]');
@@ -940,7 +940,7 @@
     setVal('account_name',    btn.dataset.name || '');
     setVal('iban',            btn.dataset.iban || '');
 
-    form.action = '/account/settings/banking/accounts/update';
+    form.action = '/settings/account/banking/accounts/update';
 
     const txt = document.getElementById('bankAccountSubmitText');
     if (txt) txt.textContent = 'Update Account';
@@ -967,7 +967,7 @@
     if (!form) return;
 
     form.reset();
-    form.action = '/account/settings/banking/accounts/add';
+    form.action = '/settings/account/banking/accounts/add';
 
     const txt = document.getElementById('bankAccountSubmitText');
     if (txt) txt.textContent = 'Add Account';
@@ -1012,7 +1012,7 @@
     setVal('card_holder_name', btn.dataset.holder || '');
     setVal('expiry_date',      btn.dataset.expiry || '');
 
-    form.action = '/account/settings/banking/cards/update';
+    form.action = '/settings/account/banking/cards/update';
 
     const txt = form.querySelector('button[type="submit"] span');
     if (txt) txt.textContent = 'Update Card';
@@ -1049,7 +1049,7 @@
     if (!form) return;
 
     form.reset();
-    form.action = '/account/settings/banking/cards/add';
+    form.action = '/settings/account/banking/cards/add';
 
     const idField = form.querySelector('[name="card_id"]');
     if (idField) idField.value = '';
@@ -1107,7 +1107,7 @@
       fd.append('enabled', newState ? '1' : '0');
       fd.append('password', password);
 
-      const resp = await fetch('/account/settings/banking/cards/toggle', {
+      const resp = await fetch('/settings/account/banking/cards/toggle', {
         method: 'POST',
         body: fd,
         credentials: 'same-origin',
@@ -1216,7 +1216,7 @@
       fd.append('cascade_cards', cascade ? '1' : '0');
       fd.append('password', password);
 
-      const resp = await fetch('/account/settings/banking/accounts/toggle', {
+      const resp = await fetch('/settings/account/banking/accounts/toggle', {
         method: 'POST',
         body: fd,
         credentials: 'same-origin',
@@ -1294,7 +1294,7 @@
     try {
       const fd = new FormData();
       fd.append('password', password);
-      const resp = await fetch('/account/settings/sessions/revoke-others', {
+      const resp = await fetch('/settings/account/sessions/revoke-others', {
         method: 'POST',
         body: fd,
         credentials: 'same-origin',
@@ -1362,3 +1362,4 @@
 </script>
 
 {% endblock %}
+

@@ -1,7 +1,7 @@
 """
 Account Setting Routes
 
-GET /account/settings — renders the authenticated user's settings page.
+GET /settings/account — renders the authenticated user's settings page.
 """
 from typing import Any
 import re
@@ -61,13 +61,13 @@ def register_routes(
     logger: Any,
 ):
     """
-    Register the /account/settings route.
+    Register the /settings/account route.
     """
 
     # ------------------------------------------------------------
-    # GET /account/settings — full settings page
+    # GET /settings/account — full settings page
     # ------------------------------------------------------------
-    @http_api.get("/account/settings", response_class=http_api.HTMLResponse)
+    @http_api.get("/settings/account", response_class=http_api.HTMLResponse)
     async def settings_view(request: http_api.Request):
         """
         Render the current user's account settings.
@@ -306,14 +306,14 @@ def register_routes(
                 )
 
     def _redirect(request, status, section, code=None):
-        """Build a redirect back to /account/settings with query params."""
+        """Build a redirect back to /settings/account with query params."""
         from urllib.parse import urlencode
         params = {"status": status, "section": section}
         if code:
             params["code"] = code
         query = urlencode(params)
         return http_api.RedirectResponse(
-            url=f"/account/settings?{query}", status_code=302
+            url=f"/settings/account?{query}", status_code=302
         )
 
     def _client_info(request):
@@ -383,9 +383,9 @@ def register_routes(
         return http_api.JSONResponse(content=data, status_code=200)
 
     # ------------------------------------------------------------
-    # POST /account/settings/personal — update personal info
+    # POST /settings/account/personal — update personal info
     # ------------------------------------------------------------
-    @http_api.post("/account/settings/personal", response_class=http_api.HTMLResponse)
+    @http_api.post("/settings/account/personal", response_class=http_api.HTMLResponse)
     async def update_personal(request: http_api.Request):
         user_id, redirect = await _ensure_authenticated(request)
         if redirect:
@@ -454,9 +454,9 @@ def register_routes(
         return _redirect(request, "error", "personal", "update_failed")
 
     # ------------------------------------------------------------
-    # POST /account/settings/contact — update contact info
+    # POST /settings/account/contact — update contact info
     # ------------------------------------------------------------
-    @http_api.post("/account/settings/contact", response_class=http_api.HTMLResponse)
+    @http_api.post("/settings/account/contact", response_class=http_api.HTMLResponse)
     async def update_contact(request: http_api.Request):
         user_id, redirect = await _ensure_authenticated(request)
         if redirect:
@@ -527,9 +527,9 @@ def register_routes(
         return _redirect(request, "error", "contact", "update_failed")
 
     # ------------------------------------------------------------
-    # POST /account/settings/password — change password
+    # POST /settings/account/password — change password
     # ------------------------------------------------------------
-    @http_api.post("/account/settings/password", response_class=http_api.HTMLResponse)
+    @http_api.post("/settings/account/password", response_class=http_api.HTMLResponse)
     async def change_password(request: http_api.Request):
         user_id, redirect = await _ensure_authenticated(request)
         if redirect:
@@ -604,9 +604,9 @@ def register_routes(
         return _redirect(request, "success", "password")
 
     # ------------------------------------------------------------
-    # POST /account/settings/2fa/enable
+    # POST /settings/account/2fa/enable
     # ------------------------------------------------------------
-    @http_api.post("/account/settings/2fa/enable", response_class=http_api.HTMLResponse)
+    @http_api.post("/settings/account/2fa/enable", response_class=http_api.HTMLResponse)
     async def enable_2fa(request: http_api.Request):
         user_id, redirect = await _ensure_authenticated(request)
         if redirect:
@@ -639,9 +639,9 @@ def register_routes(
         return _redirect(request, "error", "2fa", "not_yet_available")
 
     # ------------------------------------------------------------
-    # POST /account/settings/2fa/disable
+    # POST /settings/account/2fa/disable
     # ------------------------------------------------------------
-    @http_api.post("/account/settings/2fa/disable", response_class=http_api.HTMLResponse)
+    @http_api.post("/settings/account/2fa/disable", response_class=http_api.HTMLResponse)
     async def disable_2fa(request: http_api.Request):
         user_id, redirect = await _ensure_authenticated(request)
         if redirect:
@@ -702,7 +702,7 @@ def register_routes(
     # ------------------------------------------------------------
     # Email management
     # ------------------------------------------------------------
-    @http_api.post("/account/settings/emails/add",
+    @http_api.post("/settings/account/emails/add",
                    response_class=http_api.HTMLResponse)
     async def add_email(request: http_api.Request):
         user_id, redirect = await _ensure_authenticated(request)
@@ -743,7 +743,7 @@ def register_routes(
             reload_section=True,   # force partial reload so the list updates
         )
 
-    @http_api.post("/account/settings/emails/set-primary",
+    @http_api.post("/settings/account/emails/set-primary",
                    response_class=http_api.HTMLResponse)
     async def set_primary_email(request: http_api.Request):
         user_id, redirect = await _ensure_authenticated(request)
@@ -776,7 +776,7 @@ def register_routes(
         await _refresh_session(request, user_id)
         return _json_ok("Primary email updated.", section="contact")
 
-    @http_api.post("/account/settings/emails/delete",
+    @http_api.post("/settings/account/emails/delete",
                    response_class=http_api.HTMLResponse)
     async def delete_email(request: http_api.Request):
         user_id, redirect = await _ensure_authenticated(request)
@@ -821,7 +821,7 @@ def register_routes(
     # ------------------------------------------------------------
     # Phone management
     # ------------------------------------------------------------
-    @http_api.post("/account/settings/phones/add",
+    @http_api.post("/settings/account/phones/add",
                    response_class=http_api.HTMLResponse)
     async def add_phone(request: http_api.Request):
         user_id, redirect = await _ensure_authenticated(request)
@@ -864,7 +864,7 @@ def register_routes(
             reload_section=True,   # force partial reload so the list updates
         )
 
-    @http_api.post("/account/settings/phones/set-primary",
+    @http_api.post("/settings/account/phones/set-primary",
                    response_class=http_api.HTMLResponse)
     async def set_primary_phone(request: http_api.Request):
         user_id, redirect = await _ensure_authenticated(request)
@@ -897,7 +897,7 @@ def register_routes(
         await _refresh_session(request, user_id)
         return _json_ok("Primary phone updated.", section="contact")
 
-    @http_api.post("/account/settings/phones/delete",
+    @http_api.post("/settings/account/phones/delete",
                    response_class=http_api.HTMLResponse)
     async def delete_phone(request: http_api.Request):
         user_id, redirect = await _ensure_authenticated(request)
@@ -942,7 +942,7 @@ def register_routes(
     # ------------------------------------------------------------
     # Address management (no primary concept)
     # ------------------------------------------------------------
-    @http_api.post("/account/settings/addresses/add",
+    @http_api.post("/settings/account/addresses/add",
                    response_class=http_api.HTMLResponse)
     async def add_address(request: http_api.Request):
         user_id, redirect = await _ensure_authenticated(request)
@@ -986,7 +986,7 @@ def register_routes(
             reload_section=True,
         )
 
-    @http_api.post("/account/settings/addresses/update",
+    @http_api.post("/settings/account/addresses/update",
                    response_class=http_api.HTMLResponse)
     async def update_address(request: http_api.Request):
         user_id, redirect = await _ensure_authenticated(request)
@@ -1036,7 +1036,7 @@ def register_routes(
             reload_section=True,
         )
 
-    @http_api.post("/account/settings/addresses/delete",
+    @http_api.post("/settings/account/addresses/delete",
                    response_class=http_api.HTMLResponse)
     async def delete_address(request: http_api.Request):
         user_id, redirect = await _ensure_authenticated(request)
@@ -1075,7 +1075,7 @@ def register_routes(
     # ------------------------------------------------------------
     # Bank accounts
     # ------------------------------------------------------------
-    @http_api.post("/account/settings/banking/accounts/add",
+    @http_api.post("/settings/account/banking/accounts/add",
                    response_class=http_api.HTMLResponse)
     async def add_bank_account(request: http_api.Request):
         user_id, redirect = await _ensure_authenticated(request)
@@ -1122,7 +1122,7 @@ def register_routes(
 
         return _json_ok("Bank account added.", section="banking", reload_section=True)
 
-    @http_api.post("/account/settings/banking/accounts/update",
+    @http_api.post("/settings/account/banking/accounts/update",
                    response_class=http_api.HTMLResponse)
     async def update_bank_account(request: http_api.Request):
         user_id, redirect = await _ensure_authenticated(request)
@@ -1178,7 +1178,7 @@ def register_routes(
 
         return _json_ok("Bank account updated.", section="banking", reload_section=True)
 
-    @http_api.post("/account/settings/banking/accounts/delete",
+    @http_api.post("/settings/account/banking/accounts/delete",
                    response_class=http_api.HTMLResponse)
     async def delete_bank_account(request: http_api.Request):
         user_id, redirect = await _ensure_authenticated(request)
@@ -1224,7 +1224,7 @@ def register_routes(
     # ------------------------------------------------------------
     # Bank cards
     # ------------------------------------------------------------
-    @http_api.post("/account/settings/banking/cards/add",
+    @http_api.post("/settings/account/banking/cards/add",
                    response_class=http_api.HTMLResponse)
     async def add_bank_card(request: http_api.Request):
         user_id, redirect = await _ensure_authenticated(request)
@@ -1272,7 +1272,7 @@ def register_routes(
 
         return _json_ok("Card added.", section="banking", reload_section=True)
 
-    @http_api.post("/account/settings/banking/cards/update",
+    @http_api.post("/settings/account/banking/cards/update",
                    response_class=http_api.HTMLResponse)
     async def update_bank_card(request: http_api.Request):
         user_id, redirect = await _ensure_authenticated(request)
@@ -1325,7 +1325,7 @@ def register_routes(
 
         return _json_ok("Card updated.", section="banking", reload_section=True)
 
-    @http_api.post("/account/settings/banking/cards/delete",
+    @http_api.post("/settings/account/banking/cards/delete",
                    response_class=http_api.HTMLResponse)
     async def delete_bank_card(request: http_api.Request):
         user_id, redirect = await _ensure_authenticated(request)
@@ -1365,7 +1365,7 @@ def register_routes(
     # ------------------------------------------------------------
     # Banking — enable/disable
     # ------------------------------------------------------------
-    @http_api.post("/account/settings/banking/accounts/toggle",
+    @http_api.post("/settings/account/banking/accounts/toggle",
                    response_class=http_api.HTMLResponse)
     async def toggle_bank_account(request: http_api.Request):
         user_id, redirect = await _ensure_authenticated(request)
@@ -1418,7 +1418,7 @@ def register_routes(
     # ------------------------------------------------------------
     # Session management
     # ------------------------------------------------------------
-    @http_api.post("/account/settings/sessions/revoke",
+    @http_api.post("/settings/account/sessions/revoke",
                    response_class=http_api.HTMLResponse)
     async def revoke_session(request: http_api.Request):
         user_id, redirect = await _ensure_authenticated(request)
@@ -1471,7 +1471,7 @@ def register_routes(
             reload_section=True,
         )
 
-    @http_api.post("/account/settings/sessions/revoke-others",
+    @http_api.post("/settings/account/sessions/revoke-others",
                    response_class=http_api.HTMLResponse)
     async def revoke_other_sessions(request: http_api.Request):
         user_id, redirect = await _ensure_authenticated(request)
@@ -1506,7 +1506,7 @@ def register_routes(
             reload_section=True,
         )
 
-    @http_api.post("/account/settings/banking/cards/toggle",
+    @http_api.post("/settings/account/banking/cards/toggle",
                    response_class=http_api.HTMLResponse)
     async def toggle_bank_card(request: http_api.Request):
         user_id, redirect = await _ensure_authenticated(request)
@@ -1552,7 +1552,7 @@ def register_routes(
         )
 
     # ------------------------------------------------------------
-    # POST /account/settings/partials/{section} — partial loader
+    # POST /settings/account/partials/{section} — partial loader
     # ------------------------------------------------------------
     PARTIAL_TEMPLATES = {
         "personal":     "partials/personal.html",
@@ -1565,7 +1565,7 @@ def register_routes(
         "danger":       "partials/danger.html",
     }
 
-    @http_api.post("/account/settings/partials/{section}",
+    @http_api.post("/settings/account/partials/{section}",
                    response_class=http_api.HTMLResponse)
     async def settings_partial(request: http_api.Request, section: str):
         """

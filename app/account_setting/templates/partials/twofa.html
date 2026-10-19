@@ -27,7 +27,7 @@
     </div>
   </div>
 
-  <form method="post" action="/account/settings/2fa/disable" data-ajax="true">
+  <form method="post" action="/settings/account/2fa/disable" data-ajax="true">
     <input type="hidden" name="section" value="twofa" />
     <div class="settings-actions" style="justify-content: flex-start; border-top: none; margin-top: 0; padding-top: 0;">
       <button class="btn-ghost" type="submit">Disable 2FA</button>
@@ -50,7 +50,7 @@
     </div>
   </div>
 
-  <form method="post" action="/account/settings/2fa/enable" data-ajax="true">
+  <form method="post" action="/settings/account/2fa/enable" data-ajax="true">
     <input type="hidden" name="section" value="twofa" />
     <div class="settings-actions" style="justify-content: flex-start; border-top: none; margin-top: 0; padding-top: 0;">
       <button class="btn-primary" type="submit">
@@ -66,3 +66,4 @@
 
   {% endif %}
 </ramz-card>
+

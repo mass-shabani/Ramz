@@ -115,7 +115,7 @@ class RamzUserMenu extends HTMLElement {
             My Profile
           </a>
 
-          <a class="um-item" href="/account/settings">
+          <a class="um-item" href="/settings/account">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
                  stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="3"/>

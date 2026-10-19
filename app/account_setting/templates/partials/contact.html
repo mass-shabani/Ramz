@@ -94,7 +94,7 @@
     </div>
 
     {# Add new email #}
-    <form method="post" action="/account/settings/emails/add"
+    <form method="post" action="/settings/account/emails/add"
           data-ajax="true" style="margin-top: 16px;">
       <div class="settings-row" style="grid-template-columns: 1fr;">
         <div class="settings-row-control">
@@ -212,7 +212,7 @@
     </div>
 
     {# Add new phone #}
-    <form method="post" action="/account/settings/phones/add"
+    <form method="post" action="/settings/account/phones/add"
           data-ajax="true" style="margin-top: 16px;">
       <div class="settings-row" style="grid-template-columns: 1fr;">
         <div class="settings-row-control">
@@ -314,7 +314,7 @@
     {# Add new address — collapsible form #}
     <details class="add-address-block" id="addAddressBlock" style="margin-top: 16px;">
       <summary> Add Address</summary>
-      <form method="post" action="/account/settings/addresses/add"
+      <form method="post" action="/settings/account/addresses/add"
             data-ajax="true" style="margin-top: 14px;">
         <input type="hidden" name="address_id" value="" />
         <div class="settings-rows">
@@ -422,3 +422,4 @@
   </ramz-card>
 
 </div>
+
