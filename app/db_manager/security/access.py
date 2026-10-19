@@ -32,11 +32,13 @@ class AccessChecker:
         self._db = db_service
         self._logger = logger
 
-        # Caches — value is (timestamp_monotonic, payload)
+        # Cache: user_id (int) -> (timestamp, role_id_str_or_None)
+        self._user_role_cache: dict[int, tuple[float, Optional[str]]] = {}
+
+        # Cache: (role_id_str, form_id) -> (timestamp, condition_name_or_None)
+        self._role_form_cache: dict[tuple[str, str], tuple[float, Optional[str]]] = {}
+
         self._user_enabled_cache: dict[int, tuple[float, bool]] = {}
-        self._user_role_cache:    dict[int, tuple[float, Optional[int]]] = {}
-        self._role_form_cache:    dict[tuple[int, str],
-                                       tuple[float, Optional[str]]] = {}
 
     # ============================================================
     # Internal helpers
@@ -72,10 +74,7 @@ class AccessChecker:
         self._user_enabled_cache[user_id] = (self._now(), enabled)
         return enabled
 
-    async def get_user_role_id(self, user_id: int) -> Optional[int]:
-        """
-        Return the user's role_id, or None if the user does not exist.
-        """
+    async def get_user_role_id(self, user_id: int) -> Optional[str]:
         if not user_id:
             return None
 
@@ -155,7 +154,7 @@ class AccessChecker:
 
     async def has_role_access(
         self,
-        role_id: Optional[int],
+        role_id: Optional[str],
         form_id: str,
         required_condition: Optional[str] = None,
     ) -> bool:
@@ -192,7 +191,7 @@ class AccessChecker:
         return condition == required_condition
 
     async def get_form_condition_by_role(
-        self, role_id: int, form_id: str
+        self, role_id: str, form_id: str
     ) -> Optional[str]:
         """
         Same as get_form_condition() but by role_id directly.
@@ -239,7 +238,7 @@ class AccessChecker:
         row = await self._db._role_repo.get_by_id(role_id)
         return Role.from_row(row) if row else None
 
-    async def list_role_forms(self, role_id: int) -> list[FormAccess]:
+    async def list_role_forms(self, role_id: str) -> list[FormAccess]:
         """
         Return all form accesses attached to the given role, enriched
         with form_name and condition_name.
@@ -265,12 +264,7 @@ class AccessChecker:
         self._user_enabled_cache.pop(user_id, None)
         self._user_role_cache.pop(user_id, None)
 
-    def invalidate_role(self, role_id: Optional[int] = None) -> None:
-        """
-        Clear the role→form access cache.
-
-        If role_id is None, clears the entire role-form cache.
-        """
+    def invalidate_role(self, role_id: Optional[str] = None) -> None:
         if role_id is None:
             self._role_form_cache.clear()
             return

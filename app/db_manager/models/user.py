@@ -30,7 +30,7 @@ class User:
     user_id: int
     username: str
     enabled: bool
-    role_id: int
+    role_id: Optional[str] = None  # TEXT in DB (was int)
 
     # --- From the joined `people` table ---
     people_id: int
@@ -101,7 +101,7 @@ class User:
             user_id=int(get("user_id")),
             username=get("username") or "",
             enabled=bool(get("enabled", 0)),
-            role_id=int(get("role_id") or 0),
+            role_id=get("role_id"),
 
             people_id=int(get("people_id") or 0),
             first_name=get("first_name") or "",

@@ -545,11 +545,11 @@ class DbManagerService:
         )
 
     async def _get_guest_role_id(self):
-        """Return the role_id for the 'guest' role, or None."""
+        """Return the role_id (TEXT) for the 'guest' role, or None."""
         try:
             role = await self._role_repo.get_by_name("guest")
             if role:
-                return int(role["role_id"])
+                return role.get("role_id")
         except Exception as exc:
             self._log(f"Failed to resolve guest role: {exc}", level="ERROR")
         return None

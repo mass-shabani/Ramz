@@ -121,7 +121,7 @@ class UserRepository:
     async def create(
         self,
         people_id: int,
-        role_id: int,
+        role_id: str,
         username: str,
         password_hash: str,
         email_id: Optional[int] = None,
@@ -133,7 +133,7 @@ class UserRepository:
 
         result = await db_insert(self._conn(), self.TABLE, {
             "people_id":          int(people_id),
-            "role_id":            int(role_id),
+            "role_id":            role_id,
             "username":           username,
             "password_hash":      password_hash,
             "email_id":           int(email_id) if email_id else None,

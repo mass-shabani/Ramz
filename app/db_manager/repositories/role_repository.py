@@ -21,13 +21,12 @@ class RoleRepository:
     # ----------------------------------------------------------
     # Reads
     # ----------------------------------------------------------
-    async def get_by_id(self, role_id: int) -> Optional[dict]:
-        """Return the role row for the given role_id, or None."""
+    async def get_by_id(self, role_id) -> Optional[dict]:
         if not role_id:
             return None
         return await self._conn().find_one(
             self.TABLE,
-            where={"role_id": int(role_id)},
+            where={"role_id": role_id},
         )
 
     async def get_by_name(self, role_name: str) -> Optional[dict]:
@@ -40,8 +39,8 @@ class RoleRepository:
         )
 
     async def list_enabled(self) -> list[dict]:
-        """Return all enabled roles."""
-        return await self._conn().find_many(
+        rows = await self._conn().find_many(
             self.TABLE,
             where={"enabled": 1},
         )
+        return sorted(rows, key=lambda r: r.get("role_id", ""))

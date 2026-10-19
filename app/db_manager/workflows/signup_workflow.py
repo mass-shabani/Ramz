@@ -100,7 +100,7 @@ class SignupWorkflow:
         role = await self._db._role_repo.get_by_name(role_name)
         if not role:
             raise SignupError("role_not_found", f"role '{role_name}' not found")
-        role_id = int(role["role_id"])
+        role_id = role["role_id"]
 
         # -------- 3. Hash password (outside transaction) --------
         password_hash = hash_password(data.password)

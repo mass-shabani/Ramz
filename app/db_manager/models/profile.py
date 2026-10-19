@@ -38,7 +38,7 @@ class Profile:
     gender: Optional[str] = None
 
     # --- From `role` ---
-    role_id: int = 0
+    role_id: str = ""       # was int
     role_name: str = ""
 
     # --- From `subscription` ---

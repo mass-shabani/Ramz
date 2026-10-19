@@ -26,28 +26,21 @@ class FormAccessRepository:
     # Reads
     # ----------------------------------------------------------
     async def get(
-        self, role_id: int, form_id: str
+        self, role_id, form_id: str
     ) -> Optional[dict]:
-        """
-        Return the form_access row for the given (role_id, form_id), or None.
-        """
         if not role_id or not form_id:
             return None
         return await self._conn().find_one(
             self.TABLE,
-            where={"role_id": int(role_id), "form_id": form_id},
+            where={"role_id": role_id, "form_id": form_id},
         )
 
-    async def list_by_role(self, role_id: int) -> list[dict]:
-        """
-        Return all form_access rows belonging to the given role.
-        Used when rendering a full UI for a user's role.
-        """
+    async def list_by_role(self, role_id) -> list[dict]:
         if not role_id:
             return []
         return await self._conn().find_many(
             self.TABLE,
-            where={"role_id": int(role_id)},
+            where={"role_id": role_id},
         )
 
     async def list_by_form(self, form_id: str) -> list[dict]:
@@ -62,15 +55,7 @@ class FormAccessRepository:
             where={"form_id": form_id},
         )
 
-    async def get_full_access(self, role_id: int) -> list[dict]:
-        """
-        Return the form_access rows joined with `form` and `condition_of`
-        for the given role. Each row contains:
-
-            form_id, form_name, condition_id, condition_name
-
-        Useful for building an in-memory access table for a user.
-        """
+    async def get_full_access(self, role_id) -> list[dict]:
         if not role_id:
             return []
         sql = """
@@ -85,17 +70,11 @@ class FormAccessRepository:
             JOIN condition_of c ON c.condition_id = fa.condition_id
             WHERE fa.role_id = ?
         """
-        return await self._conn().fetch_all(sql, (int(role_id),))
+        return await self._conn().fetch_all(sql, (role_id,))
 
     async def get_full_access_one(
-        self, role_id: int, form_id: str
+        self, role_id, form_id: str
     ) -> Optional[dict]:
-        """
-        Return a single row from form_access joined with `form` and
-        `condition_of`, filtered by (role_id, form_id), or None.
-
-        Equivalent to get_full_access() but for one specific form.
-        """
         if not role_id or not form_id:
             return None
         sql = """
@@ -111,21 +90,20 @@ class FormAccessRepository:
             WHERE fa.role_id = ? AND fa.form_id = ?
             LIMIT 1
         """
-        return await self._conn().fetch_one(sql, (int(role_id), form_id))
+        return await self._conn().fetch_one(sql, (role_id, form_id))
 
     async def create(
         self,
-        role_id: int,
+        role_id,
         form_id: str,
-        condition_id: int,
+        condition_id,
     ) -> bool:
-        """Create a form_access row. Returns True on success."""
         if not role_id or not form_id or not condition_id:
             return False
         from ._helpers import db_insert, result_ok
         result = await db_insert(self._conn(), self.TABLE, {
-            "role_id":      int(role_id),
+            "role_id":      role_id,
             "form_id":      form_id,
-            "condition_id": int(condition_id),
+            "condition_id": condition_id,
         })
         return result_ok(result)

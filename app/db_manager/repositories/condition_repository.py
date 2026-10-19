@@ -22,13 +22,12 @@ class ConditionRepository:
     # ----------------------------------------------------------
     # Reads
     # ----------------------------------------------------------
-    async def get_by_id(self, condition_id: int) -> Optional[dict]:
-        """Return the condition row for the given condition_id, or None."""
+    async def get_by_id(self, condition_id) -> Optional[dict]:
         if not condition_id:
             return None
         return await self._conn().find_one(
             self.TABLE,
-            where={"condition_id": int(condition_id)},
+            where={"condition_id": condition_id},
         )
 
     async def get_by_name(self, condition_name: str) -> Optional[dict]:
@@ -41,8 +40,8 @@ class ConditionRepository:
         )
 
     async def list_enabled(self) -> list[dict]:
-        """Return all enabled conditions."""
-        return await self._conn().find_many(
+        rows = await self._conn().find_many(
             self.TABLE,
             where={"enabled": 1},
         )
+        return sorted(rows, key=lambda r: r.get("condition_id", ""))
