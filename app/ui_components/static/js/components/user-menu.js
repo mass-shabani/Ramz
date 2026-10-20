@@ -20,7 +20,13 @@ import { defineComponent, attr, emit } from '../_base.js';
  */
 class RamzUserMenu extends HTMLElement {
   static get observedAttributes() {
-    return ['user-name', 'user-email', 'user-initials', 'logout-url'];
+    return [
+      'user-name',
+      'user-email',
+      'user-initials',
+      'logout-url',
+      'extra-links',
+    ];
   }
 
   #open = false;
@@ -117,13 +123,15 @@ class RamzUserMenu extends HTMLElement {
 
           <a class="um-item" href="/settings/account">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="3"/>
               <path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7.9 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 4 13.9H4a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 5.3 7.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 10.9 4V4a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1.3z"/>
             </svg>
             Account Settings
             <span class="kbd">⌘,</span>
           </a>
+
+          ${this._renderExtraLinks()}
 
           <a class="um-item" href="#">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -158,6 +166,70 @@ class RamzUserMenu extends HTMLElement {
         </div>
       </div>
     `;
+  }
+
+  /* --------------------------------------------------------------
+     Extra links (feature registry)
+     -------------------------------------------------------------- */
+  _getExtraLinks() {
+    const raw = this.getAttribute('extra-links') || '';
+    if (!raw) return [];
+    try {
+      const decoded = decodeURIComponent(raw);
+      const parsed = JSON.parse(decoded);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (err) {
+      return [];
+    }
+  }
+
+  _renderExtraLinks() {
+    const links = this._getExtraLinks();
+    if (!links.length) return '';
+
+    return links.map(link => {
+      const url   = this._escapeAttr(link.url || '#');
+      const label = this._escapeHtml(link.label || '');
+      const icon  = this._renderFeatureIcon(link.icon);
+
+      return `
+        <a class="um-item" href="${url}">
+          ${icon}
+          ${label}
+        </a>
+      `;
+    }).join('');
+  }
+
+  _renderFeatureIcon(icon) {
+    if (!icon) {
+      return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.9" stroke-linecap="round"
+                   stroke-linejoin="round">
+                <path d="M12 2 4 6v6c0 5 3.4 9.4 8 10 4.6-.6 8-5 8-10V6z"/>
+              </svg>`;
+    }
+    const trimmed = String(icon).trim();
+    if (trimmed.startsWith('<')) {
+      return trimmed;
+    }
+    return `<span style="font-size: 16px; line-height: 1;">${this._escapeHtml(trimmed)}</span>`;
+  }
+
+  _escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  _escapeAttr(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   _cacheRefs() {

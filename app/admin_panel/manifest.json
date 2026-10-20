@@ -1,0 +1,16 @@
+{
+  "name": "admin_panel",
+  "version": "1.0.0",
+  "entrypoint": "AdminPanelModule",
+  "description": "Administrative panel for managing users, forms, access grants, and roles.",
+  "requires": [
+    "core_logger",
+    "http_api",
+    "template_service",
+    "app_db_service",
+    "message_service",
+    "component_service",
+    "panel_service"
+  ],
+  "provides": ["admin_panel_service"]
+}

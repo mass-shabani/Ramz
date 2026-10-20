@@ -167,14 +167,43 @@ def register_routes(
             # Revoked or disabled → back to home
             return http_api.RedirectResponse(url="/", status_code=302)
 
+        # ------------------------------------------------------------
+        # Build feature list for user menu
+        # ------------------------------------------------------------
+        import json
+        import urllib.parse
+
+        user_id = (
+            current_user.get("user_id")
+            if isinstance(current_user, dict)
+            else None
+        )
+
+        features_encoded = ""
+        if user_id and db_service:
+            try:
+                features = await panel_service.get_features_for_user(
+                    user_id, db_service
+                )
+                features_json = json.dumps(features, ensure_ascii=False)
+                features_encoded = urllib.parse.quote(features_json, safe="")
+            except Exception as exc:
+                if logger:
+                    logger.log(
+                        f"Failed to compute features: {exc}",
+                        level="WARNING", tag="panel",
+                    )
+                features_encoded = ""
+
         try:
             html_content = await panel_service.render_panel_view(
                 "dashboard.html",
                 {
-                    "module_name":   "user_panel",
-                    "current_user":  current_user,
-                    "user_name":     _display_name(current_user),
-                    "user_initials": _initials(_display_name(current_user)),
+                    "module_name":     "user_panel",
+                    "current_user":    current_user,
+                    "user_name":       _display_name(current_user),
+                    "user_initials":   _initials(_display_name(current_user)),
+                    "features_encoded": features_encoded,
                 },
                 request,
             )

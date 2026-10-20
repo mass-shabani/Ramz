@@ -98,8 +98,9 @@
         <ramz-user-menu
           user-name="{{ current_user.full_name or current_user.username or 'User' }}"
           user-email="{{ current_user.email or '' }}"
-          user-initials="{{ (current_user.full_name or current_user.username or 'U')[:2].upper() }}">
-        </ramz-user-menu>
+          user-initials="{{ (current_user.full_name or current_user.username or 'U')[:2].upper() }}"
+          extra-links="{{ features_encoded or '' }}"
+        ></ramz-user-menu>
       </div>
 
       <ramz-progress-bar></ramz-progress-bar>

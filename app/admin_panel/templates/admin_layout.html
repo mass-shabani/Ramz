@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block body_class %}page-dashboard{% endblock %}
+
+{% block content %}
+
+<div class="app" style="display: block;">
+  <div class="main" style="width: 100%;">
+
+    <ramz-topbar
+      user-name="{{ profile.full_name }}"
+      user-email="{{ profile.email or '' }}"
+      user-initials="{{ profile.initials }}"
+      show-progress
+    >
+      <a slot="actions" class="icon-btn" href="/panel"
+         title="Back to Panel" aria-label="Back to Panel">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="9" rx="2"/>
+          <rect x="14" y="3" width="7" height="5" rx="2"/>
+          <rect x="14" y="12" width="7" height="9" rx="2"/>
+          <rect x="3" y="16" width="7" height="5" rx="2"/>
+        </svg>
+      </a>
+    </ramz-topbar>
+
+    <main class="standalone-content">
+
+      <div class="page-head">
+        <div>
+          <h1>Admin Panel</h1>
+          <p>Manage users, forms, access grants, and roles.</p>
+        </div>
+        <a class="btn-ghost" href="/panel"
+           style="display: inline-flex; align-items: center; gap: 8px;
+                  height: 42px; padding: 0 18px; border-radius: 12px;
+                  font-size: 13px; font-weight: 600; text-decoration: none;
+                  color: var(--text-dim);
+                  background: rgba(30,41,66,0.6);
+                  border: 1px solid var(--border);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+               style="width: 16px; height: 16px;">
+            <path d="M19 12H5"/>
+            <path d="m11 18-6-6 6-6"/>
+          </svg>
+          Back to Panel
+        </a>
+      </div>
+
+      <div class="settings-layout">
+
+        <aside class="settings-nav" id="adminNav">
+          <div class="settings-nav-title">Admin</div>
+
+          <a class="settings-nav-item {% if section == 'overview' %}active{% endif %}"
+             href="?section=overview"
+             data-section="overview"
+             data-endpoint="/settings/admin/partials/overview">
+            <span class="settings-nav-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="9" rx="2"/>
+                <rect x="14" y="3" width="7" height="5" rx="2"/>
+                <rect x="14" y="12" width="7" height="9" rx="2"/>
+                <rect x="3" y="16" width="7" height="5" rx="2"/>
+              </svg>
+            </span>
+            Overview
+          </a>
+
+          {% if permissions.users %}
+          <a class="settings-nav-item {% if section == 'users' %}active{% endif %}"
+             href="?section=users"
+             data-section="users"
+             data-endpoint="/settings/admin/partials/users">
+            <span class="settings-nav-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="8" r="3.6"/>
+                <path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>
+              </svg>
+            </span>
+            Users
+          </a>
+          {% endif %}
+
+          {% if permissions.forms %}
+          <a class="settings-nav-item {% if section == 'forms' %}active{% endif %}"
+             href="?section=forms"
+             data-section="forms"
+             data-endpoint="/settings/admin/partials/forms">
+            <span class="settings-nav-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <path d="M14 2v6h6"/>
+              </svg>
+            </span>
+            Forms
+          </a>
+          {% endif %}
+
+          {% if permissions.access %}
+          <a class="settings-nav-item {% if section == 'access' %}active{% endif %}"
+             href="?section=access"
+             data-section="access"
+             data-endpoint="/settings/admin/partials/access">
+            <span class="settings-nav-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="4" y="10" width="16" height="11" rx="3"/>
+                <path d="M8 10V7a4 4 0 0 1 8 0v3"/>
+              </svg>
+            </span>
+            Access Grants
+          </a>
+          {% endif %}
+
+          {% if permissions.roles %}
+          <a class="settings-nav-item {% if section == 'roles' %}active{% endif %}"
+             href="?section=roles"
+             data-section="roles"
+             data-endpoint="/settings/admin/partials/roles">
+            <span class="settings-nav-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2 4 6v6c0 5 3.4 9.4 8 10 4.6-.6 8-5 8-10V6z"/>
+              </svg>
+            </span>
+            Roles
+          </a>
+          {% endif %}
+        </aside>
+
+        <div class="settings-content">
+          <content-container
+            initial-endpoint="/settings/admin/partials/{{ section }}"
+          ></content-container>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  const nav = document.getElementById('adminNav');
+  if (!nav) return;
+
+  nav.addEventListener('click', (e) => {
+    const item = e.target.closest('.settings-nav-item');
+    if (!item) return;
+
+    e.preventDefault();
+
+    const endpoint = item.dataset.endpoint;
+    const section  = item.dataset.section;
+    if (!endpoint || !section) return;
+
+    nav.querySelectorAll('.settings-nav-item').forEach(el => el.classList.remove('active'));
+    item.classList.add('active');
+
+    try {
+      window.history.replaceState({ section }, '',
+        `?section=${encodeURIComponent(section)}`);
+    } catch (err) { /* ignore */ }
+
+    window.dispatchEvent(new CustomEvent('ramz:load-content', {
+      detail: { url: endpoint, section }
+    }));
+  });
+})();
+</script>
+
+{% endblock %}

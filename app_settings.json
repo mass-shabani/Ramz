@@ -23,6 +23,7 @@
         "user_panel",
         "user_profile",
         "account_setting",
+        "admin_panel",
         "auth",
         "home",
         "server_manager"
@@ -102,6 +103,6 @@
     ]
   },
   "debug": {
-    "access_control": false
+    "access_control": true
   }
 }

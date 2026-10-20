@@ -1,0 +1,63 @@
+<ramz-card title="Welcome to Admin Panel" subtitle="Administrative tools for Ramz">
+  <div slot="icon" class="card-icon icon-soft--indigo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 2 4 6v6c0 5 3.4 9.4 8 10 4.6-.6 8-5 8-10V6z"/>
+    </svg>
+  </div>
+
+  <p style="color: var(--text-dim); font-size: 14px; line-height: 1.7; margin: 0;">
+    Welcome, <strong>{{ profile.full_name }}</strong>.
+    This panel gives administrators and managers control over the
+    application's users, forms, access grants, and roles.
+  </p>
+
+  <div style="margin-top: 20px; display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+              gap: 12px;">
+    <div style="padding: 16px; border-radius: 12px;
+                background: rgba(99,102,241,0.08);
+                border: 1px solid rgba(129,140,248,0.15);">
+      <div style="font-size: 11px; text-transform: uppercase;
+                  letter-spacing: 0.4px; color: var(--muted); margin-bottom: 4px;">
+        Users
+      </div>
+      <div style="font-size: 13px; color: var(--text-dim); line-height: 1.5;">
+        Manage user accounts, roles, and status.
+      </div>
+    </div>
+    <div style="padding: 16px; border-radius: 12px;
+                background: rgba(99,102,241,0.08);
+                border: 1px solid rgba(129,140,248,0.15);">
+      <div style="font-size: 11px; text-transform: uppercase;
+                  letter-spacing: 0.4px; color: var(--muted); margin-bottom: 4px;">
+        Forms
+      </div>
+      <div style="font-size: 13px; color: var(--text-dim); line-height: 1.5;">
+        Create and manage application forms.
+      </div>
+    </div>
+    <div style="padding: 16px; border-radius: 12px;
+                background: rgba(99,102,241,0.08);
+                border: 1px solid rgba(129,140,248,0.15);">
+      <div style="font-size: 11px; text-transform: uppercase;
+                  letter-spacing: 0.4px; color: var(--muted); margin-bottom: 4px;">
+        Access Grants
+      </div>
+      <div style="font-size: 13px; color: var(--text-dim); line-height: 1.5;">
+        Control which roles can access which forms.
+      </div>
+    </div>
+    <div style="padding: 16px; border-radius: 12px;
+                background: rgba(99,102,241,0.08);
+                border: 1px solid rgba(129,140,248,0.15);">
+      <div style="font-size: 11px; text-transform: uppercase;
+                  letter-spacing: 0.4px; color: var(--muted); margin-bottom: 4px;">
+        Roles
+      </div>
+      <div style="font-size: 13px; color: var(--text-dim); line-height: 1.5;">
+        View role definitions and permissions.
+      </div>
+    </div>
+  </div>
+</ramz-card>
