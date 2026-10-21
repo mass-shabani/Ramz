@@ -142,43 +142,7 @@ class AdminPanelModule(IModule):
                         tag="admin",
                     )
 
-            # ------------------------------------------------------
-            # Topbar action: "Back to Panel"
-            # ------------------------------------------------------
-            try:
-                component_service.register_extension(
-                    point="ui.topbar.actions",
-                    data={
-                        "href": "/panel",
-                        "title": "Back to Panel",
-                        "aria_label": "Back to Panel",
-                        "icon": (
-                            '<svg viewBox="0 0 24 24" fill="none" '
-                            'stroke="currentColor" stroke-width="1.9" '
-                            'stroke-linecap="round" stroke-linejoin="round">'
-                            '<rect x="3" y="3" width="7" height="9" rx="2"/>'
-                            '<rect x="14" y="3" width="7" height="5" rx="2"/>'
-                            '<rect x="14" y="12" width="7" height="9" rx="2"/>'
-                            '<rect x="3" y="16" width="7" height="5" rx="2"/>'
-                            '</svg>'
-                        ),
-                        "order": 100,
-                    },
-                    form_id=None,
-                    module_name="admin_panel",
-                )
-                if logger:
-                    logger.log(
-                        "Admin Panel topbar action registered",
-                        tag="admin",
-                    )
-            except Exception as exc:
-                if logger:
-                    logger.log(
-                        f"Failed to register topbar action: {exc}",
-                        level="ERROR",
-                        tag="admin",
-                    )
+
         else:
             if logger:
                 logger.log(

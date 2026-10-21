@@ -116,6 +116,11 @@ class RamzTopbar extends HTMLElement {
   }
 
   #renderActionItem(item) {
+    // Skip when the current page is the one this action points to
+    if (item.hide_on_path && window.location.pathname === item.hide_on_path) {
+      return null;
+    }
+
     // Raw HTML escape hatch
     if (item.html) {
       const template = document.createElement('template');

@@ -93,6 +93,52 @@ class UserPanelModule(IModule):
                 )
 
         # ------------------------------------------------------------
+        # Topbar action: "Back to Panel"
+        # Registered once here (not per-page) and resolved on every page
+        # that calls prepare_context with "ui.topbar.actions".
+        # Hidden on /panel itself (via hide_on_path).
+        # NOTE: form_id is None in this task. Access control for /panel
+        # will be added in task 62, at which point form_id will become
+        # "user_panel.view".
+        # ------------------------------------------------------------
+        if component_service:
+            try:
+                component_service.register_extension(
+                    point="ui.topbar.actions",
+                    data={
+                        "href": "/panel",
+                        "title": "Back to Panel",
+                        "aria_label": "Back to Panel",
+                        "icon": (
+                            '<svg viewBox="0 0 24 24" fill="none" '
+                            'stroke="currentColor" stroke-width="1.9" '
+                            'stroke-linecap="round" stroke-linejoin="round">'
+                            '<rect x="3" y="3" width="7" height="9" rx="2"/>'
+                            '<rect x="14" y="3" width="7" height="5" rx="2"/>'
+                            '<rect x="14" y="12" width="7" height="9" rx="2"/>'
+                            '<rect x="3" y="16" width="7" height="5" rx="2"/>'
+                            '</svg>'
+                        ),
+                        "hide_on_path": "/panel",
+                        "order": 100,
+                    },
+                    form_id=None,
+                    module_name="user_panel",
+                )
+                if logger:
+                    logger.log(
+                        "User Panel topbar action registered",
+                        tag="panel",
+                    )
+            except Exception as exc:
+                if logger:
+                    logger.log(
+                        f"Failed to register topbar action: {exc}",
+                        level="ERROR",
+                        tag="panel",
+                    )
+
+        # ------------------------------------------------------------
         # Sidebar menu item (kept for compatibility — the visual sidebar
         # is now component-driven, but other modules may still enumerate
         # the "Dashboard" entry via menu_manager).
