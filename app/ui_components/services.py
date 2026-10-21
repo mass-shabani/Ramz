@@ -4,7 +4,18 @@ UI Components Service
 Provides a central registry of web components that other modules can
 request by name. The service does not hold any files itself — it only
 maps logical component names to their public URLs.
+
+Additionally provides a ComponentExtensionRegistry (see extensions.py)
+for declaring and resolving contributions that are injected into
+components at render time.
 """
+
+from typing import Any, Dict, List, Optional
+
+from .extensions import (
+    ComponentExtensionRegistry,
+    HOOK_RESOLVE,
+)
 
 
 class ComponentService:
@@ -45,9 +56,10 @@ class ComponentService:
     def __init__(self, logger=None):
         self.logger = logger
         self._components = dict(self.DEFAULT_COMPONENTS)
+        self.registry = ComponentExtensionRegistry(logger=logger)
 
     # --------------------------------------------------------------
-    # Public API
+    # Public API — component registry
     # --------------------------------------------------------------
     def register_component(self, name, url):
         """
@@ -113,3 +125,68 @@ class ComponentService:
     def get_bundle_url(self):
         """Return the URL of the bundle entry point (loads everything)."""
         return self.BUNDLE_URL
+
+    # --------------------------------------------------------------
+    # Public API — extension registry
+    # --------------------------------------------------------------
+    def register_extension(
+        self,
+        point: str,
+        data: Dict[str, Any],
+        form_id: Optional[str] = None,
+        order: int = 100,
+        module_name: Optional[str] = None,
+    ) -> bool:
+        """
+        Register a static extension contribution.
+
+        This is the primary API for modules to declare contributions
+        from their start() method.
+        """
+        return self.registry.declare(
+            point=point,
+            data=data,
+            form_id=form_id,
+            order=order,
+            module_name=module_name,
+        )
+
+    async def prepare_context(
+        self,
+        template_context: Dict[str, Any],
+        points: List[str],
+        user_id: Optional[str],
+        db_service=None,
+        app=None,
+    ) -> Dict[str, Any]:
+        """
+        Resolve extensions for the given points and inject them into
+        the template context under the "ui_extensions" key.
+
+        Returns the same template_context dict (mutated in place) for
+        convenience chaining.
+
+        If `app` is provided, HOOK_RESOLVE is triggered to allow modules
+        to add dynamic contributions per request.
+        """
+        resolved = await self.registry.resolve(points, user_id, db_service)
+
+        if app is not None:
+            try:
+                await app.trigger_hook(
+                    HOOK_RESOLVE,
+                    resolved=resolved,
+                    user_id=user_id,
+                    db_service=db_service,
+                    context=template_context,
+                )
+            except Exception as e:
+                if self.logger:
+                    self.logger.log(
+                        f"HOOK_RESOLVE failed: {e}",
+                        level="WARNING",
+                        tag="ui",
+                    )
+
+        template_context["ui_extensions"] = resolved
+        return template_context
