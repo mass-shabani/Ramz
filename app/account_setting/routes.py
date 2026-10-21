@@ -60,6 +60,8 @@ def register_routes(
     db_service: Any,
     logger: Any,
     message_service: Any = None,
+    component_service: Any = None,
+    app: Any = None,
 ):
     """
     Register the /settings/account route.
@@ -206,19 +208,37 @@ def register_routes(
         if requested_section not in VALID_SECTIONS:
             requested_section = "personal"
 
+        context = {
+            "profile":       profile,
+            "current_user":  current_user,
+            "permissions":   permissions,
+            "flash_status":  flash_status,
+            "flash_section": flash_section,
+            "flash_code":    flash_code,
+            "section":       requested_section,
+            "module_name":   "account_setting",
+        }
+
+        if component_service:
+            try:
+                await component_service.prepare_context(
+                    template_context=context,
+                    points=["ui.user_menu.items"],
+                    user_id=user_id,
+                    db_service=db_service,
+                    app=app,
+                )
+            except Exception as exc:
+                if logger:
+                    logger.log(
+                        f"prepare_context failed: {exc}",
+                        level="WARNING", tag="settings",
+                    )
+
         try:
             html = await template_service.render(
                 "settings.html",
-                context={
-                    "profile":       profile,
-                    "current_user":  current_user,
-                    "permissions":   permissions,
-                    "flash_status":  flash_status,
-                    "flash_section": flash_section,
-                    "flash_code":    flash_code,
-                    "section":       requested_section,
-                    "module_name":   "account_setting",
-                },
+                context=context,
             )
             return http_api.HTMLResponse(content=html)
         except Exception as exc:

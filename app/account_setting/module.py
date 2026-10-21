@@ -7,6 +7,9 @@ sessions, and delete their account.
 
 The page is NOT part of the panel shell — it has its own topbar and
 no sidebar. It is reachable via the user dropdown menu.
+
+Extensions are resolved via component_service.prepare_context() in
+routes.py and injected into the template context under "ui_extensions".
 """
 from pathlib import Path
 
@@ -87,6 +90,8 @@ class AccountSettingModule(IModule):
             db_service,
             logger,
             message_service=message_service,
+            component_service=component_service,
+            app=context.get_app(),
         )
 
         if logger:

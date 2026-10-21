@@ -9,7 +9,8 @@
     "http_api",
     "template_service",
     "app_db_service",
-    "message_service"
+    "message_service",
+    "component_service"
   ],
   "provides": ["account_setting_service"]
 }
