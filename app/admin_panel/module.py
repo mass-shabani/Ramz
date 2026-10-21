@@ -4,11 +4,13 @@ Admin Panel Module
 Provides a standalone administrative interface at /settings/admin
 for managing users, forms, access grants, and roles.
 
-The module registers a feature in `panel_service` so that a link
-appears in the user dropdown menu for users with access. When the
-module is disabled (removed from app_settings.json), the feature
-link disappears automatically and no route is registered — this
-is the graceful-degradation contract.
+Registers an extension in component_service so that an entry appears
+in the user dropdown menu for users with access. The extension is
+resolved per-request by component_service.prepare_context() based on
+the "admin_panel.view" form grant.
+
+When this module is disabled (removed from app_settings.json), the
+extension disappears automatically and no route is registered.
 """
 from pathlib import Path
 
@@ -23,13 +25,12 @@ class AdminPanelModule(IModule):
     """
 
     async def start(self, context: ModuleContext):
-        logger           = context.services.get("core_logger")
-        http_api         = context.services.get("http_api")
-        template_service = context.services.get("template_service")
-        db_service       = context.services.get("app_db_service")
-        message_service  = context.services.get("message_service")
+        logger            = context.services.get("core_logger")
+        http_api          = context.services.get("http_api")
+        template_service  = context.services.get("template_service")
+        db_service        = context.services.get("app_db_service")
+        message_service   = context.services.get("message_service")
         component_service = context.services.get("component_service")
-        panel_service    = context.services.get("panel_service")
 
         if logger:
             logger.log("Admin Panel module starting…", tag="admin")
@@ -105,35 +106,46 @@ class AdminPanelModule(IModule):
                     )
 
         # ------------------------------------------------------------
-        # Feature registry — adds link to user-menu
+        # Extension registration (replaces panel_service.register_feature)
         # ------------------------------------------------------------
-        if panel_service:
+        if component_service:
             try:
-                panel_service.register_feature(
-                    name="admin_panel",
-                    url="/settings/admin",
-                    label="Admin Panel",
-                    icon="🛡️",
+                registered = component_service.register_extension(
+                    point="ui.user_menu.items",
+                    data={
+                        "label": "Admin Panel",
+                        "url": "/settings/admin",
+                        "icon": "🛡️",
+                        "order": 10,
+                    },
                     form_id="admin_panel.view",
-                    condition="Full",
+                    module_name="admin_panel",
                 )
                 if logger:
-                    logger.log(
-                        "Admin Panel feature registered in panel_service",
-                        tag="admin",
-                    )
+                    if registered:
+                        logger.log(
+                            "Admin Panel extension registered in user menu",
+                            tag="admin",
+                        )
+                    else:
+                        logger.log(
+                            "Admin Panel extension NOT registered "
+                            "(unknown extension point)",
+                            level="WARNING",
+                            tag="admin",
+                        )
             except Exception as exc:
                 if logger:
                     logger.log(
-                        f"Failed to register feature: {exc}",
+                        f"Failed to register extension: {exc}",
                         level="ERROR",
                         tag="admin",
                     )
         else:
             if logger:
                 logger.log(
-                    "panel_service not available — admin panel will not appear "
-                    "in user menu, but routes will still work",
+                    "component_service not available — admin panel will not "
+                    "appear in user menu, but routes will still work",
                     level="WARNING",
                     tag="admin",
                 )
@@ -148,6 +160,8 @@ class AdminPanelModule(IModule):
                 db_service=db_service,
                 logger=logger,
                 message_service=message_service,
+                component_service=component_service,
+                app=context.get_app(),
             )
         except Exception as exc:
             if logger:

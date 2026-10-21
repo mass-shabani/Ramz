@@ -3,6 +3,9 @@ Admin Panel Routes
 
 GET  /settings/admin                     — renders the admin shell
 POST /settings/admin/partials/{section}  — returns an HTML fragment
+
+Extensions are resolved via component_service.prepare_context() and
+injected into the template context under "ui_extensions".
 """
 from typing import Any
 
@@ -13,6 +16,8 @@ def register_routes(
     db_service: Any,
     logger: Any,
     message_service: Any = None,
+    component_service: Any = None,
+    app: Any = None,
 ):
     """
     Register the /settings/admin routes.
@@ -22,9 +27,6 @@ def register_routes(
     # Helper: session + enabled + revoked
     # ------------------------------------------------------------
     async def _ensure_authenticated(request):
-        """
-        Return (user_id, None) on success, (None, response) on failure.
-        """
         current_user = (
             request.session.get("user")
             if hasattr(request, "session")
@@ -84,7 +86,7 @@ def register_routes(
         return user_id, None
 
     # ------------------------------------------------------------
-    # Helper: render error page (message_service → error.html → plain)
+    # Helper: render error page
     # ------------------------------------------------------------
     async def _render_error_page(status_code, title, message):
         if message_service:
@@ -193,16 +195,34 @@ def register_routes(
             "roles":  await _has("admin_panel.roles.view"),
         }
 
+        context = {
+            "profile":      profile,
+            "current_user": current_user,
+            "permissions":  permissions,
+            "section":      section,
+            "module_name":  "admin_panel",
+        }
+
+        if component_service:
+            try:
+                await component_service.prepare_context(
+                    template_context=context,
+                    points=["ui.user_menu.items"],
+                    user_id=user_id,
+                    db_service=db_service,
+                    app=app,
+                )
+            except Exception as exc:
+                if logger:
+                    logger.log(
+                        f"prepare_context failed: {exc}",
+                        level="WARNING", tag="admin",
+                    )
+
         try:
             html = await template_service.render(
                 "admin_layout.html",
-                context={
-                    "profile":      profile,
-                    "current_user": current_user,
-                    "permissions":  permissions,
-                    "section":      section,
-                    "module_name":  "admin_panel",
-                },
+                context=context,
             )
             return http_api.HTMLResponse(content=html)
         except Exception as exc:
@@ -256,14 +276,28 @@ def register_routes(
                 status_code=404,
             )
 
+        context = {
+            "profile":     profile,
+            "section":     section,
+            "module_name": "admin_panel",
+        }
+
+        if component_service:
+            try:
+                await component_service.prepare_context(
+                    template_context=context,
+                    points=["ui.user_menu.items"],
+                    user_id=user_id,
+                    db_service=db_service,
+                    app=app,
+                )
+            except Exception:
+                pass
+
         try:
             html = await template_service.render(
                 template_name,
-                context={
-                    "profile":     profile,
-                    "section":     section,
-                    "module_name": "admin_panel",
-                },
+                context=context,
             )
             return http_api.HTMLResponse(content=html)
         except Exception as exc:
