@@ -1,6 +1,7 @@
 {
   "name": "account_setting",
   "version": "1.0.0",
+  "enabled": true,
   "entrypoint": "AccountSettingModule",
   "description": "Standalone account settings page — manages personal, contact, security, subscription, banking, sessions, and danger zone.",
   "requires": [

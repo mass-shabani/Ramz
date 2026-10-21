@@ -1,6 +1,7 @@
 {
   "name": "user_profile",
   "version": "1.0.0",
+  "enabled": true,
   "entrypoint": "UserProfileModule",
   "description": "Standalone profile page — displays the authenticated user's personal and contact information.",
   "requires": [

@@ -1,6 +1,7 @@
 {
   "name": "user_panel",
   "version": "2.1.0",
+  "enabled": true,
   "entrypoint": "UserPanelModule",
   "description": "User panel with Lit-based dashboard, sidebar and topbar components.",
   "requires": [

@@ -1,6 +1,7 @@
 {
   "name": "admin_panel",
   "version": "1.0.0",
+  "enabled": true,
   "entrypoint": "AdminPanelModule",
   "description": "Administrative panel for managing users, forms, access grants, and roles.",
   "requires": [
