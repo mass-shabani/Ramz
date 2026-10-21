@@ -2,6 +2,9 @@
 Profile Routes
 
 GET /profile — renders the authenticated user's profile page.
+
+Extensions are resolved via component_service.prepare_context() and
+injected into the template context under "ui_extensions".
 """
 from typing import Any
 
@@ -12,6 +15,8 @@ def register_routes(
     db_service: Any,
     logger: Any,
     message_service: Any = None,
+    component_service: Any = None,
+    app: Any = None,
 ):
     """
     Register the /profile route.
@@ -180,18 +185,39 @@ def register_routes(
             activity_count = 0
 
         # ------------------------------------------------------------
+        # Build context + resolve extensions
+        # ------------------------------------------------------------
+        context = {
+            "profile":        profile,
+            "current_user":   current_user,
+            "activities":     activities,
+            "activity_count": activity_count,
+            "module_name":    "user_profile",
+        }
+
+        if component_service:
+            try:
+                await component_service.prepare_context(
+                    template_context=context,
+                    points=["ui.user_menu.items"],
+                    user_id=user_id,
+                    db_service=db_service,
+                    app=app,
+                )
+            except Exception as exc:
+                if logger:
+                    logger.log(
+                        f"prepare_context failed: {exc}",
+                        level="WARNING", tag="profile",
+                    )
+
+        # ------------------------------------------------------------
         # Render
         # ------------------------------------------------------------
         try:
             html = await template_service.render(
                 "profile.html",
-                context={
-                    "profile":        profile,
-                    "current_user":   current_user,
-                    "activities":     activities,
-                    "activity_count": activity_count,
-                    "module_name":    "user_profile",
-                },
+                context=context,
             )
             return http_api.HTMLResponse(content=html)
         except Exception as exc:

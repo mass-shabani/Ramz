@@ -6,6 +6,9 @@ user's personal and contact information.
 
 The page is NOT part of the panel shell — it has its own topbar and
 no sidebar. It is reachable via the user dropdown menu.
+
+Extensions are resolved via component_service.prepare_context() in
+routes.py and injected into the template context under "ui_extensions".
 """
 from pathlib import Path
 
@@ -20,11 +23,12 @@ class UserProfileModule(IModule):
     """
 
     async def start(self, context: ModuleContext):
-        logger           = context.services.get("core_logger")
-        http_api         = context.services.get("http_api")
-        template_service = context.services.get("template_service")
-        db_service       = context.services.get("app_db_service")
-        message_service  = context.services.get("message_service")
+        logger            = context.services.get("core_logger")
+        http_api          = context.services.get("http_api")
+        template_service  = context.services.get("template_service")
+        db_service        = context.services.get("app_db_service")
+        message_service   = context.services.get("message_service")
+        component_service = context.services.get("component_service")
 
         if logger:
             logger.log("User Profile module starting…", tag="profile")
@@ -49,7 +53,6 @@ class UserProfileModule(IModule):
         # ------------------------------------------------------------
         # Component registration (only what this module needs)
         # ------------------------------------------------------------
-        component_service = context.services.get("component_service")
         if component_service:
             template_service.register_module_assets(
                 "user_profile",
@@ -83,6 +86,8 @@ class UserProfileModule(IModule):
             db_service,
             logger,
             message_service=message_service,
+            component_service=component_service,
+            app=context.get_app(),
         )
 
         if logger:
