@@ -3,7 +3,7 @@ import { defineComponent, attr } from '../_base.js';
 /**
  * <ramz-topbar>
  *
- * A reusable topbar for standalone pages (profile, account settings, ...).
+ * A reusable topbar for standalone pages (profile, account settings, admin).
  *
  * Structure:
  *   ┌──────────────────────────────────────────────────┐
@@ -17,10 +17,23 @@ import { defineComponent, attr } from '../_base.js';
  *   • brand-name      — pass-through to ramz-brand (default: "Nebula")
  *   • brand-subtitle  — pass-through to ramz-brand (default: "Admin Suite")
  *   • brand-href      — link for the brand block (default: "/panel")
+ *   • show-progress   — if present, render a ramz-progress-bar inside
  *
- * Slots:
- *   • actions  — content placed on the right, before the user menu
- *   • center   — optional center content (search bar, tabs, ...)
+ * Slots (Light DOM — captured and re-inserted manually):
+ *   • hamburger  — content placed before the brand (mobile trigger)
+ *   • start      — content placed left, after brand
+ *   • center     — content placed in the center
+ *
+ * Topbar actions:
+ *   Buttons/links are read from window.__ramz.extensions["ui.topbar.actions"].
+ *   Each item is either:
+ *     { href, title, aria_label, icon, order? }   — structural mode
+ *   or:
+ *     { html, order? }                            — raw HTML escape hatch
+ *
+ *   Extensions render inside the actions wrap, before the user menu.
+ *   The legacy slot="actions" mechanism has been REMOVED — all topbar
+ *   actions must go through the extension registry.
  *
  * The component builds its own inner tree on connectedCallback and
  * manually re-attaches the user-provided slot content. This is
@@ -55,7 +68,6 @@ class RamzTopbar extends HTMLElement {
   attributeChangedCallback(name, oldVal, newVal) {
     if (oldVal === newVal) return;
     if (!this.#built) return;
-    // Only re-render if we're updating brand/user attributes
     this.#build();
   }
 
@@ -68,7 +80,6 @@ class RamzTopbar extends HTMLElement {
     this.#captured = {
       hamburger: children.filter(el => el.getAttribute('slot') === 'hamburger'),
       start:     children.filter(el => el.getAttribute('slot') === 'start'),
-      actions:   children.filter(el => el.getAttribute('slot') === 'actions'),
       center:    children.filter(el => el.getAttribute('slot') === 'center'),
     };
   }
@@ -78,9 +89,8 @@ class RamzTopbar extends HTMLElement {
     // move them into the correct slot wrapper.
     const hamburgerWrap = this.querySelector('.standalone-hamburger');
     const startWrap     = this.querySelector('.standalone-start');
-    const actionsWrap   = this.querySelector('.standalone-actions');
     const centerWrap    = this.querySelector('.standalone-center');
-    if (!actionsWrap) return;
+    if (!hamburgerWrap && !startWrap && !centerWrap) return;
 
     Array.from(this.children).forEach(child => {
       if (child.classList.contains('standalone-topbar-inner')) return;
@@ -89,12 +99,48 @@ class RamzTopbar extends HTMLElement {
         hamburgerWrap.appendChild(child);
       } else if (slot === 'start' && startWrap) {
         startWrap.appendChild(child);
-      } else if (slot === 'actions' && actionsWrap) {
-        actionsWrap.insertBefore(child, actionsWrap.lastElementChild);
       } else if (slot === 'center' && centerWrap) {
         centerWrap.appendChild(child);
       }
     });
+  }
+
+  /* --------------------------------------------------------------
+     Extension helpers
+     -------------------------------------------------------------- */
+  #getActionExtensions() {
+    const ext = window.__ramz && window.__ramz.extensions;
+    if (!ext) return [];
+    const items = ext['ui.topbar.actions'];
+    return Array.isArray(items) ? items : [];
+  }
+
+  #renderActionItem(item) {
+    // Raw HTML escape hatch
+    if (item.html) {
+      const template = document.createElement('template');
+      template.innerHTML = String(item.html).trim();
+      return template.content.firstElementChild;
+    }
+
+    // Structural mode: render as a standard icon-btn anchor
+    const a = document.createElement('a');
+    a.className = 'icon-btn';
+    a.href = item.href || '#';
+    a.title = item.title || '';
+    a.setAttribute('aria-label', item.aria_label || item.title || '');
+
+    const icon = item.icon;
+    if (icon) {
+      const trimmed = String(icon).trim();
+      if (trimmed.startsWith('<')) {
+        a.innerHTML = trimmed;
+      } else {
+        a.textContent = trimmed;
+      }
+    }
+
+    return a;
   }
 
   /* --------------------------------------------------------------
@@ -154,14 +200,18 @@ class RamzTopbar extends HTMLElement {
       header.appendChild(centerWrap);
     }
 
-    /* --- Actions + user menu --- */
+    /* --- Actions + extensions + user menu --- */
     const actionsWrap = document.createElement('div');
     actionsWrap.className = 'standalone-actions';
 
-    if (this.#captured.actions) {
-      this.#captured.actions.forEach(el => actionsWrap.appendChild(el));
-    }
+    // Extensions first (before the user menu)
+    const extensions = this.#getActionExtensions();
+    extensions.forEach(item => {
+      const el = this.#renderActionItem(item);
+      if (el) actionsWrap.appendChild(el);
+    });
 
+    // User menu always last
     const userMenu = document.createElement('ramz-user-menu');
     userMenu.setAttribute('user-name', userName);
     userMenu.setAttribute('user-email', userEmail);

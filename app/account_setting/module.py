@@ -73,6 +73,44 @@ class AccountSettingModule(IModule):
                     "brand, user-menu, card, topbar, progress-bar, content-container, dialog",
                     tag="settings",
                 )
+
+            # ------------------------------------------------------
+            # Topbar action: "Back to Panel"
+            # ------------------------------------------------------
+            try:
+                component_service.register_extension(
+                    point="ui.topbar.actions",
+                    data={
+                        "href": "/panel",
+                        "title": "Back to Panel",
+                        "aria_label": "Back to Panel",
+                        "icon": (
+                            '<svg viewBox="0 0 24 24" fill="none" '
+                            'stroke="currentColor" stroke-width="1.9" '
+                            'stroke-linecap="round" stroke-linejoin="round">'
+                            '<rect x="3" y="3" width="7" height="9" rx="2"/>'
+                            '<rect x="14" y="3" width="7" height="5" rx="2"/>'
+                            '<rect x="14" y="12" width="7" height="9" rx="2"/>'
+                            '<rect x="3" y="16" width="7" height="5" rx="2"/>'
+                            '</svg>'
+                        ),
+                        "order": 100,
+                    },
+                    form_id=None,
+                    module_name="account_setting",
+                )
+                if logger:
+                    logger.log(
+                        "Account Setting topbar action registered",
+                        tag="settings",
+                    )
+            except Exception as exc:
+                if logger:
+                    logger.log(
+                        f"Failed to register topbar action: {exc}",
+                        level="ERROR",
+                        tag="settings",
+                    )
         else:
             if logger:
                 logger.log(
