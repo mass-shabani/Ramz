@@ -1,6 +1,6 @@
 """
 User Panel Module — Manages the user panel layout, sidebar navigation,
-and the Lit-based dashboard.
+and the dashboard.
 
 Provides:
     panel_service — for other modules to render their views inside the panel.
@@ -16,22 +16,22 @@ class UserPanelModule(IModule):
     """
     User panel module.
 
-    Registers templates, static files, Lit component bundle, sidebar menu
-    entries, and panel routes. Provides `panel_service` to the rest of the
-    application.
+    Registers templates, static files, component bundle, sidebar menu
+    entries, and panel routes. Provides `panel_service` to the rest of
+    the application.
     """
 
     async def start(self, context: ModuleContext):
         # ------------------------------------------------------------
         # Resolve required services from the context
         # ------------------------------------------------------------
-        logger           = context.services.get("core_logger")
-        http_api         = context.services.get("http_api")
-        template_service = context.services.get("template_service")
-        menu_manager     = context.services.get("menu_manager")
-        asset_service    = context.services.get("asset_service")
-
-        message_service  = context.services.get("message_service")
+        logger            = context.services.get("core_logger")
+        http_api          = context.services.get("http_api")
+        template_service  = context.services.get("template_service")
+        menu_manager      = context.services.get("menu_manager")
+        asset_service     = context.services.get("asset_service")
+        message_service   = context.services.get("message_service")
+        component_service = context.services.get("component_service")
 
         if logger:
             logger.log("UserPanel module starting…", tag="panel")
@@ -71,11 +71,9 @@ class UserPanelModule(IModule):
         templates_dir = str(Path(__file__).parent / "templates")
         template_service.register_template_directory(templates_dir, "user_panel")
 
-
         # ------------------------------------------------------------
         # Component bundle from ui_components
         # ------------------------------------------------------------
-        component_service = context.services.get("component_service")
         if component_service:
             template_service.register_module_assets(
                 "user_panel",
@@ -126,13 +124,14 @@ class UserPanelModule(IModule):
             message_service,
             logger,
             db_service,
+            component_service=component_service,
+            app=context.get_app(),
         )
 
         if logger:
             logger.log("UserPanel module started successfully", tag="panel")
 
     async def stop(self, context: ModuleContext):
-        """Cleanup resources."""
         logger = context.services.get("core_logger")
         if logger:
             logger.log("UserPanel module stopped", tag="panel")

@@ -6,6 +6,9 @@ Endpoints:
     POST /panel/{view}     → returns an HTML fragment for the requested view
                              (used by the content-container component)
 
+Extensions are resolved via component_service.prepare_context() and
+injected into the template context under "ui_extensions".
+
 All framework access (Request, Response classes, etc.) is obtained from the
 `http_api` argument supplied by the module, so no direct FastAPI imports are
 needed.
@@ -137,15 +140,11 @@ def register_routes(
     message_service: Any,
     logger: Any,
     db_service: Any = None,
+    component_service: Any = None,
+    app: Any = None,
 ):
     """
     Register user panel routes with the HTTP API.
-
-    Parameters
-    ----------
-    http_api : the HTTP service exposed via the module context
-    panel_service : the PanelService instance created by the module
-    logger : shared logger from the module context
     """
 
     # ------------------------------------------------------------
@@ -164,14 +163,7 @@ def register_routes(
         # Full session validation (enabled + not revoked)
         check = await _check_session(request, db_service, None, logger)
         if check == "session_invalid":
-            # Revoked or disabled → back to home
             return http_api.RedirectResponse(url="/", status_code=302)
-
-        # ------------------------------------------------------------
-        # Build feature list for user menu
-        # ------------------------------------------------------------
-        import json
-        import urllib.parse
 
         user_id = (
             current_user.get("user_id")
@@ -179,32 +171,36 @@ def register_routes(
             else None
         )
 
-        features_encoded = ""
-        if user_id and db_service:
+        # ------------------------------------------------------------
+        # Build context and resolve extensions
+        # ------------------------------------------------------------
+        context = {
+            "module_name":   "user_panel",
+            "current_user":  current_user,
+            "user_name":     _display_name(current_user),
+            "user_initials": _initials(_display_name(current_user)),
+        }
+
+        if component_service:
             try:
-                features = await panel_service.get_features_for_user(
-                    user_id, db_service
+                await component_service.prepare_context(
+                    template_context=context,
+                    points=["ui.user_menu.items"],
+                    user_id=user_id,
+                    db_service=db_service,
+                    app=app,
                 )
-                features_json = json.dumps(features, ensure_ascii=False)
-                features_encoded = urllib.parse.quote(features_json, safe="")
             except Exception as exc:
                 if logger:
                     logger.log(
-                        f"Failed to compute features: {exc}",
+                        f"prepare_context failed: {exc}",
                         level="WARNING", tag="panel",
                     )
-                features_encoded = ""
 
         try:
             html_content = await panel_service.render_panel_view(
                 "dashboard.html",
-                {
-                    "module_name":     "user_panel",
-                    "current_user":    current_user,
-                    "user_name":       _display_name(current_user),
-                    "user_initials":   _initials(_display_name(current_user)),
-                    "features_encoded": features_encoded,
-                },
+                context,
                 request,
             )
             return http_api.HTMLResponse(content=html_content)
@@ -269,13 +265,33 @@ def register_routes(
             )
 
         # --- Render ---
+        user_id = (
+            current_user.get("user_id")
+            if isinstance(current_user, dict)
+            else None
+        )
+
+        context = {
+            "module_name": "user_panel",
+            "user_name":   _display_name(current_user),
+        }
+
+        if component_service:
+            try:
+                await component_service.prepare_context(
+                    template_context=context,
+                    points=["ui.user_menu.items"],
+                    user_id=user_id,
+                    db_service=db_service,
+                    app=app,
+                )
+            except Exception:
+                pass
+
         try:
             html_content = await panel_service.render_panel_view(
                 template_name,
-                {
-                    "module_name": "user_panel",
-                    "user_name":   _display_name(current_user),
-                },
+                context,
                 request,
             )
             return http_api.HTMLResponse(content=html_content)
