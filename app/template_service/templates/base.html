@@ -21,7 +21,17 @@
             <link rel="stylesheet" href="{{ css }}">
         {% endfor %}
     {% endif %}
-    
+
+    {# Server-injected extension data for web components #}
+    <script>
+    window.__ramz = window.__ramz || {};
+    {% if ui_extensions %}
+    window.__ramz.extensions = {{ ui_extensions | tojson | safe }};
+    {% else %}
+    window.__ramz.extensions = {};
+    {% endif %}
+    </script>
+
     {% block head_extra %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">

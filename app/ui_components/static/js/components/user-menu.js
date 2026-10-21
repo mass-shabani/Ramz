@@ -9,14 +9,19 @@ import { defineComponent, attr, emit } from '../_base.js';
  *   • user-name     — display name (default: "User")
  *   • user-email    — email address
  *   • user-initials — avatar initials (default: derived from name)
+ *   • logout-url    — logout link target (default: "/logout")
+ *
+ * Extension source:
+ *   Extra menu items are read from window.__ramz.extensions["ui.user_menu.items"].
+ *   Each item is either:
+ *     { label, url, icon?, order? }   — structural mode
+ *   or:
+ *     { html, order? }                — raw HTML escape hatch
  *
  * Public API:
  *   • open()   — open the dropdown
  *   • close()  — close the dropdown
  *   • toggle() — toggle the dropdown
- *
- * The logout link points to `/logout` by default. Override with the
- * `logout-url` attribute if the app uses a different path.
  */
 class RamzUserMenu extends HTMLElement {
   static get observedAttributes() {
@@ -25,7 +30,6 @@ class RamzUserMenu extends HTMLElement {
       'user-email',
       'user-initials',
       'logout-url',
-      'extra-links',
     ];
   }
 
@@ -169,18 +173,13 @@ class RamzUserMenu extends HTMLElement {
   }
 
   /* --------------------------------------------------------------
-     Extra links (feature registry)
+     Extension links (from window.__ramz.extensions)
      -------------------------------------------------------------- */
   _getExtraLinks() {
-    const raw = this.getAttribute('extra-links') || '';
-    if (!raw) return [];
-    try {
-      const decoded = decodeURIComponent(raw);
-      const parsed = JSON.parse(decoded);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (err) {
-      return [];
-    }
+    const ext = window.__ramz && window.__ramz.extensions;
+    if (!ext) return [];
+    const items = ext['ui.user_menu.items'];
+    return Array.isArray(items) ? items : [];
   }
 
   _renderExtraLinks() {
@@ -188,6 +187,8 @@ class RamzUserMenu extends HTMLElement {
     if (!links.length) return '';
 
     return links.map(link => {
+      if (link.html) return link.html;
+
       const url   = this._escapeAttr(link.url || '#');
       const label = this._escapeHtml(link.label || '');
       const icon  = this._renderFeatureIcon(link.icon);
