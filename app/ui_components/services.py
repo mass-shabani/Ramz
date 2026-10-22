@@ -48,6 +48,7 @@ class ComponentService:
         "progress-bar":       "/static/ui_components/js/components/progress-bar.js",
         "topbar":             "/static/ui_components/js/components/topbar.js",
         "dialog":             "/static/ui_components/js/components/dialog.js",
+        "table":              "/static/ui_components/js/components/table.js",
     }
 
     # Public URL of the combined bundle. Loads every component at once.

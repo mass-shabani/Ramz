@@ -20,6 +20,7 @@ import './components/menu-item.js';
 import './components/content-container.js';
 import './components/coin-watchlist.js';
 import './components/card.js';
+import './components/table.js';
 
 
 /* ==========================================================================
