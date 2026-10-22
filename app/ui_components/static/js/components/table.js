@@ -5,22 +5,28 @@ const DEFAULT_EMPTY_TEXT = 'No records found.';
 /**
  * <ramz-table>
  *
- * A reusable data table component (Light DOM).
+ * A reusable data table component (Light DOM). Renders ONLY the table.
+ *
+ * This component is deliberately NOT a container: it does NOT wrap itself
+ * in a card, does NOT provide a header, and does NOT own any buttons or
+ * actions outside the table. Composition (card, header, buttons, actions)
+ * is the caller's responsibility.
+ *
+ * Typical composition:
+ *
+ *   <ramz-card title="Users">
+ *     <button slot="header-actions" data-action="add">Add</button>
+ *     <ramz-table></ramz-table>
+ *   </ramz-card>
  *
  * Attributes:
- *   • title         — card header title
- *   • subtitle      — card header subtitle
- *   • endpoint      — optional URL to POST for live data (JSON: {columns, rows})
- *   • empty-text    — text shown when there are no rows (default: "No records found.")
- *   • hide-header   — if present, the card header is not rendered
- *
- * Slot:
- *   • header-actions — content rendered on the right side of the header
+ *   • endpoint    — optional URL to POST for live data (JSON: {columns, rows})
+ *   • empty-text  — text shown when there are no rows (default: "No records found.")
  *
  * Public API:
  *   • setColumns(columns) — configure columns (see schema below)
  *   • setData(rows)       — replace data
- *   • setLoading(loading) — toggle loading state
+ *   • setLoading(loading) — toggle .is-loading class on host
  *   • reload()            — re-fetch data from endpoint (if set)
  *   • getRowData(index)   — read the raw row object
  *
@@ -57,7 +63,7 @@ const DEFAULT_EMPTY_TEXT = 'No records found.';
  */
 class RamzTable extends HTMLElement {
   static get observedAttributes() {
-    return ['title', 'subtitle', 'endpoint', 'empty-text', 'hide-header'];
+    return ['endpoint', 'empty-text'];
   }
 
   #columns = [];
@@ -65,19 +71,13 @@ class RamzTable extends HTMLElement {
   #loading = false;
   #error = null;
   #refs = {};
-  #capturedHeaderActions = null;
-  #built = false;
   #fetching = false;
 
   /* --------------------------------------------------------------
      Lifecycle
      -------------------------------------------------------------- */
   connectedCallback() {
-    if (!this.#built) {
-      this.#captureHeaderActions();
-      this.#built = true;
-    }
-    this._render();
+    this._ensureShell();
     this._attachListeners();
     this._renderBody();
 
@@ -93,9 +93,10 @@ class RamzTable extends HTMLElement {
 
   attributeChangedCallback(name, oldVal, newVal) {
     if (oldVal === newVal) return;
-    if (!this.isConnected || !this.#built) return;
-    this._render();
-    this._attachListeners();
+    if (!this.isConnected) return;
+    if (!this.querySelector('.table-wrap')) {
+      this._ensureShell();
+    }
     this._renderBody();
   }
 
@@ -117,7 +118,7 @@ class RamzTable extends HTMLElement {
 
   setLoading(loading) {
     this.#loading = Boolean(loading);
-    if (this.isConnected) this._renderBody();
+    this.classList.toggle('is-loading', this.#loading);
   }
 
   getRowData(index) {
@@ -129,7 +130,7 @@ class RamzTable extends HTMLElement {
     if (!endpoint || this.#fetching) return;
 
     this.#fetching = true;
-    this.#loading = true;
+    this.setLoading(true);
     this.#error = null;
     this._renderBody();
 
@@ -155,7 +156,7 @@ class RamzTable extends HTMLElement {
       if (Array.isArray(data.columns)) this.#columns = data.columns;
       if (Array.isArray(data.rows))    this.#rows = data.rows;
 
-      this.#loading = false;
+      this.setLoading(false);
       this._renderBody();
       emit(this, 'ramz:table-loaded', {
         url: endpoint,
@@ -164,7 +165,7 @@ class RamzTable extends HTMLElement {
 
     } catch (err) {
       console.error('[ramz-table] reload failed:', err);
-      this.#loading = false;
+      this.setLoading(false);
       this.#error = err;
       this._renderBody();
       emit(this, 'ramz:table-error', {
@@ -179,86 +180,27 @@ class RamzTable extends HTMLElement {
   }
 
   /* --------------------------------------------------------------
-     Capture header actions slot
+     Shell — idempotent, preserves existing structure across
+     detach/re-attach cycles
      -------------------------------------------------------------- */
-  #captureHeaderActions() {
-    this.#capturedHeaderActions = Array.from(this.children)
-      .filter(el => el.getAttribute('slot') === 'header-actions');
-  }
-
-  /* --------------------------------------------------------------
-     Shell
-     -------------------------------------------------------------- */
-  _render() {
-    const title      = attr(this, 'title', '');
-    const subtitle   = attr(this, 'subtitle', '');
-    const hideHeader = this.hasAttribute('hide-header');
-
-    const hasHeaderActions =
-      this.#capturedHeaderActions && this.#capturedHeaderActions.length > 0;
-    const hasHeader = !hideHeader && (title || subtitle || hasHeaderActions);
-
-    this.innerHTML = '';
-
-    const card = document.createElement('div');
-    card.className = 'card';
-
-    if (hasHeader) {
-      const head = document.createElement('div');
-      head.className = 'card-head';
-
-      const headLeft = document.createElement('div');
-      headLeft.className = 'card-head-left';
-
-      if (title || subtitle) {
-        const headText = document.createElement('div');
-        headText.className = 'card-head-text';
-
-        if (title) {
-          const t = document.createElement('div');
-          t.className = 'card-title';
-          t.textContent = title;
-          headText.appendChild(t);
-        }
-        if (subtitle) {
-          const s = document.createElement('div');
-          s.className = 'card-sub';
-          s.textContent = subtitle;
-          headText.appendChild(s);
-        }
-        headLeft.appendChild(headText);
-      }
-      head.appendChild(headLeft);
-
-      if (hasHeaderActions) {
-        const actionsWrap = document.createElement('div');
-        actionsWrap.className = 'card-head-actions';
-        this.#capturedHeaderActions.forEach(el => actionsWrap.appendChild(el));
-        head.appendChild(actionsWrap);
-      }
-
-      card.appendChild(head);
+  _ensureShell() {
+    let wrap = this.querySelector('.table-wrap');
+    if (!wrap) {
+      this.innerHTML = `
+        <div class="table-wrap">
+          <table>
+            <thead><tr></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      `;
+      wrap = this.querySelector('.table-wrap');
     }
 
-    const wrap = document.createElement('div');
-    wrap.className = 'table-wrap';
-
-    const table = document.createElement('table');
-    const thead = document.createElement('thead');
-    const headTr = document.createElement('tr');
-    thead.appendChild(headTr);
-    const tbody = document.createElement('tbody');
-    table.appendChild(thead);
-    table.appendChild(tbody);
-    wrap.appendChild(table);
-    card.appendChild(wrap);
-
-    this.appendChild(card);
-
     this.#refs = {
-      card,
-      thead: headTr,
-      tbody,
+      wrap,
+      thead: wrap.querySelector('thead tr'),
+      tbody: wrap.querySelector('tbody'),
     };
   }
 
@@ -275,8 +217,6 @@ class RamzTable extends HTMLElement {
       const style = parts.length ? ` style="${parts.join('')}"` : '';
       return `<th${style}>${escapeHtml(col.label || '')}</th>`;
     }).join('');
-
-    this.#refs.card.classList.toggle('is-loading', this.#loading);
 
     if (this.#error) {
       const colCount = this.#columns.length || 1;

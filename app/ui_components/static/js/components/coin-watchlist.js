@@ -76,11 +76,26 @@ function buildRow(item) {
 /**
  * <ramz-coin-watchlist>
  *
- * A thin wrapper around <ramz-table> that renders the crypto watchlist.
+ * A crypto watchlist composed of:
+ *
+ *   <ramz-card>                        (container + header)
+ *     ├─ <button slot="header-actions">  ("Add Coin")
+ *     └─ <ramz-table>                    (the data table)
+ *
+ * Responsibilities of THIS component:
+ *   • The card container (title, subtitle)
+ *   • The "Add Coin" action button
+ *   • Coin-specific data transformation (symbol/name/pair/confidence/
+ *     price/change → ramz-table rows)
+ *   • Delegating rendering to <ramz-table>
+ *   • Emitting ramz:watchlist-add on "Add Coin"
+ *   • Emitting/handling future per-row actions (Edit/Delete/…)
+ *
+ * The <ramz-table> owns only the table.
  *
  * Attributes:
- *   • title        — card title (passed through)
- *   • subtitle     — card subtitle (passed through)
+ *   • title        — card title (default: "Watchlist")
+ *   • subtitle     — card subtitle
  *   • endpoint     — optional URL to POST for live data (returns JSON array)
  *   • add-label    — label for the CTA button (default: "Add Coin")
  *   • hide-add     — if present, the CTA button is not rendered
@@ -91,11 +106,6 @@ function buildRow(item) {
  *
  * Emits:
  *   • ramz:watchlist-add — when the CTA button is clicked
- *
- * The actual table markup, styling, and column types are owned by
- * <ramz-table>. This component only maps the coin schema (symbol/name/
- * pair/signal/confidence/price/change) into ramz-table's row format
- * and translates the "Add" click back into a custom event.
  */
 class CoinWatchlist extends HTMLElement {
   static get observedAttributes() {
@@ -164,7 +174,6 @@ class CoinWatchlist extends HTMLElement {
       if (Array.isArray(data)) this.setItems(data);
 
     } catch (err) {
-      // eslint-disable-next-line no-console
       console.error('[coin-watchlist] fetch failed:', err);
 
     } finally {
@@ -174,7 +183,7 @@ class CoinWatchlist extends HTMLElement {
   }
 
   /* --------------------------------------------------------------
-     Shell
+     Shell — composes <ramz-card> + <ramz-table>
      -------------------------------------------------------------- */
   _render() {
     const title    = attr(this, 'title',    'Watchlist');
@@ -184,10 +193,9 @@ class CoinWatchlist extends HTMLElement {
 
     this.innerHTML = '';
 
-    const table = document.createElement('ramz-table');
-    table.setAttribute('title', title);
-    table.setAttribute('subtitle', subtitle);
-    table.setAttribute('empty-text', 'No coins in your watchlist yet.');
+    const card = document.createElement('ramz-card');
+    card.setAttribute('title', title);
+    card.setAttribute('subtitle', subtitle);
 
     if (!hideAdd) {
       const btn = document.createElement('button');
@@ -202,13 +210,17 @@ class CoinWatchlist extends HTMLElement {
         </svg>
         ${escapeHtml(addLabel)}
       `;
-      table.appendChild(btn);
+      card.appendChild(btn);
     }
 
-    this.appendChild(table);
-
+    const table = document.createElement('ramz-table');
+    table.setAttribute('empty-text', 'No coins in your watchlist yet.');
     table.setColumns(buildColumns());
+    card.appendChild(table);
 
+    this.appendChild(card);
+
+    this.#refs.card = card;
     this.#refs.table = table;
   }
 
@@ -218,9 +230,7 @@ class CoinWatchlist extends HTMLElement {
   _renderRows() {
     const table = this.#refs.table;
     if (!table) return;
-
-    const rows = this.#items.map(buildRow);
-    table.setData(rows);
+    table.setData(this.#items.map(buildRow));
   }
 
   _setLoading(isLoading) {

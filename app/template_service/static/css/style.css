@@ -2314,19 +2314,19 @@ ramz-progress-bar {
    COIN WATCHLIST (loading shimmer)
    ========================================================================== */
 
-ramz-coin-watchlist{
+ramz-coin-watchlist {
   display: block;
 }
 
-ramz-coin-watchlist .card.is-loading{
-  opacity: 0.6;
-  pointer-events: none;
-}
-
-/* The table host wraps a card — render as block so it participates in
-   normal document flow when nested inside another custom element. */
+/* The table host is a standalone block element — it does not render a
+   card of its own; consumers compose it with <ramz-card> if desired. */
 ramz-table {
   display: block;
+}
+
+ramz-table.is-loading {
+  opacity: 0.6;
+  pointer-events: none;
 }
 
 /* Sidebar host must be a flex column */
