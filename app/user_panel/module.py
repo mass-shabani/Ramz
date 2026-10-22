@@ -97,9 +97,8 @@ class UserPanelModule(IModule):
         # Registered once here (not per-page) and resolved on every page
         # that calls prepare_context with "ui.topbar.actions".
         # Hidden on /panel itself (via hide_on_path).
-        # NOTE: form_id is None in this task. Access control for /panel
-        # will be added in task 62, at which point form_id will become
-        # "user_panel.view".
+        # Access gated by "user_panel.view" — only users with access to
+        # /panel will see this button.
         # ------------------------------------------------------------
         if component_service:
             try:
@@ -122,7 +121,7 @@ class UserPanelModule(IModule):
                         "hide_on_path": "/panel",
                         "order": 100,
                     },
-                    form_id=None,
+                    form_id="user_panel.view",
                     module_name="user_panel",
                 )
                 if logger:
@@ -172,6 +171,7 @@ class UserPanelModule(IModule):
             db_service,
             component_service=component_service,
             app=context.get_app(),
+            template_service=template_service,
         )
 
         if logger:

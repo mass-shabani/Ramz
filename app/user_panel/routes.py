@@ -142,10 +142,59 @@ def register_routes(
     db_service: Any = None,
     component_service: Any = None,
     app: Any = None,
+    template_service: Any = None,
 ):
     """
     Register user panel routes with the HTTP API.
     """
+
+    async def _render_error_page(status_code, title, message):
+        """
+        Render a styled error page (uses message_service first, then
+        template_service error.html, then plain HTML).
+        """
+        # 1. Prefer message_service
+        if message_service:
+            try:
+                html = await message_service.render_message(
+                    status_code=status_code,
+                    title=title,
+                    message=message,
+                    message_type="error",
+                )
+                return http_api.HTMLResponse(
+                    content=html, status_code=status_code
+                )
+            except Exception as exc:
+                if logger:
+                    logger.log(
+                        f"message_service.render_message failed: {exc}",
+                        level="WARNING", tag="panel",
+                    )
+
+        # 2. Fallback to template_service error.html
+        if template_service:
+            try:
+                html = await template_service.render(
+                    "error.html",
+                    context={
+                        "status_code": status_code,
+                        "title":       title,
+                        "message":     message,
+                        "module_name": "template_service",
+                    },
+                )
+                return http_api.HTMLResponse(
+                    content=html, status_code=status_code
+                )
+            except Exception:
+                pass
+
+        # 3. Plain text last resort
+        return http_api.HTMLResponse(
+            content=f"<h1>{status_code}</h1><p>{title}</p><p>{message}</p>",
+            status_code=status_code,
+        )
 
     # ------------------------------------------------------------
     # GET /panel — full panel shell
@@ -170,6 +219,25 @@ def register_routes(
             if isinstance(current_user, dict)
             else None
         )
+
+        # ------------------------------------------------------------
+        # Access check — "user_panel.view"
+        # ------------------------------------------------------------
+        try:
+            allowed = await db_service.has_access(user_id, "user_panel.view")
+        except Exception:
+            allowed = False
+
+        if not allowed:
+            return await _render_error_page(
+                status_code=403,
+                title="Access denied",
+                message=(
+                    "You do not have permission to access the user panel. "
+                    "If you believe this is a mistake, please contact an "
+                    "administrator."
+                ),
+            )
 
         # ------------------------------------------------------------
         # Build context and resolve extensions
@@ -248,6 +316,26 @@ def register_routes(
                 status_code=401,
             )
 
+        user_id = (
+            current_user.get("user_id")
+            if isinstance(current_user, dict)
+            else None
+        )
+
+        # ------------------------------------------------------------
+        # Access check — "user_panel.view"
+        # ------------------------------------------------------------
+        try:
+            allowed = await db_service.has_access(user_id, "user_panel.view")
+        except Exception:
+            allowed = False
+
+        if not allowed:
+            return http_api.JSONResponse(
+                content={"status": "no_access", "message": "Access denied."},
+                status_code=403,
+            )
+
         # --- Look up the partial template ---
         template_name = VIEW_TEMPLATES.get(view)
         if not template_name:
@@ -265,11 +353,6 @@ def register_routes(
             )
 
         # --- Render ---
-        user_id = (
-            current_user.get("user_id")
-            if isinstance(current_user, dict)
-            else None
-        )
 
         context = {
             "module_name": "user_panel",
