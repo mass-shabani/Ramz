@@ -30,15 +30,57 @@ function formatChange(value) {
   };
 }
 
+/* ==========================================================================
+   Column and row builders (delegated to <ramz-table>)
+   ========================================================================== */
+function buildColumns() {
+  return [
+    { key: '_coin',       label: 'Coin',       type: 'avatar' },
+    { key: 'signal',      label: 'Signal',     type: 'text' },
+    { key: '_confidence', label: 'Confidence', type: 'badge' },
+    { key: 'price',       label: 'Price',      type: 'text', className: 'amount' },
+    { key: '_change',     label: '24h',        type: 'html', className: 'amount' },
+  ];
+}
+
+function buildRow(item) {
+  const confValue   = Number.isFinite(item.confidence) ? `${item.confidence}%` : '—';
+  const confText    = `${confValue} up`;
+  const confVariant = item.confidenceClass || 'idle';
+
+  const change = formatChange(item.change);
+  const changeColor = change.direction === 'up'   ? '#34d399'
+                    : change.direction === 'down' ? '#fb7185'
+                    : '';
+  const changeHtml = changeColor
+    ? `<span style="color:${changeColor}">${escapeHtml(change.text)}</span>`
+    : escapeHtml(change.text);
+
+  return {
+    _coin: {
+      initials:    item.symbol,
+      name:        item.name  || '',
+      email:       item.pair  || '',
+      avatarClass: item.avatarClass || '',
+    },
+    signal: item.signal || '—',
+    _confidence: { text: confText, variant: confVariant },
+    price:   formatPrice(item.price),
+    _change: changeHtml,
+  };
+}
+
+/* ==========================================================================
+   <ramz-coin-watchlist>
+   ========================================================================== */
 /**
  * <ramz-coin-watchlist>
  *
- * A card containing a table of coins with signal, confidence, price
- * and 24h change columns.
+ * A thin wrapper around <ramz-table> that renders the crypto watchlist.
  *
  * Attributes:
- *   • title        — card title
- *   • subtitle     — card subtitle
+ *   • title        — card title (passed through)
+ *   • subtitle     — card subtitle (passed through)
  *   • endpoint     — optional URL to POST for live data (returns JSON array)
  *   • add-label    — label for the CTA button (default: "Add Coin")
  *   • hide-add     — if present, the CTA button is not rendered
@@ -49,6 +91,11 @@ function formatChange(value) {
  *
  * Emits:
  *   • ramz:watchlist-add — when the CTA button is clicked
+ *
+ * The actual table markup, styling, and column types are owned by
+ * <ramz-table>. This component only maps the coin schema (symbol/name/
+ * pair/signal/confidence/price/change) into ramz-table's row format
+ * and translates the "Add" click back into a custom event.
  */
 class CoinWatchlist extends HTMLElement {
   static get observedAttributes() {
@@ -67,7 +114,6 @@ class CoinWatchlist extends HTMLElement {
     }
 
     this._render();
-    this._cacheRefs();
     this._attachListeners();
     this._renderRows();
 
@@ -82,10 +128,7 @@ class CoinWatchlist extends HTMLElement {
   attributeChangedCallback(name, oldVal, newVal) {
     if (oldVal === newVal) return;
     if (!this.isConnected) return;
-
-    // Structural attributes need a rebuild
     this._render();
-    this._cacheRefs();
     this._attachListeners();
     this._renderRows();
   }
@@ -123,7 +166,6 @@ class CoinWatchlist extends HTMLElement {
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[coin-watchlist] fetch failed:', err);
-      this._setLoading(false, true);
 
     } finally {
       this.#fetching = false;
@@ -135,111 +177,56 @@ class CoinWatchlist extends HTMLElement {
      Shell
      -------------------------------------------------------------- */
   _render() {
-    const title     = attr(this, 'title',    'Watchlist');
-    const subtitle  = attr(this, 'subtitle', "Coins you're tracking in real time");
-    const addLabel  = attr(this, 'add-label', 'Add Coin');
-    const hideAdd   = this.hasAttribute('hide-add');
+    const title    = attr(this, 'title',    'Watchlist');
+    const subtitle = attr(this, 'subtitle', "Coins you're tracking in real time");
+    const addLabel = attr(this, 'add-label', 'Add Coin');
+    const hideAdd  = this.hasAttribute('hide-add');
 
-    this.innerHTML = `
-      <div class="card">
-        <div class="card-head">
-          <div class="card-head-left">
-            <div class="card-head-text">
-              <div class="card-title">${escapeHtml(title)}</div>
-              <div class="card-sub">${escapeHtml(subtitle)}</div>
-            </div>
-          </div>
-          ${hideAdd ? '' : `
-            <div class="card-head-actions">
-              <button class="btn-primary" type="button" data-action="add">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     stroke-width="2.2" stroke-linecap="round">
-                  <path d="M12 5v14M5 12h14"/>
-                </svg>
-                ${escapeHtml(addLabel)}
-              </button>
-            </div>
-          `}
-        </div>
+    this.innerHTML = '';
 
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Coin</th>
-                <th>Signal</th>
-                <th>Confidence</th>
-                <th>Price</th>
-                <th>24h</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </div>
-    `;
-  }
+    const table = document.createElement('ramz-table');
+    table.setAttribute('title', title);
+    table.setAttribute('subtitle', subtitle);
+    table.setAttribute('empty-text', 'No coins in your watchlist yet.');
 
-  _cacheRefs() {
-    this.#refs = {
-      tbody:   this.querySelector('tbody'),
-      addBtn:  this.querySelector('[data-action="add"]')
-    };
+    if (!hideAdd) {
+      const btn = document.createElement('button');
+      btn.className = 'btn-primary';
+      btn.type = 'button';
+      btn.setAttribute('data-action', 'add');
+      btn.setAttribute('slot', 'header-actions');
+      btn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.2" stroke-linecap="round">
+          <path d="M12 5v14M5 12h14"/>
+        </svg>
+        ${escapeHtml(addLabel)}
+      `;
+      table.appendChild(btn);
+    }
+
+    this.appendChild(table);
+
+    table.setColumns(buildColumns());
+
+    this.#refs.table = table;
   }
 
   /* --------------------------------------------------------------
-     Rendering
+     Data
      -------------------------------------------------------------- */
   _renderRows() {
-    const tbody = this.#refs.tbody;
-    if (!tbody) return;
+    const table = this.#refs.table;
+    if (!table) return;
 
-    if (this.#items.length === 0) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="5" style="text-align:center;padding:32px;color:var(--muted);">
-            No coins in your watchlist yet.
-          </td>
-        </tr>`;
-      return;
+    const rows = this.#items.map(buildRow);
+    table.setData(rows);
+  }
+
+  _setLoading(isLoading) {
+    if (this.#refs.table && typeof this.#refs.table.setLoading === 'function') {
+      this.#refs.table.setLoading(isLoading);
     }
-
-    tbody.innerHTML = this.#items.map(item => this._renderRow(item)).join('');
-  }
-
-  _renderRow(item) {
-    const change  = formatChange(item.change);
-    const changeColor = change.direction === 'up'   ? 'color:#34d399'
-                       : change.direction === 'down' ? 'color:#fb7185'
-                       : '';
-
-    const conf = Number.isFinite(item.confidence) ? `${item.confidence}%` : '—';
-    const confClass = item.confidenceClass || 'idle';
-
-    return `
-      <tr>
-        <td>
-          <div class="cell-user">
-            <span class="avatar ${escapeHtml(item.avatarClass || '')}">${escapeHtml(item.symbol || '')}</span>
-            <div>
-              <div class="cu-name">${escapeHtml(item.name || '')}</div>
-              <div class="cu-mail">${escapeHtml(item.pair || '')}</div>
-            </div>
-          </div>
-        </td>
-        <td>${escapeHtml(item.signal || '—')}</td>
-        <td><span class="status ${escapeHtml(confClass)}">${escapeHtml(conf)} up</span></td>
-        <td class="amount">${formatPrice(item.price)}</td>
-        <td class="amount" style="${changeColor}">${change.text}</td>
-      </tr>
-    `;
-  }
-
-  _setLoading(isLoading, isError = false) {
-    const card = this.querySelector('.card');
-    if (!card) return;
-    card.classList.toggle('is-loading', isLoading);
-    card.classList.toggle('is-error',   isError);
   }
 
   /* --------------------------------------------------------------

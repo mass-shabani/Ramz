@@ -2323,6 +2323,12 @@ ramz-coin-watchlist .card.is-loading{
   pointer-events: none;
 }
 
+/* The table host wraps a card — render as block so it participates in
+   normal document flow when nested inside another custom element. */
+ramz-table {
+  display: block;
+}
+
 /* Sidebar host must be a flex column */
 ramz-sidebar.sidebar {
   display: flex;
