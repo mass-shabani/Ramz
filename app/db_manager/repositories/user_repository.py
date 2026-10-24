@@ -116,6 +116,95 @@ class UserRepository:
         return bool(row.get("enabled", 0))
 
     # ----------------------------------------------------------
+    # Admin: list/count users (search + pagination)
+    # ----------------------------------------------------------
+    async def admin_list_users(
+        self,
+        query: str = "",
+        offset: int = 0,
+        limit: int = 20,
+    ) -> list[User]:
+        """
+        List users for the admin panel with optional text search.
+
+        The search term matches (case-insensitive LIKE) against
+        username, first_name, last_name, and email_address.
+
+        Returns a list of User objects, newest registered first.
+        """
+        if limit < 1:
+            limit = 20
+        if limit > 200:
+            limit = 200
+        if offset < 0:
+            offset = 0
+
+        search = f"%{(query or '').strip()}%"
+
+        sql = """
+            SELECT
+                u.user_id,
+                u.username,
+                u.enabled,
+                u.role_id,
+                u.people_id,
+                u.email_id,
+                u.phone_id,
+                u.subscription_id,
+                u.xp_points,
+                u.two_factor_enabled,
+                u.created_at,
+                u.updated_at,
+                p.first_name,
+                p.last_name,
+                r.role_name,
+                s.subscription_name,
+                e.email_address,
+                ph.phone_number
+            FROM user u
+            JOIN      people        p  ON p.people_id       = u.people_id
+            LEFT JOIN role          r  ON r.role_id         = u.role_id
+            LEFT JOIN subscription  s  ON s.subscription_id = u.subscription_id
+            LEFT JOIN email         e  ON e.email_id        = u.email_id
+            LEFT JOIN phone         ph ON ph.phone_id       = u.phone_id
+            WHERE (
+                u.username   LIKE ? OR
+                p.first_name LIKE ? OR
+                p.last_name  LIKE ? OR
+                e.email_address LIKE ?
+            )
+            ORDER BY u.user_id DESC
+            LIMIT ? OFFSET ?
+        """
+        rows = await self._conn().fetch_all(
+            sql, (search, search, search, search, limit, offset)
+        )
+        return [User.from_row(row) for row in rows or []]
+
+    async def admin_count_users(self, query: str = "") -> int:
+        """
+        Count users matching the same search term as admin_list_users.
+        """
+        search = f"%{(query or '').strip()}%"
+
+        sql = """
+            SELECT COUNT(*) AS c
+            FROM user u
+            JOIN      people p ON p.people_id = u.people_id
+            LEFT JOIN email  e ON e.email_id  = u.email_id
+            WHERE (
+                u.username   LIKE ? OR
+                p.first_name LIKE ? OR
+                p.last_name  LIKE ? OR
+                e.email_address LIKE ?
+            )
+        """
+        row = await self._conn().fetch_one(
+            sql, (search, search, search, search)
+        )
+        return int(row["c"]) if row else 0
+
+    # ----------------------------------------------------------
     # Writes
     # ----------------------------------------------------------
     async def create(

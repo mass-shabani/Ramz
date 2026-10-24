@@ -242,7 +242,8 @@ def register_routes(
     # ------------------------------------------------------------
     PARTIAL_TEMPLATES = {
         "overview": "partials/overview.html",
-        # Phase 3+: users, forms, access, roles will be added here
+        "users":    "partials/users.html",
+        # Phase 3+: forms, access, roles will be added here
     }
 
     @http_api.post("/settings/admin/partials/{section}",
@@ -276,8 +277,22 @@ def register_routes(
                 status_code=404,
             )
 
+        async def _has(form_id):
+            try:
+                return await db_service.has_access(user_id, form_id)
+            except Exception:
+                return False
+
+        permissions = {
+            "users":  await _has("admin_panel.users.manage"),
+            "forms":  await _has("admin_panel.forms.manage"),
+            "access": await _has("admin_panel.access.manage"),
+            "roles":  await _has("admin_panel.roles.view"),
+        }
+
         context = {
             "profile":     profile,
+            "permissions": permissions,
             "section":     section,
             "module_name": "admin_panel",
         }
@@ -310,3 +325,112 @@ def register_routes(
                 content="<div class='card'><p>Failed to load section.</p></div>",
                 status_code=500,
             )
+
+    # ------------------------------------------------------------
+    # POST /settings/admin/users/list — JSON endpoint for the users table
+    # ------------------------------------------------------------
+    @http_api.post("/settings/admin/users/list",
+                   response_class=http_api.JSONResponse)
+    async def admin_users_list(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "session_expired"},
+                status_code=401,
+            )
+
+        if not await _has_admin_access(user_id):
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            can_manage = await db_service.has_access(
+                user_id, "admin_panel.users.manage"
+            )
+        except Exception:
+            can_manage = False
+
+        if not can_manage:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        query  = str(body.get("query") or "").strip()
+        try:
+            offset = max(0, int(body.get("offset") or 0))
+        except (TypeError, ValueError):
+            offset = 0
+        try:
+            limit = int(body.get("limit") or 20)
+        except (TypeError, ValueError):
+            limit = 20
+        limit = max(1, min(200, limit))
+
+        try:
+            rows  = await db_service.admin_list_users(
+                query=query, offset=offset, limit=limit
+            )
+            total = await db_service.admin_count_users(query=query)
+        except Exception as exc:
+            if logger:
+                logger.log(
+                    f"admin_users_list failed: {exc}",
+                    level="ERROR", tag="admin",
+                )
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "internal_error"},
+                status_code=500,
+            )
+
+        columns = [
+            {"key": "_user",    "label": "User",     "type": "avatar"},
+            {"key": "username", "label": "Username"},
+            {"key": "_role",    "label": "Role",     "type": "badge"},
+            {"key": "_status",  "label": "Status",   "type": "badge"},
+            {"key": "_joined",  "label": "Joined",   "type": "date"},
+        ]
+
+        row_data = []
+        for u in rows:
+            role_lower    = (u.role_name or "").lower()
+            role_variant  = "active" if role_lower in ("admin", "manager") else "idle"
+            status_variant = "active" if u.enabled else "pending"
+
+            row_data.append({
+                "_user": {
+                    "initials":    u.initials,
+                    "name":        u.full_name,
+                    "email":       u.email or "",
+                    "avatarClass": "avatar--indigo",
+                },
+                "username": u.username or "",
+                "_role": {
+                    "text":    u.role_name or "—",
+                    "variant": role_variant,
+                },
+                "_status": {
+                    "text":    "Active" if u.enabled else "Disabled",
+                    "variant": status_variant,
+                },
+                "_joined": u.created_at.isoformat() if u.created_at else "",
+            })
+
+        return http_api.JSONResponse(
+            content={
+                "columns": columns,
+                "rows":    row_data,
+                "total":   total,
+                "offset":  offset,
+                "limit":   limit,
+            },
+            status_code=200,
+        )
+

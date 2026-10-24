@@ -165,6 +165,136 @@
     }));
   });
 })();
+
+  /* ============================================================
+     Users List — search + pagination (only when section=users)
+     ============================================================ */
+  const USERS_PAGE_SIZE = 20;
+  const usersState = { query: '', offset: 0, total: 0, initialized: false };
+
+  function getCurrentSection() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('section') || 'overview';
+  }
+
+  function initUsersPage() {
+    const table = document.getElementById('usersTable');
+    const searchInput = document.getElementById('usersSearch');
+    const searchBtn = document.getElementById('usersSearchBtn');
+    const resetBtn = document.getElementById('usersResetBtn');
+    const pageInfo = document.getElementById('usersPageInfo');
+    const prevBtn = document.getElementById('usersPrevBtn');
+    const nextBtn = document.getElementById('usersNextBtn');
+
+    if (!table || !searchInput || !searchBtn) return;
+
+    const COLUMNS = [
+      { key: '_user',    label: 'User',     type: 'avatar' },
+      { key: 'username', label: 'Username' },
+      { key: '_role',    label: 'Role',     type: 'badge' },
+      { key: '_status',  label: 'Status',   type: 'badge' },
+      { key: '_joined',  label: 'Joined',   type: 'date' },
+    ];
+
+    table.setColumns(COLUMNS);
+
+    function updatePagination() {
+      const { offset, total } = usersState;
+      const start = total === 0 ? 0 : offset + 1;
+      const end = Math.min(offset + USERS_PAGE_SIZE, total);
+      if (pageInfo) {
+        pageInfo.textContent = total === 0
+          ? 'No users'
+          : `Showing ${start}–${end} of ${total}`;
+      }
+      if (prevBtn) prevBtn.disabled = offset === 0;
+      if (nextBtn) nextBtn.disabled = offset + USERS_PAGE_SIZE >= total;
+    }
+
+    async function loadUsers() {
+      table.setLoading(true);
+      try {
+        const resp = await fetch('/settings/admin/users/list', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify({
+            query:  usersState.query,
+            offset: usersState.offset,
+            limit:  USERS_PAGE_SIZE,
+          }),
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const data = await resp.json();
+        table.setColumns(data.columns || COLUMNS);
+        table.setData(data.rows || []);
+        usersState.total = data.total || 0;
+        updatePagination();
+      } catch (err) {
+        console.error('[users] load failed:', err);
+        table.setColumns(COLUMNS);
+        table.setData([]);
+      } finally {
+        table.setLoading(false);
+      }
+    }
+
+    function doSearch() {
+      usersState.query = (searchInput.value || '').trim();
+      usersState.offset = 0;
+      loadUsers();
+    }
+
+    function doReset() {
+      searchInput.value = '';
+      usersState.query = '';
+      usersState.offset = 0;
+      loadUsers();
+    }
+
+    searchBtn.addEventListener('click', doSearch);
+    if (resetBtn) resetBtn.addEventListener('click', doReset);
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
+    });
+
+    if (prevBtn) {
+      prevBtn.addEventListener('click', () => {
+        if (usersState.offset >= USERS_PAGE_SIZE) {
+          usersState.offset -= USERS_PAGE_SIZE;
+          loadUsers();
+        }
+      });
+    }
+    if (nextBtn) {
+      nextBtn.addEventListener('click', () => {
+        if (usersState.offset + USERS_PAGE_SIZE < usersState.total) {
+          usersState.offset += USERS_PAGE_SIZE;
+          loadUsers();
+        }
+      });
+    }
+
+    usersState.initialized = true;
+    loadUsers();
+  }
+
+  // Re-init users page every time the content-container loads the users partial
+  window.addEventListener('ramz:content-loaded', () => {
+    if (getCurrentSection() === 'users') {
+      usersState.initialized = false;
+      initUsersPage();
+    }
+  });
+
+  // Initial load: if the shell was loaded with section=users directly
+  if (getCurrentSection() === 'users') {
+    setTimeout(initUsersPage, 100);
+  }
 </script>
 
 {% endblock %}

@@ -598,6 +598,24 @@ class DbManagerService:
         self._access.invalidate_role(role_id)
 
     # ============================================================
+    # Admin: Users
+    # ============================================================
+    async def admin_list_users(self, query="", offset=0, limit=20):
+        """
+        List users for the admin panel.
+
+        Returns a list of User dataclasses.
+        See UserRepository.admin_list_users for details.
+        """
+        return await self._user_repo.admin_list_users(
+            query=query, offset=offset, limit=limit
+        )
+
+    async def admin_count_users(self, query=""):
+        """Return the total count matching the admin search term."""
+        return await self._user_repo.admin_count_users(query=query)
+
+    # ============================================================
     # ============================================================
     # Activity
     # ============================================================
