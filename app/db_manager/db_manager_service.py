@@ -615,6 +615,61 @@ class DbManagerService:
         """Return the total count matching the admin search term."""
         return await self._user_repo.admin_count_users(query=query)
 
+    async def admin_set_user_role(self, user_id, new_role_name):
+        """
+        Change a user's role by name (e.g. "admin", "manager").
+
+        Returns
+        -------
+        tuple (ok: bool, code: Optional[str])
+            code is one of: "role_not_found", "internal_error", or None.
+        """
+        if not user_id or not new_role_name:
+            return False, "internal_error"
+
+        role = await self._role_repo.get_by_name(new_role_name)
+        if not role:
+            return False, "role_not_found"
+
+        ok = await self._user_repo.update_role(
+            user_id, role["role_id"]
+        )
+        if not ok:
+            return False, "internal_error"
+
+        self.invalidate_access_cache(user_id)
+        return True, None
+
+    async def admin_toggle_user(self, user_id, enabled):
+        """Enable/disable a user. Returns True on success."""
+        ok = await self._user_repo.set_enabled(user_id, enabled)
+        if ok:
+            self.invalidate_access_cache(user_id)
+        return ok
+
+    async def admin_reset_password(self, user_id):
+        """
+        Reset a user's password to a random temporary value.
+
+        Returns
+        -------
+        tuple (ok: bool, temp_password: Optional[str])
+        """
+        from .security.password import hash_password, generate_temp_password
+
+        try:
+            temp_password = generate_temp_password(12)
+            password_hash = hash_password(temp_password)
+        except Exception:
+            return False, None
+
+        ok = await self._user_repo.update_password_hash(
+            user_id, password_hash
+        )
+        if not ok:
+            return False, None
+        return True, temp_password
+
     # ============================================================
     # ============================================================
     # Activity

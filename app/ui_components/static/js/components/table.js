@@ -370,12 +370,16 @@ class RamzTable extends HTMLElement {
 
     const common = `${actionName} data-row-index="${rowIndex}"${extraData}`;
 
+    const titleAttr = action.title
+      ? ` title="${escapeHtml(action.title)}"`
+      : '';
+
     if (action.href) {
       return `<a class="channel-action${variant}"
-                 href="${escapeHtml(action.href)}"${common}>${icon}${label}</a>`;
+                 href="${escapeHtml(action.href)}"${titleAttr}${common}>${icon}${label}</a>`;
     }
     return `<button type="button"
-                    class="channel-action${variant}"${common}>${icon}${label}</button>`;
+                    class="channel-action${variant}"${titleAttr}${common}>${icon}${label}</button>`;
   }
 
   /* --------------------------------------------------------------

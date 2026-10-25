@@ -248,6 +248,34 @@ class UserRepository:
         )
         return result_ok(result)
 
+    async def update_role(
+        self, user_id: int, role_id: str
+    ) -> bool:
+        """Change the user's role (by role_id TEXT)."""
+        if not user_id or not role_id:
+            return False
+        result = await db_update(
+            self._conn(),
+            self.TABLE,
+            where={"user_id": int(user_id)},
+            values={"role_id": role_id},
+        )
+        return result_ok(result)
+
+    async def set_enabled(
+        self, user_id: int, enabled: bool
+    ) -> bool:
+        """Enable or disable the user account."""
+        if not user_id:
+            return False
+        result = await db_update(
+            self._conn(),
+            self.TABLE,
+            where={"user_id": int(user_id)},
+            values={"enabled": 1 if enabled else 0},
+        )
+        return result_ok(result)
+
     async def update_email_id(
         self, user_id: int, email_id: Optional[int]
     ) -> bool:

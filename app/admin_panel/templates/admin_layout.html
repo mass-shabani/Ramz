@@ -131,6 +131,8 @@
 
       </div>
 
+      <ramz-dialog id="appDialog"></ramz-dialog>
+
     </main>
   </div>
 </div>
@@ -317,6 +319,253 @@
   if (getCurrentSection() === 'users') {
     setTimeout(initUsersPage, 100);
   }
+
+  /* ============================================================
+     Users Actions — role change, toggle, reset password
+     ============================================================ */
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function showAdminToast(type, message) {
+    let holder = document.getElementById('adminToastHolder');
+    if (!holder) {
+      holder = document.createElement('div');
+      holder.id = 'adminToastHolder';
+      holder.style.cssText = 'position: fixed; top: 20px; right: 20px; ' +
+        'z-index: 9999; display: flex; flex-direction: column; gap: 8px; ' +
+        'pointer-events: none;';
+      document.body.appendChild(holder);
+    }
+    const el = document.createElement('div');
+    const bg = type === 'success'
+      ? 'linear-gradient(135deg, rgba(16,185,129,0.95), rgba(5,150,105,0.95))'
+      : 'linear-gradient(135deg, rgba(244,63,94,0.95), rgba(190,18,60,0.95))';
+    el.style.cssText =
+      'padding: 12px 18px; border-radius: 12px; ' +
+      'background: ' + bg + '; color: #fff; font-size: 13px; ' +
+      'font-weight: 600; box-shadow: 0 10px 30px -8px rgba(0,0,0,0.6); ' +
+      'pointer-events: auto; max-width: 360px;';
+    el.textContent = message;
+    holder.appendChild(el);
+    setTimeout(() => {
+      el.style.transition = 'opacity .3s';
+      el.style.opacity = '0';
+      setTimeout(() => el.remove(), 320);
+    }, 3500);
+  }
+
+  async function apiPost(url, body) {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify(body),
+    });
+    let data = {};
+    try { data = await resp.json(); } catch (_) { /* ignore */ }
+    return { ok: resp.ok, status: resp.status, data };
+  }
+
+  async function handleChangeRole(userId, row) {
+    const appDialog = document.getElementById('appDialog');
+    if (!appDialog) return;
+
+    const username = (row && row.username) || 'user';
+
+    const choice = await appDialog.ask({
+      title: 'Change role for @' + username,
+      desc: 'Choose a new role. You will be asked for your password next.',
+      icon: 'warning',
+      buttons: [
+        { value: 'admin',      label: 'Admin',      variant: 'primary'   },
+        { value: 'manager',    label: 'Manager',    variant: 'secondary' },
+        { value: 'up-user',    label: 'Up User',    variant: 'secondary' },
+        { value: 'user',       label: 'User',       variant: 'secondary' },
+        { value: 'limit-user', label: 'Limit User', variant: 'secondary' },
+        { value: 'cancel',     label: 'Cancel',     variant: 'ghost'     },
+      ],
+      cancelValue: 'cancel',
+    });
+    if (!choice || choice === 'cancel') return;
+
+    const password = await appDialog.passwordConfirm({
+      title: 'Confirm with password',
+      message: 'Enter your account password to confirm this action.',
+      confirmLabel: 'Confirm',
+      cancelLabel: 'Cancel',
+      icon: 'lock',
+    });
+    if (!password) return;
+
+    const { data } = await apiPost('/settings/admin/users/set-role', {
+      user_id: userId,
+      new_role: choice,
+      password: password,
+    });
+
+    if (data.status === 'success') {
+      showAdminToast('success', data.message || 'Role updated.');
+      initUsersPage();
+    } else {
+      await appDialog.alert({
+        title: 'Action failed',
+        message: data.message || 'Could not change role.',
+        icon: 'danger',
+      });
+    }
+  }
+
+  async function handleToggleUser(userId, wasEnabled, row) {
+    const appDialog = document.getElementById('appDialog');
+    if (!appDialog) return;
+
+    const username = (row && row.username) || 'user';
+    const actionTitle = wasEnabled ? 'Disable' : 'Enable';
+
+    const ok = await appDialog.confirm({
+      title: actionTitle + ' @' + username + '?',
+      message: wasEnabled
+        ? 'The user will be signed out and unable to log in until re-enabled.'
+        : 'The user will be able to log in again.',
+      confirmLabel: actionTitle,
+      cancelLabel: 'Cancel',
+      variant: wasEnabled ? 'danger' : 'primary',
+      icon: wasEnabled ? 'warning' : 'info',
+    });
+    if (!ok) return;
+
+    const password = await appDialog.passwordConfirm({
+      title: 'Confirm with password',
+      message: 'Enter your account password to confirm this action.',
+      confirmLabel: 'Confirm',
+      cancelLabel: 'Cancel',
+      icon: 'lock',
+    });
+    if (!password) return;
+
+    const { data } = await apiPost('/settings/admin/users/toggle', {
+      user_id: userId,
+      enabled: !wasEnabled,
+      password: password,
+    });
+
+    if (data.status === 'success') {
+      showAdminToast('success', data.message || 'Status updated.');
+      initUsersPage();
+    } else {
+      await appDialog.alert({
+        title: 'Action failed',
+        message: data.message || 'Could not change status.',
+        icon: 'danger',
+      });
+    }
+  }
+
+  async function handleResetPassword(userId, row) {
+    const appDialog = document.getElementById('appDialog');
+    if (!appDialog) return;
+
+    const username = (row && row.username) || 'user';
+
+    const ok = await appDialog.confirm({
+      title: 'Reset password for @' + username + '?',
+      message: 'The current password will be replaced with a new random ' +
+               'one. The user will NOT be notified automatically — you must ' +
+               'share the new password with them out of band.',
+      confirmLabel: 'Reset',
+      cancelLabel: 'Cancel',
+      variant: 'danger',
+      icon: 'warning',
+    });
+    if (!ok) return;
+
+    const password = await appDialog.passwordConfirm({
+      title: 'Confirm with password',
+      message: 'Enter your account password to confirm this action.',
+      confirmLabel: 'Confirm',
+      cancelLabel: 'Cancel',
+      icon: 'lock',
+    });
+    if (!password) return;
+
+    const { data } = await apiPost(
+      '/settings/admin/users/reset-password',
+      { user_id: userId, password: password }
+    );
+
+    if (data.status === 'success') {
+      const tempPwd = data.temp_password || '';
+      let copied = false;
+      try {
+        await navigator.clipboard.writeText(tempPwd);
+        copied = true;
+      } catch (_) { /* clipboard unavailable */ }
+
+      await appDialog.alert({
+        title: 'Password Reset',
+        message:
+          '<div style="margin: 8px 0;">New password for ' +
+          '<strong>@' + escapeHtml(username) + '</strong>:</div>' +
+          '<div style="padding: 12px; margin: 12px 0; border-radius: 10px; ' +
+          'background: rgba(99,102,241,0.10); ' +
+          'border: 1px solid rgba(129,140,248,0.25); ' +
+          'font-family: SF Mono, monospace; font-size: 14px; ' +
+          'letter-spacing: 0.4px; word-break: break-all; ' +
+          'text-align: center;">' +
+          escapeHtml(tempPwd) +
+          '</div>' +
+          '<div style="font-size: 12px; color: var(--muted);">' +
+          (copied ? '✓ Copied to clipboard. ' : '') +
+          'This password will not be shown again. Please share it securely.' +
+          '</div>',
+        closeLabel: 'Done',
+        icon: 'success',
+      });
+
+      initUsersPage();
+    } else {
+      await appDialog.alert({
+        title: 'Action failed',
+        message: data.message || 'Could not reset password.',
+        icon: 'danger',
+      });
+    }
+  }
+
+  document.addEventListener('ramz:table-action', async (e) => {
+    if (getCurrentSection() !== 'users') return;
+
+    const detail = e.detail || {};
+    const action = detail.action;
+    const row = detail.row || {};
+    const data = detail.data || {};
+
+    const userId = parseInt(data.userId || '0', 10);
+    if (!userId) return;
+
+    try {
+      if (action === 'change-role') {
+        await handleChangeRole(userId, row);
+      } else if (action === 'toggle-user') {
+        await handleToggleUser(userId, data.enabled === '1', row);
+      } else if (action === 'reset-password') {
+        await handleResetPassword(userId, row);
+      }
+    } catch (err) {
+      console.error('[admin] action failed:', err);
+      showAdminToast('error', 'Action failed. Please try again.');
+    }
+  });
 </script>
 
 {% endblock %}

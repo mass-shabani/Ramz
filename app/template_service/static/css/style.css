@@ -4246,6 +4246,30 @@ content-container {
 }
 
 /* ==========================================================================
+   27. TABLE ROW ACTIONS (icon-only buttons inside .table-wrap)
+   ========================================================================== */
+
+.table-wrap .channel-actions {
+  justify-content: flex-end;
+}
+
+.table-wrap .channel-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 6px;
+}
+
+.table-wrap .channel-action svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+
+/* ==========================================================================
    26. REDUCED MOTION
    ========================================================================== */
 @media (prefers-reduced-motion: reduce){

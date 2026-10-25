@@ -165,6 +165,7 @@ class AdminPanelModule(IModule):
                 message_service=message_service,
                 component_service=component_service,
                 app=context.get_app(),
+                admin_service=admin_service,
             )
         except Exception as exc:
             if logger:

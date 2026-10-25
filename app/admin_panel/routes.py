@@ -18,6 +18,7 @@ def register_routes(
     message_service: Any = None,
     component_service: Any = None,
     app: Any = None,
+    admin_service: Any = None,
 ):
     """
     Register the /settings/admin routes.
@@ -329,6 +330,56 @@ def register_routes(
     # ------------------------------------------------------------
     # POST /settings/admin/users/list — JSON endpoint for the users table
     # ------------------------------------------------------------
+    def _build_user_actions(u, current_user_id):
+        """Build the actions column for one user row."""
+        if int(u.user_id) == int(current_user_id):
+            return []
+        if (u.role_name or "").lower() == "super-admin":
+            return []
+
+        return [
+            {
+                "action": "change-role",
+                "icon": (
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+                    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+                    '<path d="M12 2 4 6v6c0 5 3.4 9.4 8 10 4.6-.6 8-5 8-10V6z"/>'
+                    '</svg>'
+                ),
+                "title": "Change role",
+                "variant": "",
+                "data": {"user-id": str(u.user_id)},
+            },
+            {
+                "action": "toggle-user",
+                "icon": (
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+                    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+                    '<path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>'
+                    '<line x1="12" y1="2" x2="12" y2="12"/>'
+                    '</svg>'
+                ),
+                "title": "Disable" if u.enabled else "Enable",
+                "variant": "danger" if u.enabled else "",
+                "data": {
+                    "user-id": str(u.user_id),
+                    "enabled": "1" if u.enabled else "0",
+                },
+            },
+            {
+                "action": "reset-password",
+                "icon": (
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+                    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+                    '<path d="m21 2-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4"/>'
+                    '</svg>'
+                ),
+                "title": "Reset password",
+                "variant": "",
+                "data": {"user-id": str(u.user_id)},
+            },
+        ]
+
     @http_api.post("/settings/admin/users/list",
                    response_class=http_api.JSONResponse)
     async def admin_users_list(request: http_api.Request):
@@ -396,6 +447,7 @@ def register_routes(
             {"key": "_role",    "label": "Role",     "type": "badge"},
             {"key": "_status",  "label": "Status",   "type": "badge"},
             {"key": "_joined",  "label": "Joined",   "type": "date"},
+            {"key": "_actions", "label": "Actions",  "type": "actions"},
         ]
 
         row_data = []
@@ -421,6 +473,7 @@ def register_routes(
                     "variant": status_variant,
                 },
                 "_joined": u.created_at.isoformat() if u.created_at else "",
+                "_actions": _build_user_actions(u, user_id),
             })
 
         return http_api.JSONResponse(
@@ -430,6 +483,325 @@ def register_routes(
                 "total":   total,
                 "offset":  offset,
                 "limit":   limit,
+            },
+            status_code=200,
+        )
+
+    # ------------------------------------------------------------
+    # POST /settings/admin/users/set-role
+    # ------------------------------------------------------------
+    async def _verify_admin_password(user_id, password):
+        if not password:
+            return False
+        try:
+            return await db_service.verify_current_user_password(
+                user_id, password
+            )
+        except Exception:
+            return False
+
+    @http_api.post("/settings/admin/users/set-role",
+                   response_class=http_api.JSONResponse)
+    async def admin_users_set_role(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "session_expired"},
+                status_code=401,
+            )
+
+        if not await _has_admin_access(user_id):
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            can_manage = await db_service.has_access(
+                user_id, "admin_panel.users.manage"
+            )
+        except Exception:
+            can_manage = False
+        if not can_manage:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        try:
+            target_user_id = int(body.get("user_id") or 0)
+        except (TypeError, ValueError):
+            target_user_id = 0
+        new_role = str(body.get("new_role") or "").strip()
+        password = str(body.get("password") or "")
+
+        if not target_user_id or not new_role:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "invalid_data",
+                         "message": "Missing user_id or new_role."},
+                status_code=200,
+            )
+
+        if not await _verify_admin_password(user_id, password):
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "invalid_password",
+                         "message": "The password you entered is incorrect."},
+                status_code=200,
+            )
+
+        if not admin_service:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "internal_error",
+                         "message": "Admin service not available."},
+                status_code=500,
+            )
+
+        try:
+            ok, code = await admin_service.set_user_role(
+                target_user_id, new_role, user_id
+            )
+        except Exception as exc:
+            if logger:
+                logger.log(
+                    f"set_user_role failed: {exc}",
+                    level="ERROR", tag="admin",
+                )
+            ok, code = False, "internal_error"
+
+        if not ok:
+            messages = {
+                "cannot_modify_self": "You cannot change your own role from this page.",
+                "cannot_modify_super_admin": "Super-admin accounts cannot be modified here.",
+                "cannot_promote_to_super_admin": "You cannot promote a user to super-admin.",
+                "user_not_found": "User not found.",
+                "role_not_found": "Role not found.",
+                "internal_error": "Something went wrong. Please try again.",
+            }
+            return http_api.JSONResponse(
+                content={
+                    "status": "error",
+                    "code": code or "internal_error",
+                    "message": messages.get(code or "internal_error",
+                                            "Something went wrong."),
+                },
+                status_code=200,
+            )
+
+        return http_api.JSONResponse(
+            content={
+                "status": "success",
+                "message": f"Role changed to '{new_role}'.",
+                "user_id": target_user_id,
+            },
+            status_code=200,
+        )
+
+    # ------------------------------------------------------------
+    # POST /settings/admin/users/toggle
+    # ------------------------------------------------------------
+    @http_api.post("/settings/admin/users/toggle",
+                   response_class=http_api.JSONResponse)
+    async def admin_users_toggle(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "session_expired"},
+                status_code=401,
+            )
+
+        if not await _has_admin_access(user_id):
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            can_manage = await db_service.has_access(
+                user_id, "admin_panel.users.manage"
+            )
+        except Exception:
+            can_manage = False
+        if not can_manage:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        try:
+            target_user_id = int(body.get("user_id") or 0)
+        except (TypeError, ValueError):
+            target_user_id = 0
+        enabled = bool(body.get("enabled"))
+        password = str(body.get("password") or "")
+
+        if not target_user_id:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "invalid_data",
+                         "message": "Missing user_id."},
+                status_code=200,
+            )
+
+        if not await _verify_admin_password(user_id, password):
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "invalid_password",
+                         "message": "The password you entered is incorrect."},
+                status_code=200,
+            )
+
+        if not admin_service:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "internal_error",
+                         "message": "Admin service not available."},
+                status_code=500,
+            )
+
+        try:
+            ok, code = await admin_service.toggle_user(
+                target_user_id, enabled, user_id
+            )
+        except Exception as exc:
+            if logger:
+                logger.log(
+                    f"toggle_user failed: {exc}",
+                    level="ERROR", tag="admin",
+                )
+            ok, code = False, "internal_error"
+
+        if not ok:
+            messages = {
+                "cannot_modify_self": "You cannot change your own status from this page.",
+                "cannot_modify_super_admin": "Super-admin accounts cannot be modified here.",
+                "user_not_found": "User not found.",
+                "internal_error": "Something went wrong. Please try again.",
+            }
+            return http_api.JSONResponse(
+                content={
+                    "status": "error",
+                    "code": code or "internal_error",
+                    "message": messages.get(code or "internal_error",
+                                            "Something went wrong."),
+                },
+                status_code=200,
+            )
+
+        state = "enabled" if enabled else "disabled"
+        return http_api.JSONResponse(
+            content={
+                "status": "success",
+                "message": f"User {state}.",
+                "user_id": target_user_id,
+            },
+            status_code=200,
+        )
+
+    # ------------------------------------------------------------
+    # POST /settings/admin/users/reset-password
+    # ------------------------------------------------------------
+    @http_api.post("/settings/admin/users/reset-password",
+                   response_class=http_api.JSONResponse)
+    async def admin_users_reset_password(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "session_expired"},
+                status_code=401,
+            )
+
+        if not await _has_admin_access(user_id):
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            can_manage = await db_service.has_access(
+                user_id, "admin_panel.users.manage"
+            )
+        except Exception:
+            can_manage = False
+        if not can_manage:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        try:
+            target_user_id = int(body.get("user_id") or 0)
+        except (TypeError, ValueError):
+            target_user_id = 0
+        password = str(body.get("password") or "")
+
+        if not target_user_id:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "invalid_data",
+                         "message": "Missing user_id."},
+                status_code=200,
+            )
+
+        if not await _verify_admin_password(user_id, password):
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "invalid_password",
+                         "message": "The password you entered is incorrect."},
+                status_code=200,
+            )
+
+        if not admin_service:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "internal_error",
+                         "message": "Admin service not available."},
+                status_code=500,
+            )
+
+        try:
+            ok, temp_password, code = await admin_service.reset_password(
+                target_user_id, user_id
+            )
+        except Exception as exc:
+            if logger:
+                logger.log(
+                    f"reset_password failed: {exc}",
+                    level="ERROR", tag="admin",
+                )
+            ok, temp_password, code = False, None, "internal_error"
+
+        if not ok:
+            messages = {
+                "cannot_modify_self": "You cannot reset your own password from this page.",
+                "cannot_modify_super_admin": "Super-admin accounts cannot be modified here.",
+                "user_not_found": "User not found.",
+                "internal_error": "Something went wrong. Please try again.",
+            }
+            return http_api.JSONResponse(
+                content={
+                    "status": "error",
+                    "code": code or "internal_error",
+                    "message": messages.get(code or "internal_error",
+                                            "Something went wrong."),
+                },
+                status_code=200,
+            )
+
+        return http_api.JSONResponse(
+            content={
+                "status": "success",
+                "message": "Password reset.",
+                "user_id": target_user_id,
+                "temp_password": temp_password,
             },
             status_code=200,
         )

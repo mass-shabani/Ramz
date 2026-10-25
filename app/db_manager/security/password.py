@@ -118,3 +118,19 @@ def needs_rehash(hashed: str) -> bool:
         return cost < BCRYPT_ROUNDS
     except (ValueError, IndexError):
         return True
+
+
+# --------------------------------------------------------------
+# Temporary password generation (admin actions)
+# --------------------------------------------------------------
+def generate_temp_password(length: int = 12) -> str:
+    """
+    Generate a random temporary password.
+
+    Excludes visually-confusable characters (0, O, l, I, 1) so the
+    password is easy to type manually if the user cannot copy it.
+    """
+    import secrets
+
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789"
+    return "".join(secrets.choice(alphabet) for _ in range(length))
