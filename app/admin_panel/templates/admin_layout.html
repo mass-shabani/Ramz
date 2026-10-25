@@ -188,6 +188,16 @@
 
     if (!table || !searchInput || !searchBtn) return;
 
+    if (typeof table.setColumns !== 'function') {
+      // ramz-table not upgraded yet — table.js may not be loaded.
+      // See admin_panel/module.py register_module_assets list.
+      console.error(
+        '[users] ramz-table is not upgraded (setColumns missing). ' +
+        'Check that "table" is in admin_panel module component list.'
+      );
+      return;
+    }
+
     const COLUMNS = [
       { key: '_user',    label: 'User',     type: 'avatar' },
       { key: 'username', label: 'Username' },
@@ -197,6 +207,10 @@
     ];
 
     table.setColumns(COLUMNS);
+
+    function syncSearchBtnState() {
+      searchBtn.disabled = !(searchInput.value || '').trim();
+    }
 
     function updatePagination() {
       const { offset, total } = usersState;
@@ -244,7 +258,9 @@
     }
 
     function doSearch() {
-      usersState.query = (searchInput.value || '').trim();
+      const q = (searchInput.value || '').trim();
+      if (!q) return;                 // empty input → no action
+      usersState.query = q;
       usersState.offset = 0;
       loadUsers();
     }
@@ -253,13 +269,18 @@
       searchInput.value = '';
       usersState.query = '';
       usersState.offset = 0;
+      syncSearchBtnState();
       loadUsers();
     }
 
     searchBtn.addEventListener('click', doSearch);
     if (resetBtn) resetBtn.addEventListener('click', doReset);
+    searchInput.addEventListener('input', syncSearchBtnState);
     searchInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (!searchBtn.disabled) doSearch();
+      }
     });
 
     if (prevBtn) {
@@ -280,6 +301,7 @@
     }
 
     usersState.initialized = true;
+    syncSearchBtnState();   // initial state — disabled when input is empty
     loadUsers();
   }
 

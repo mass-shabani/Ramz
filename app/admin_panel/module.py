@@ -89,12 +89,13 @@ class AdminPanelModule(IModule):
                         "progress-bar",
                         "content-container",
                         "dialog",
+                        "table",
                     ]),
                 )
                 if logger:
                     logger.log(
                         "Admin Panel will load components: brand, user-menu, "
-                        "card, topbar, progress-bar, content-container, dialog",
+                        "card, topbar, progress-bar, content-container, dialog, table",
                         tag="admin",
                     )
             except Exception as exc:
