@@ -1217,6 +1217,22 @@
     resetEditor();
     syncSearchBtnState();
     loadGrants();
+
+    // Pre-apply role filter if the URL contains one (from Roles view)
+    const urlRoleFilter = (new URLSearchParams(window.location.search)).get('role_filter') || '';
+    if (urlRoleFilter) {
+      const tryApply = () => {
+        if (roleFilter.options.length > 1) {
+          roleFilter.value = urlRoleFilter;
+          if (roleFilter.value === urlRoleFilter) {
+            applyFilters();
+          }
+        } else {
+          setTimeout(tryApply, 50);
+        }
+      };
+      setTimeout(tryApply, 60);
+    }
   }
 
   window.addEventListener('ramz:content-loaded', () => {
@@ -1228,6 +1244,101 @@
   if (getCurrentSection() === 'access') {
     setTimeout(initAccessPage, 100);
   }
+
+  /* ============================================================
+     Roles View — read-only, with "view grants" shortcut
+     ============================================================ */
+  function initRolesPage() {
+    const table = document.getElementById('rolesTable');
+    if (!table) return;
+    if (typeof table.setColumns !== 'function') {
+      console.error('[roles] ramz-table is not upgraded.');
+      return;
+    }
+
+    const COLUMNS = [
+      { key: 'role_id',     label: 'Role ID',     className: 'mono' },
+      { key: 'role_name',   label: 'Name' },
+      { key: 'description', label: 'Description' },
+      { key: '_grants',     label: 'Grants',      type: 'badge' },
+      { key: '_status',     label: 'Status',      type: 'badge' },
+      { key: '_actions',    label: 'Actions',     type: 'actions' },
+    ];
+    table.setColumns(COLUMNS);
+
+    async function loadRoles() {
+      table.setLoading(true);
+      try {
+        const resp = await fetch('/settings/admin/roles/list', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify({}),
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const data = await resp.json();
+        table.setColumns(data.columns || COLUMNS);
+        table.setData(data.rows || []);
+      } catch (err) {
+        console.error('[roles] load failed:', err);
+        table.setData([]);
+      } finally {
+        table.setLoading(false);
+      }
+    }
+
+    document.addEventListener('ramz:table-action', (e) => {
+      if (getCurrentSection() !== 'roles') return;
+      const detail = e.detail || {};
+      if (detail.action !== 'view-grants') return;
+
+      const data = detail.data || {};
+      if (data.disabled === '1') return;   // super-admin: no-op
+
+      const roleId = data.roleId || '';
+      if (!roleId) return;
+
+      // Switch to Access view with a role filter pre-applied
+      const nav = document.getElementById('adminNav');
+      if (!nav) return;
+      const accessItem = nav.querySelector('[data-section="access"]');
+      if (!accessItem) return;
+
+      // Programmatically trigger the same behavior as clicking the nav item
+      nav.querySelectorAll('.settings-nav-item').forEach(el => el.classList.remove('active'));
+      accessItem.classList.add('active');
+
+      try {
+        window.history.replaceState({ section: 'access' }, '',
+          `?section=access&role_filter=${encodeURIComponent(roleId)}`);
+      } catch (_) { /* ignore */ }
+
+      window.dispatchEvent(new CustomEvent('ramz:load-content', {
+        detail: { url: accessItem.dataset.endpoint, section: 'access' }
+      }));
+    });
+
+    loadRoles();
+  }
+
+  window.addEventListener('ramz:content-loaded', () => {
+    if (getCurrentSection() === 'roles') {
+      initRolesPage();
+    }
+  });
+
+  if (getCurrentSection() === 'roles') {
+    setTimeout(initRolesPage, 100);
+  }
+
+  /* ============================================================
+     Pre-apply role filter on Access page when URL has ?role_filter=
+     ============================================================ */
+  // The URL role filter is applied inside initAccessPage after dropdowns are filled.
 </script>
 
 {% endblock %}

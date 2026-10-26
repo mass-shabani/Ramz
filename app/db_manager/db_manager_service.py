@@ -789,6 +789,14 @@ class DbManagerService:
         except Exception:
             return []
 
+    async def admin_list_roles_with_counts(self):
+        """
+        Return all roles with grants counts.
+
+        Each item: {role_id, role_name, description, enabled, grants_count}
+        """
+        return await self._role_repo.list_all_with_grant_counts()
+
     # ============================================================
     # ============================================================
     # Activity

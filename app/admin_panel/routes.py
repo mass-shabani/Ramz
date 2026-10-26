@@ -246,7 +246,7 @@ def register_routes(
         "users":    "partials/users.html",
         "forms":    "partials/forms.html",
         "access":   "partials/access.html",
-        # Phase 5+: roles will be added here
+        "roles":    "partials/roles.html",
     }
 
     @http_api.post("/settings/admin/partials/{section}",
@@ -1747,6 +1747,112 @@ def register_routes(
                 "status": "success",
                 "message": "Grant deleted.",
             },
+            status_code=200,
+        )
+
+    # ------------------------------------------------------------
+    # POST /settings/admin/roles/list — read-only roles view
+    # ------------------------------------------------------------
+    @http_api.post("/settings/admin/roles/list",
+                   response_class=http_api.JSONResponse)
+    async def admin_roles_list(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "session_expired"},
+                status_code=401,
+            )
+
+        if not await _has_admin_access(user_id):
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            can_view = await db_service.has_access(
+                user_id, "admin_panel.roles.view"
+            )
+        except Exception:
+            can_view = False
+        if not can_view:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            rows = await db_service.admin_list_roles_with_counts()
+        except Exception as exc:
+            if logger:
+                logger.log(
+                    f"admin_roles_list failed: {exc}",
+                    level="ERROR", tag="admin",
+                )
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "internal_error"},
+                status_code=500,
+            )
+
+        columns = [
+            {"key": "role_id",   "label": "Role ID",     "className": "mono"},
+            {"key": "role_name", "label": "Name"},
+            {"key": "description", "label": "Description"},
+            {"key": "_grants",   "label": "Grants",      "type": "badge"},
+            {"key": "_status",   "label": "Status",      "type": "badge"},
+            {"key": "_actions",  "label": "Actions",     "type": "actions"},
+        ]
+
+        row_data = []
+        for row in rows:
+            role_id = row.get("role_id") or ""
+            grants  = int(row.get("grants_count") or 0)
+            enabled = bool(row.get("enabled"))
+
+            if role_id == "super-admin":
+                actions = [{
+                    "action": "view-grants",
+                    "icon": (
+                        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+                        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+                        '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/>'
+                        '<circle cx="12" cy="12" r="3"/>'
+                        '</svg>'
+                    ),
+                    "title": "Super-admin grants are managed in system settings",
+                    "data": {"role-id": role_id, "disabled": "1"},
+                }]
+            else:
+                actions = [{
+                    "action": "view-grants",
+                    "icon": (
+                        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+                        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+                        '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/>'
+                        '<circle cx="12" cy="12" r="3"/>'
+                        '</svg>'
+                    ),
+                    "title": "View grants",
+                    "data": {"role-id": role_id},
+                }]
+
+            row_data.append({
+                "role_id":     role_id,
+                "role_name":   row.get("role_name") or "",
+                "description": row.get("description") or "",
+                "_grants": {
+                    "text":    str(grants),
+                    "variant": "active" if grants > 0 else "idle",
+                },
+                "_status": {
+                    "text":    "Enabled" if enabled else "Disabled",
+                    "variant": "active" if enabled else "pending",
+                },
+                "_actions": actions,
+            })
+
+        return http_api.JSONResponse(
+            content={"columns": columns, "rows": row_data},
             status_code=200,
         )
 
