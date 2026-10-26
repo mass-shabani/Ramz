@@ -824,6 +824,410 @@
   if (getCurrentSection() === 'forms') {
     setTimeout(initFormsPage, 100);
   }
+
+  /* ============================================================
+     Access Grants CRUD — only when section=access
+     ============================================================ */
+  const accessState = {
+    roles: [],
+    forms: [],
+    conditions: [],
+    roleFilter: '',
+    formFilter: '',
+    query: '',
+    editorMode: 'create',
+    editorRoleId: '',
+    editorFormId: '',
+  };
+
+  function initAccessPage() {
+    const table = document.getElementById('accessTable');
+    if (!table) return;
+    if (typeof table.setColumns !== 'function') {
+      console.error('[access] ramz-table is not upgraded.');
+      return;
+    }
+
+    const COLUMNS = [
+      { key: '_role',      label: 'Role',      type: 'badge' },
+      { key: '_form',      label: 'Form' },
+      { key: '_condition', label: 'Condition', type: 'badge' },
+      { key: '_actions',   label: 'Actions',   type: 'actions' },
+    ];
+    table.setColumns(COLUMNS);
+
+    const roleFilter      = document.getElementById('accessRoleFilter');
+    const formFilter      = document.getElementById('accessFormFilter');
+    const searchInput     = document.getElementById('accessSearch');
+    const searchBtn       = document.getElementById('accessSearchBtn');
+    const resetBtn        = document.getElementById('accessResetBtn');
+    const summaryBlock    = document.getElementById('accessRoleSummaryBlock');
+    const summaryTitle    = document.getElementById('accessRoleSummaryTitle');
+    const summaryRows     = document.getElementById('accessRoleSummaryRows');
+
+    const editorBlock     = document.getElementById('accessEditorBlock');
+    const editorSummary   = document.getElementById('accessEditorSummary');
+    const editorForm      = document.getElementById('accessEditor');
+    const editorRole      = document.getElementById('accessEditorRole');
+    const editorFormSel   = document.getElementById('accessEditorForm');
+    const editorCondition = document.getElementById('accessEditorCondition');
+    const editorSubmit    = document.getElementById('accessEditorSubmit');
+    const editorCancel    = document.getElementById('accessEditorCancel');
+    const createBtn       = document.getElementById('accessCreateBtn');
+
+    function syncSearchBtnState() {
+      const hasText = (searchInput.value || '').trim().length > 0;
+      const hasFilter = roleFilter.value || formFilter.value;
+      searchBtn.disabled = !(hasText || hasFilter);
+    }
+
+    function fillDropdowns(roles, forms, conditions) {
+      // Role filter
+      const curRole = roleFilter.value;
+      roleFilter.innerHTML = '<option value="">All roles</option>';
+      roles.forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r.role_id;
+        opt.textContent = r.role_name + ' (' + r.role_id + ')';
+        roleFilter.appendChild(opt);
+      });
+      roleFilter.value = curRole;
+
+      // Form filter
+      const curForm = formFilter.value;
+      formFilter.innerHTML = '<option value="">All forms</option>';
+      forms.forEach(f => {
+        const opt = document.createElement('option');
+        opt.value = f.form_id;
+        opt.textContent = f.form_name + ' (' + f.form_id + ')';
+        formFilter.appendChild(opt);
+      });
+      formFilter.value = curForm;
+
+      // Editor role
+      editorRole.innerHTML = '';
+      roles.forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r.role_id;
+        opt.textContent = r.role_name + ' (' + r.role_id + ')';
+        editorRole.appendChild(opt);
+      });
+
+      // Editor form
+      editorFormSel.innerHTML = '';
+      forms.forEach(f => {
+        const opt = document.createElement('option');
+        opt.value = f.form_id;
+        opt.textContent = f.form_name + ' (' + f.form_id + ')';
+        editorFormSel.appendChild(opt);
+      });
+
+      // Editor condition
+      editorCondition.innerHTML = '';
+      conditions.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.condition_id;
+        opt.textContent = c.condition_name;
+        editorCondition.appendChild(opt);
+      });
+    }
+
+    function renderRoleSummary(roleId, rows) {
+      if (!roleId || !rows || !rows.length) {
+        summaryBlock.hidden = true;
+        return;
+      }
+      const roleLabel = (roleFilter.options[roleFilter.selectedIndex] || {}).text || roleId;
+      summaryTitle.textContent = 'View by role — ' + roleLabel;
+
+      summaryRows.innerHTML = rows.map(r => {
+        const conditionText = r.condition_name || '—';
+        let badgeClass = 'idle';
+        if (r.condition_id === 'Full' || r.condition_id === 'High') {
+          badgeClass = 'active';
+        } else if (r.condition_id === 'Medium' || r.condition_id === 'Low') {
+          badgeClass = 'pending';
+        } else if (!r.condition_id) {
+          badgeClass = '';
+        } else {
+          badgeClass = 'idle';
+        }
+
+        const formCell = escapeHtml(r.form_name) +
+          (r.form_enabled ? '' : ' <span style="color:var(--muted);font-size:11px;">(disabled)</span>');
+
+        const condCell = r.condition_name
+          ? '<span class="status ' + badgeClass + '">' + escapeHtml(conditionText) + '</span>'
+          : '<span style="color:var(--muted);">—</span>';
+
+        return '<tr>' +
+          '<td style="padding: 8px 12px; font-size: 12.5px; ' +
+            'border-bottom: 1px solid var(--border-soft);">' + formCell + '</td>' +
+          '<td style="padding: 8px 12px; font-size: 12.5px; ' +
+            'border-bottom: 1px solid var(--border-soft);">' + condCell + '</td>' +
+          '</tr>';
+      }).join('');
+
+      summaryBlock.hidden = false;
+    }
+
+    async function loadGrants() {
+      table.setLoading(true);
+      try {
+        const resp = await fetch('/settings/admin/access/list', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify({
+            role_filter: accessState.roleFilter,
+            form_filter: accessState.formFilter,
+            query:       accessState.query,
+          }),
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const data = await resp.json();
+
+        accessState.roles      = data.roles || [];
+        accessState.forms      = data.forms || [];
+        accessState.conditions = data.conditions || [];
+
+        fillDropdowns(accessState.roles, accessState.forms, accessState.conditions);
+
+        table.setColumns(data.columns || COLUMNS);
+        table.setData(data.rows || []);
+
+        if (data.role_summary && data.role_summary_role_id) {
+          renderRoleSummary(data.role_summary_role_id, data.role_summary);
+        } else {
+          summaryBlock.hidden = true;
+        }
+      } catch (err) {
+        console.error('[access] load failed:', err);
+        table.setData([]);
+      } finally {
+        table.setLoading(false);
+      }
+    }
+
+    function applyFilters() {
+      accessState.roleFilter = roleFilter.value || '';
+      accessState.formFilter = formFilter.value || '';
+      accessState.query      = (searchInput.value || '').trim();
+      loadGrants();
+    }
+
+    function resetFilters() {
+      roleFilter.value = '';
+      formFilter.value = '';
+      searchInput.value = '';
+      accessState.roleFilter = '';
+      accessState.formFilter = '';
+      accessState.query = '';
+      syncSearchBtnState();
+      summaryBlock.hidden = true;
+      loadGrants();
+    }
+
+    function resetEditor() {
+      accessState.editorMode = 'create';
+      accessState.editorRoleId = '';
+      accessState.editorFormId = '';
+      editorRole.disabled = false;
+      editorFormSel.disabled = false;
+      editorSummary.textContent = 'Add Grant';
+      editorSubmit.textContent = 'Add Grant';
+    }
+
+    function fillEditorForEdit(roleId, formId, conditionId) {
+      accessState.editorMode = 'update';
+      accessState.editorRoleId = roleId;
+      accessState.editorFormId = formId;
+      editorRole.value = roleId;
+      editorFormSel.value = formId;
+      editorCondition.value = conditionId;
+      editorRole.disabled = true;
+      editorFormSel.disabled = true;
+      editorSummary.textContent = 'Edit Grant: ' + roleId + ' × ' + formId;
+      editorSubmit.textContent = 'Update Condition';
+    }
+
+    if (createBtn) {
+      createBtn.addEventListener('click', () => {
+        resetEditor();
+        editorBlock.open = true;
+        editorBlock.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+
+    if (editorCancel) {
+      editorCancel.addEventListener('click', () => {
+        resetEditor();
+        editorBlock.open = false;
+      });
+    }
+
+    if (editorForm) {
+      editorForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const roleId = (editorRole.value || '').trim();
+        const formId = (editorFormSel.value || '').trim();
+        const condId = (editorCondition.value || '').trim();
+        if (!roleId || !formId || !condId) {
+          showAdminToast('error', 'Role, form, and condition are required.');
+          return;
+        }
+
+        const appDialog = document.getElementById('appDialog');
+        const ok = await appDialog.confirm({
+          title: accessState.editorMode === 'create'
+            ? 'Create this grant?'
+            : 'Update this grant?',
+          message: 'You will be asked for your password next.',
+          confirmLabel: 'Continue',
+          cancelLabel: 'Cancel',
+          variant: 'primary',
+          icon: 'info',
+        });
+        if (!ok) return;
+
+        const password = await appDialog.passwordConfirm({
+          title: 'Confirm with password',
+          message: 'Enter your account password to confirm this action.',
+          confirmLabel: 'Confirm',
+          cancelLabel: 'Cancel',
+          icon: 'lock',
+        });
+        if (!password) return;
+
+        const url = accessState.editorMode === 'create'
+          ? '/settings/admin/access/create'
+          : '/settings/admin/access/update';
+
+        const { data } = await apiPost(url, {
+          role_id:      roleId,
+          form_id:      formId,
+          condition_id: condId,
+          password:     password,
+        });
+
+        if (data.status === 'success') {
+          showAdminToast('success', data.message || 'Saved.');
+          resetEditor();
+          editorBlock.open = false;
+          loadGrants();
+        } else {
+          await appDialog.alert({
+            title: 'Action failed',
+            message: data.message || 'Could not save.',
+            icon: 'danger',
+          });
+        }
+      });
+    }
+
+    async function handleDeleteGrant(roleId, formId) {
+      if (!roleId || !formId) return;
+      const appDialog = document.getElementById('appDialog');
+
+      const ok = await appDialog.confirm({
+        title: 'Delete grant ' + roleId + ' × ' + formId + '?',
+        message: 'The role will lose access to this form immediately. ' +
+                 'This action cannot be undone.',
+        confirmLabel: 'Delete',
+        cancelLabel: 'Cancel',
+        variant: 'danger',
+        icon: 'danger',
+      });
+      if (!ok) return;
+
+      const password = await appDialog.passwordConfirm({
+        title: 'Confirm with password',
+        message: 'Enter your account password to confirm this action.',
+        confirmLabel: 'Delete',
+        cancelLabel: 'Cancel',
+        icon: 'lock',
+      });
+      if (!password) return;
+
+      const { data } = await apiPost('/settings/admin/access/delete', {
+        role_id:  roleId,
+        form_id:  formId,
+        password: password,
+      });
+
+      if (data.status === 'success') {
+        showAdminToast('success', data.message || 'Deleted.');
+        loadGrants();
+      } else {
+        await appDialog.alert({
+          title: 'Delete failed',
+          message: data.message || 'Could not delete.',
+          icon: 'danger',
+        });
+      }
+    }
+
+    document.addEventListener('ramz:table-action', async (e) => {
+      if (getCurrentSection() !== 'access') return;
+      const detail = e.detail || {};
+      const action = detail.action;
+      const row    = detail.row || {};
+      const data   = detail.data || {};
+
+      const roleId = data.roleId || '';
+      const formId = data.formId || '';
+
+      if (action === 'edit-grant') {
+        const raw = row._raw || {};
+        fillEditorForEdit(
+          roleId,
+          formId,
+          raw.condition_id || ''
+        );
+        editorBlock.open = true;
+        editorBlock.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else if (action === 'delete-grant') {
+        await handleDeleteGrant(roleId, formId);
+      }
+    });
+
+    searchInput.addEventListener('input', syncSearchBtnState);
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (!searchBtn.disabled) applyFilters();
+      }
+    });
+    searchBtn.addEventListener('click', applyFilters);
+    if (resetBtn) resetBtn.addEventListener('click', resetFilters);
+
+    roleFilter.addEventListener('change', () => {
+      syncSearchBtnState();
+      applyFilters();
+    });
+    formFilter.addEventListener('change', () => {
+      syncSearchBtnState();
+      applyFilters();
+    });
+
+    resetEditor();
+    syncSearchBtnState();
+    loadGrants();
+  }
+
+  window.addEventListener('ramz:content-loaded', () => {
+    if (getCurrentSection() === 'access') {
+      initAccessPage();
+    }
+  });
+
+  if (getCurrentSection() === 'access') {
+    setTimeout(initAccessPage, 100);
+  }
 </script>
 
 {% endblock %}

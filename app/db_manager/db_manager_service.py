@@ -718,6 +718,78 @@ class DbManagerService:
         return await self._form_repo.delete(form_id)
 
     # ============================================================
+    # Admin: Access Grants
+    # ============================================================
+    async def admin_list_grants(self, role_filter="", form_filter="", query=""):
+        """Return all grants with joined display info (see repo for shape)."""
+        return await self._form_access_repo.list_all_with_details(
+            role_filter=role_filter,
+            form_filter=form_filter,
+            query=query,
+        )
+
+    async def admin_list_role_summary(self, role_id):
+        """Return all forms annotated with the role's condition, or None."""
+        return await self._form_access_repo.list_role_form_summary(role_id)
+
+    async def admin_get_grant(self, role_id, form_id):
+        """Return a single grant row (with join info), or None."""
+        return await self._form_access_repo.get_full_access_one(role_id, form_id)
+
+    async def admin_create_grant(self, role_id, form_id, condition_id):
+        """
+        Insert a new grant.
+
+        Returns
+        -------
+        tuple (ok: bool, code: Optional[str])
+            code is one of: "exists", "internal_error", or None.
+        """
+        existing = await self._form_access_repo.get(role_id, form_id)
+        if existing:
+            return False, "exists"
+
+        ok = await self._form_access_repo.create(role_id, form_id, condition_id)
+        if not ok:
+            return False, "internal_error"
+
+        self.invalidate_role_cache(role_id)
+        self.invalidate_form_cache(form_id)
+        return True, None
+
+    async def admin_update_grant_condition(self, role_id, form_id, new_condition_id):
+        """Update the condition of an existing grant. Returns True on success."""
+        ok = await self._form_access_repo.update_condition(
+            role_id, form_id, new_condition_id
+        )
+        if ok:
+            self.invalidate_role_cache(role_id)
+            self.invalidate_form_cache(form_id)
+        return ok
+
+    async def admin_delete_grant(self, role_id, form_id):
+        """Delete a grant. Returns True on success."""
+        ok = await self._form_access_repo.delete(role_id, form_id)
+        if ok:
+            self.invalidate_role_cache(role_id)
+            self.invalidate_form_cache(form_id)
+        return ok
+
+    async def admin_list_roles(self):
+        """Return all enabled roles (id + name), sorted by role_id."""
+        try:
+            return await self._role_repo.list_enabled()
+        except Exception:
+            return []
+
+    async def admin_list_conditions(self):
+        """Return all enabled conditions, sorted by condition_id."""
+        try:
+            return await self._condition_repo.list_enabled()
+        except Exception:
+            return []
+
+    # ============================================================
     # ============================================================
     # Activity
     # ============================================================

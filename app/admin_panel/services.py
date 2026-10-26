@@ -222,3 +222,89 @@ class AdminPanelService:
 
         self.db.invalidate_form_cache(fid)
         return True, None, 0
+
+    # ============================================================
+    # Access Grants
+    # ============================================================
+    async def create_grant(
+        self, role_id, form_id, condition_id, current_user_id
+    ):
+        """
+        Create a new grant.
+
+        Returns (ok: bool, code: Optional[str]).
+        """
+        rid = (role_id or "").strip()
+        fid = (form_id or "").strip()
+        cid = (condition_id or "").strip()
+
+        if not rid or not fid or not cid:
+            return False, "invalid_data"
+
+        if rid == "super-admin":
+            return False, "cannot_modify_super_admin"
+
+        role = await self.db._role_repo.get_by_id(rid)
+        if not role:
+            return False, "role_not_found"
+
+        form = await self.db.admin_get_form(fid)
+        if not form:
+            return False, "form_not_found"
+
+        condition = await self.db._condition_repo.get_by_id(cid)
+        if not condition:
+            return False, "condition_not_found"
+
+        ok, code = await self.db.admin_create_grant(rid, fid, cid)
+        return ok, code
+
+    async def update_grant_condition(
+        self, role_id, form_id, new_condition_id, current_user_id
+    ):
+        """
+        Update the condition of an existing grant.
+
+        Returns (ok: bool, code: Optional[str]).
+        """
+        rid = (role_id or "").strip()
+        fid = (form_id or "").strip()
+        cid = (new_condition_id or "").strip()
+
+        if not rid or not fid or not cid:
+            return False, "invalid_data"
+
+        if rid == "super-admin":
+            return False, "cannot_modify_super_admin"
+
+        existing = await self.db.admin_get_grant(rid, fid)
+        if not existing:
+            return False, "grant_not_found"
+
+        condition = await self.db._condition_repo.get_by_id(cid)
+        if not condition:
+            return False, "condition_not_found"
+
+        ok = await self.db.admin_update_grant_condition(rid, fid, cid)
+        return (True, None) if ok else (False, "internal_error")
+
+    async def delete_grant(self, role_id, form_id, current_user_id):
+        """
+        Delete a grant.
+
+        Returns (ok: bool, code: Optional[str]).
+        """
+        rid = (role_id or "").strip()
+        fid = (form_id or "").strip()
+        if not rid or not fid:
+            return False, "invalid_data"
+
+        if rid == "super-admin":
+            return False, "cannot_modify_super_admin"
+
+        existing = await self.db.admin_get_grant(rid, fid)
+        if not existing:
+            return False, "grant_not_found"
+
+        ok = await self.db.admin_delete_grant(rid, fid)
+        return (True, None) if ok else (False, "internal_error")

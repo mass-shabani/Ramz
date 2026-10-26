@@ -245,7 +245,8 @@ def register_routes(
         "overview": "partials/overview.html",
         "users":    "partials/users.html",
         "forms":    "partials/forms.html",
-        # Phase 4+: access, roles will be added here
+        "access":   "partials/access.html",
+        # Phase 5+: roles will be added here
     }
 
     @http_api.post("/settings/admin/partials/{section}",
@@ -1250,6 +1251,501 @@ def register_routes(
             content={
                 "status": "success",
                 "message": f"Form '{form_id}' deleted.",
+            },
+            status_code=200,
+        )
+
+    def _build_grant_actions(row):
+        """Build the actions column for one grant row."""
+        return [
+            {
+                "action": "edit-grant",
+                "icon": (
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+                    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+                    '<path d="M12 20h9"/>'
+                    '<path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z"/>'
+                    '</svg>'
+                ),
+                "title": "Change condition",
+                "data": {
+                    "role-id": row.get("role_id") or "",
+                    "form-id": row.get("form_id") or "",
+                },
+            },
+            {
+                "action": "delete-grant",
+                "icon": (
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+                    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+                    '<path d="M3 6h18"/>'
+                    '<path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>'
+                    '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>'
+                    '</svg>'
+                ),
+                "title": "Delete grant",
+                "variant": "danger",
+                "data": {
+                    "role-id": row.get("role_id") or "",
+                    "form-id": row.get("form_id") or "",
+                },
+            },
+        ]
+
+    def _grant_row_payload(row):
+        """Convert a repo row into the JSON shape used by the UI."""
+        return {
+            "role_id":       row.get("role_id") or "",
+            "role_name":     row.get("role_name") or row.get("role_id") or "",
+            "form_id":       row.get("form_id") or "",
+            "form_name":     row.get("form_name") or row.get("form_id") or "",
+            "condition_id":  row.get("condition_id") or "",
+            "condition_name": row.get("condition_name") or row.get("condition_id") or "",
+        }
+
+    # ------------------------------------------------------------
+    # POST /settings/admin/access/list
+    # ------------------------------------------------------------
+    @http_api.post("/settings/admin/access/list",
+                   response_class=http_api.JSONResponse)
+    async def admin_access_list(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "session_expired"},
+                status_code=401,
+            )
+
+        if not await _has_admin_access(user_id):
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            can_manage = await db_service.has_access(
+                user_id, "admin_panel.access.manage"
+            )
+        except Exception:
+            can_manage = False
+        if not can_manage:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        role_filter = str(body.get("role_filter") or "").strip()
+        form_filter = str(body.get("form_filter") or "").strip()
+        query       = str(body.get("query") or "").strip()
+
+        try:
+            grants = await db_service.admin_list_grants(
+                role_filter=role_filter,
+                form_filter=form_filter,
+                query=query,
+            )
+            roles        = await db_service.admin_list_roles()
+            conditions   = await db_service.admin_list_conditions()
+            forms        = await db_service.admin_list_forms()
+        except Exception as exc:
+            if logger:
+                logger.log(
+                    f"admin_access_list failed: {exc}",
+                    level="ERROR", tag="admin",
+                )
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "internal_error"},
+                status_code=500,
+            )
+
+        # Filter roles used in dropdowns: exclude super-admin from
+        # grant creation/editing (super-admin grants are reserved for
+        # the future system_settings module).
+        role_options = [
+            {"role_id": r.get("role_id"), "role_name": r.get("role_name")}
+            for r in roles
+            if r.get("role_id") != "super-admin"
+        ]
+        condition_options = [
+            {"condition_id": c.get("condition_id"),
+             "condition_name": c.get("condition_name")}
+            for c in conditions
+        ]
+        form_options = [
+            {"form_id": f.get("form_id"), "form_name": f.get("form_name")}
+            for f in forms
+        ]
+
+        columns = [
+            {"key": "_role",      "label": "Role",      "type": "badge"},
+            {"key": "_form",      "label": "Form"},
+            {"key": "_condition", "label": "Condition", "type": "badge"},
+            {"key": "_actions",   "label": "Actions",   "type": "actions"},
+        ]
+
+        row_data = []
+        for row in grants:
+            payload = _grant_row_payload(row)
+            row_data.append({
+                "_role": {
+                    "text":    payload["role_name"],
+                    "variant": "active" if payload["role_id"] in ("admin", "manager") else "idle",
+                },
+                "_form": f"{payload['form_name']}",
+                "_condition": {
+                    "text":    payload["condition_name"],
+                    "variant": (
+                        "active"  if payload["condition_id"] in ("Full", "High") else
+                        "pending" if payload["condition_id"] in ("Medium", "Low") else
+                        "idle"
+                    ),
+                },
+                "_actions": _build_grant_actions(payload),
+                # Extra fields used by the JS editor
+                "_raw": payload,
+            })
+
+        response_payload = {
+            "columns":     columns,
+            "rows":        row_data,
+            "roles":       role_options,
+            "conditions":  condition_options,
+            "forms":       form_options,
+        }
+
+        # If a role filter is active, also return the role summary
+        # (mini-matrix for the "View by role" panel).
+        if role_filter and role_filter != "super-admin":
+            try:
+                summary_rows = await db_service.admin_list_role_summary(role_filter)
+            except Exception:
+                summary_rows = []
+            response_payload["role_summary"] = [
+                {
+                    "form_id":        (r.get("form_id") or ""),
+                    "form_name":      (r.get("form_name") or ""),
+                    "form_enabled":   bool(r.get("form_enabled")),
+                    "condition_id":   r.get("condition_id"),
+                    "condition_name": r.get("condition_name"),
+                }
+                for r in summary_rows
+            ]
+            response_payload["role_summary_role_id"] = role_filter
+
+        return http_api.JSONResponse(
+            content=response_payload,
+            status_code=200,
+        )
+
+    # ------------------------------------------------------------
+    # POST /settings/admin/access/create
+    # ------------------------------------------------------------
+    @http_api.post("/settings/admin/access/create",
+                   response_class=http_api.JSONResponse)
+    async def admin_access_create(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "session_expired"},
+                status_code=401,
+            )
+
+        if not await _has_admin_access(user_id):
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            can_manage = await db_service.has_access(
+                user_id, "admin_panel.access.manage"
+            )
+        except Exception:
+            can_manage = False
+        if not can_manage:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        role_id      = str(body.get("role_id") or "").strip()
+        form_id      = str(body.get("form_id") or "").strip()
+        condition_id = str(body.get("condition_id") or "").strip()
+        password     = str(body.get("password") or "")
+
+        if not role_id or not form_id or not condition_id:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "invalid_data",
+                         "message": "Role, form, and condition are required."},
+                status_code=200,
+            )
+
+        if not await _verify_admin_password(user_id, password):
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "invalid_password",
+                         "message": "The password you entered is incorrect."},
+                status_code=200,
+            )
+
+        if not admin_service:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "internal_error",
+                         "message": "Admin service not available."},
+                status_code=500,
+            )
+
+        try:
+            ok, code = await admin_service.create_grant(
+                role_id=role_id,
+                form_id=form_id,
+                condition_id=condition_id,
+                current_user_id=user_id,
+            )
+        except Exception as exc:
+            if logger:
+                logger.log(
+                    f"create_grant failed: {exc}",
+                    level="ERROR", tag="admin",
+                )
+            ok, code = False, "internal_error"
+
+        if not ok:
+            messages = {
+                "invalid_data":              "Role, form, and condition are required.",
+                "exists":                    "This grant already exists. Use 'Edit' to change its condition.",
+                "role_not_found":            "Role not found.",
+                "form_not_found":            "Form not found.",
+                "condition_not_found":       "Condition not found.",
+                "cannot_modify_super_admin": "Super-admin grants are managed elsewhere.",
+                "internal_error":            "Something went wrong. Please try again.",
+            }
+            return http_api.JSONResponse(
+                content={
+                    "status": "error",
+                    "code": code or "internal_error",
+                    "message": messages.get(code or "internal_error",
+                                            "Something went wrong."),
+                },
+                status_code=200,
+            )
+
+        return http_api.JSONResponse(
+            content={
+                "status": "success",
+                "message": f"Grant created for '{role_id}' on '{form_id}'.",
+            },
+            status_code=200,
+        )
+
+    # ------------------------------------------------------------
+    # POST /settings/admin/access/update
+    # ------------------------------------------------------------
+    @http_api.post("/settings/admin/access/update",
+                   response_class=http_api.JSONResponse)
+    async def admin_access_update(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "session_expired"},
+                status_code=401,
+            )
+
+        if not await _has_admin_access(user_id):
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            can_manage = await db_service.has_access(
+                user_id, "admin_panel.access.manage"
+            )
+        except Exception:
+            can_manage = False
+        if not can_manage:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        role_id      = str(body.get("role_id") or "").strip()
+        form_id      = str(body.get("form_id") or "").strip()
+        condition_id = str(body.get("condition_id") or "").strip()
+        password     = str(body.get("password") or "")
+
+        if not role_id or not form_id or not condition_id:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "invalid_data",
+                         "message": "Role, form, and condition are required."},
+                status_code=200,
+            )
+
+        if not await _verify_admin_password(user_id, password):
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "invalid_password",
+                         "message": "The password you entered is incorrect."},
+                status_code=200,
+            )
+
+        if not admin_service:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "internal_error",
+                         "message": "Admin service not available."},
+                status_code=500,
+            )
+
+        try:
+            ok, code = await admin_service.update_grant_condition(
+                role_id=role_id,
+                form_id=form_id,
+                new_condition_id=condition_id,
+                current_user_id=user_id,
+            )
+        except Exception as exc:
+            if logger:
+                logger.log(
+                    f"update_grant_condition failed: {exc}",
+                    level="ERROR", tag="admin",
+                )
+            ok, code = False, "internal_error"
+
+        if not ok:
+            messages = {
+                "invalid_data":              "Role, form, and condition are required.",
+                "grant_not_found":           "Grant not found.",
+                "condition_not_found":       "Condition not found.",
+                "cannot_modify_super_admin": "Super-admin grants are managed elsewhere.",
+                "internal_error":            "Something went wrong. Please try again.",
+            }
+            return http_api.JSONResponse(
+                content={
+                    "status": "error",
+                    "code": code or "internal_error",
+                    "message": messages.get(code or "internal_error",
+                                            "Something went wrong."),
+                },
+                status_code=200,
+            )
+
+        return http_api.JSONResponse(
+            content={
+                "status": "success",
+                "message": "Grant condition updated.",
+            },
+            status_code=200,
+        )
+
+    # ------------------------------------------------------------
+    # POST /settings/admin/access/delete
+    # ------------------------------------------------------------
+    @http_api.post("/settings/admin/access/delete",
+                   response_class=http_api.JSONResponse)
+    async def admin_access_delete(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "session_expired"},
+                status_code=401,
+            )
+
+        if not await _has_admin_access(user_id):
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            can_manage = await db_service.has_access(
+                user_id, "admin_panel.access.manage"
+            )
+        except Exception:
+            can_manage = False
+        if not can_manage:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        role_id  = str(body.get("role_id") or "").strip()
+        form_id  = str(body.get("form_id") or "").strip()
+        password = str(body.get("password") or "")
+
+        if not role_id or not form_id:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "invalid_data",
+                         "message": "Role and form are required."},
+                status_code=200,
+            )
+
+        if not await _verify_admin_password(user_id, password):
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "invalid_password",
+                         "message": "The password you entered is incorrect."},
+                status_code=200,
+            )
+
+        if not admin_service:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "internal_error",
+                         "message": "Admin service not available."},
+                status_code=500,
+            )
+
+        try:
+            ok, code = await admin_service.delete_grant(
+                role_id=role_id,
+                form_id=form_id,
+                current_user_id=user_id,
+            )
+        except Exception as exc:
+            if logger:
+                logger.log(
+                    f"delete_grant failed: {exc}",
+                    level="ERROR", tag="admin",
+                )
+            ok, code = False, "internal_error"
+
+        if not ok:
+            messages = {
+                "invalid_data":              "Role and form are required.",
+                "grant_not_found":           "Grant not found.",
+                "cannot_modify_super_admin": "Super-admin grants are managed elsewhere.",
+                "internal_error":            "Something went wrong. Please try again.",
+            }
+            return http_api.JSONResponse(
+                content={
+                    "status": "error",
+                    "code": code or "internal_error",
+                    "message": messages.get(code or "internal_error",
+                                            "Something went wrong."),
+                },
+                status_code=200,
+            )
+
+        return http_api.JSONResponse(
+            content={
+                "status": "success",
+                "message": "Grant deleted.",
             },
             status_code=200,
         )
