@@ -1,0 +1,93 @@
+{# ==========================================================================
+   Forms CRUD — admin management of access control forms
+   Loaded into <content-container> via POST /settings/admin/partials/forms
+   ========================================================================== #}
+
+{% if not permissions.forms %}
+  <ramz-card title="Access Denied" subtitle="Insufficient permissions">
+    <div slot="icon" class="card-icon icon-soft--rose">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="10" width="16" height="11" rx="3"/>
+        <path d="M8 10V7a4 4 0 0 1 8 0v3"/>
+      </svg>
+    </div>
+    <p style="color: var(--text-dim); font-size: 14px; line-height: 1.7; margin: 0;">
+      You do not have permission to manage forms. This section requires the
+      <strong>admin_panel.forms.manage</strong> grant.
+    </p>
+  </ramz-card>
+{% else %}
+
+<!-- ============ TABLE ============ -->
+<ramz-card title="Forms" subtitle="Manage application forms (access control points)">
+  <button slot="header-actions" type="button" class="btn-primary" id="formsCreateBtn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2.2" stroke-linecap="round">
+      <path d="M12 5v14M5 12h14"/>
+    </svg>
+    Create Form
+  </button>
+  <ramz-table id="formsTable" empty-text="No forms found."></ramz-table>
+</ramz-card>
+
+<!-- ============ EDITOR (create + edit) ============ -->
+<details class="add-account-block" id="formEditorBlock" style="margin-top: 20px;">
+  <summary id="formEditorSummary">Create Form</summary>
+  <form id="formEditor" autocomplete="off">
+    <div class="settings-rows">
+      <div class="settings-row">
+        <div class="settings-row-label">
+          <div class="label">Form Name</div>
+          <div class="hint">Human-readable label. Must be unique.</div>
+        </div>
+        <div class="settings-row-control">
+          <div class="settings-field">
+            <input type="text" id="formEditorName" required maxlength="100">
+          </div>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-label">
+          <div class="label">Form ID</div>
+          <div class="hint">Stable identifier. Auto-generated from name if left empty. Cannot be changed later.</div>
+        </div>
+        <div class="settings-row-control">
+          <div class="settings-field">
+            <input type="text" id="formEditorId" placeholder="(auto from name)" maxlength="100">
+          </div>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-label">
+          <div class="label">Description</div>
+          <div class="hint">Optional notes for administrators.</div>
+        </div>
+        <div class="settings-row-control">
+          <div class="settings-field">
+            <textarea id="formEditorDesc" rows="3" maxlength="500"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-label">
+          <div class="label">Status</div>
+          <div class="hint">Disabled forms are ignored in access checks.</div>
+        </div>
+        <div class="settings-row-control">
+          <label class="toggle">
+            <input type="checkbox" id="formEditorEnabled" checked>
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            <span class="toggle-label">Enabled</span>
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="settings-actions">
+      <button type="button" class="btn-ghost" id="formEditorCancel">Cancel</button>
+      <button type="submit" class="btn-primary" id="formEditorSubmit">Create Form</button>
+    </div>
+  </form>
+</details>
+
+{% endif %}

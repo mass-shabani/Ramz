@@ -4,6 +4,25 @@ Admin Panel Service
 Facade for admin panel operations.
 """
 
+import re
+
+
+def _slugify_form_name(name):
+    """
+    Turn a human-readable form name into a stable form_id.
+
+    Examples:
+        "Admin Panel Access"   → "admin.panel.access"
+        "Login Page"           → "login.page"
+        "Test Form (v2)"       → "test.form.v2"
+        ""                     → ""
+    """
+    if not name:
+        return ""
+    slug = re.sub(r'[^a-z0-9._]+', '.', name.lower().strip())
+    slug = re.sub(r'\.+', '.', slug).strip('.')
+    return slug
+
 
 class AdminPanelService:
     """
@@ -88,3 +107,118 @@ class AdminPanelService:
         if not ok:
             return False, None, "internal_error"
         return True, temp_password, None
+
+    # ============================================================
+    # Forms
+    # ============================================================
+    async def create_form(
+        self, form_id, form_name, description, enabled, current_user_id
+    ):
+        """
+        Create a new form.
+
+        If form_id is empty, it is auto-generated from form_name
+        (lowercased, non-alphanumeric → dots, collapsed).
+
+        Returns
+        -------
+        tuple (ok: bool, final_form_id: Optional[str], code: Optional[str])
+        """
+        name = (form_name or "").strip()
+        if not name:
+            return False, None, "invalid_data"
+
+        # Auto-gen form_id from name if not provided
+        final_id = (form_id or "").strip()
+        if not final_id:
+            final_id = _slugify_form_name(name)
+            if not final_id:
+                return False, None, "invalid_data"
+
+        # Check form_id conflict
+        existing = await self.db.admin_get_form(final_id)
+        if existing:
+            return False, None, "form_id_exists"
+
+        # Check form_name conflict (schema has UNIQUE on form_name)
+        try:
+            existing_name = await self.db._form_repo.get_by_name(name)
+        except Exception:
+            existing_name = None
+        if existing_name:
+            return False, None, "form_name_exists"
+
+        ok = await self.db.admin_create_form(
+            form_id=final_id,
+            form_name=name,
+            description=(description or "").strip(),
+            enabled=bool(enabled),
+        )
+        if not ok:
+            return False, None, "internal_error"
+
+        self.db.invalidate_form_cache(final_id)
+        return True, final_id, None
+
+    async def update_form(
+        self, form_id, form_name, description, enabled, current_user_id
+    ):
+        """
+        Update an existing form.
+
+        Returns (ok: bool, code: Optional[str]).
+        """
+        fid = (form_id or "").strip()
+        name = (form_name or "").strip()
+        if not fid or not name:
+            return False, "invalid_data"
+
+        existing = await self.db.admin_get_form(fid)
+        if not existing:
+            return False, "form_not_found"
+
+        # Check form_name conflict on OTHER forms
+        try:
+            existing_name = await self.db._form_repo.get_by_name(name)
+        except Exception:
+            existing_name = None
+        if existing_name and existing_name.get("form_id") != fid:
+            return False, "form_name_exists"
+
+        ok = await self.db.admin_update_form(
+            form_id=fid,
+            form_name=name,
+            description=(description or "").strip(),
+            enabled=bool(enabled),
+        )
+        if not ok:
+            return False, "internal_error"
+
+        self.db.invalidate_form_cache(fid)
+        return True, None
+
+    async def delete_form(self, form_id, current_user_id):
+        """
+        Delete a form.
+
+        Returns (ok: bool, code: Optional[str], grants_count: int).
+        If grants_count > 0, code is "form_has_grants".
+        """
+        fid = (form_id or "").strip()
+        if not fid:
+            return False, "invalid_data", 0
+
+        existing = await self.db.admin_get_form(fid)
+        if not existing:
+            return False, "form_not_found", 0
+
+        grants = await self.db.admin_form_grant_count(fid)
+        if grants > 0:
+            return False, "form_has_grants", grants
+
+        ok = await self.db.admin_delete_form(fid)
+        if not ok:
+            return False, "internal_error", 0
+
+        self.db.invalidate_form_cache(fid)
+        return True, None, 0

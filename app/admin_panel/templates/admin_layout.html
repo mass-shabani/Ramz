@@ -566,6 +566,264 @@
       showAdminToast('error', 'Action failed. Please try again.');
     }
   });
+
+  /* ============================================================
+     Forms CRUD — only when section=forms
+     ============================================================ */
+  const formsState = { initialized: false, cache: [] };
+
+  function initFormsPage() {
+    const table = document.getElementById('formsTable');
+    if (!table) return;
+    if (typeof table.setColumns !== 'function') {
+      console.error('[forms] ramz-table is not upgraded.');
+      return;
+    }
+
+    const COLUMNS = [
+      { key: 'form_id',     label: 'Form ID',     className: 'mono' },
+      { key: 'form_name',   label: 'Name' },
+      { key: 'description', label: 'Description' },
+      { key: '_grants',     label: 'Grants',      type: 'badge' },
+      { key: '_status',     label: 'Status',      type: 'badge' },
+      { key: '_actions',    label: 'Actions',     type: 'actions' },
+    ];
+    table.setColumns(COLUMNS);
+
+    const editorBlock    = document.getElementById('formEditorBlock');
+    const editorSummary  = document.getElementById('formEditorSummary');
+    const editorForm     = document.getElementById('formEditor');
+    const editorId       = document.getElementById('formEditorId');
+    const editorName     = document.getElementById('formEditorName');
+    const editorDesc     = document.getElementById('formEditorDesc');
+    const editorEnabled  = document.getElementById('formEditorEnabled');
+    const editorSubmit   = document.getElementById('formEditorSubmit');
+    const editorCancel   = document.getElementById('formEditorCancel');
+    const createBtn      = document.getElementById('formsCreateBtn');
+
+    let editorMode = 'create';   // 'create' | 'update'
+    let editorFormId = '';       // for update
+
+    function resetEditor() {
+      editorMode = 'create';
+      editorFormId = '';
+      editorId.value = '';
+      editorId.disabled = false;
+      editorId.placeholder = '(auto from name)';
+      editorName.value = '';
+      editorDesc.value = '';
+      editorEnabled.checked = true;
+      editorSummary.textContent = 'Create Form';
+      editorSubmit.textContent = 'Create Form';
+    }
+
+    function fillEditor(row) {
+      editorMode = 'update';
+      editorFormId = row.form_id || '';
+      editorId.value = row.form_id || '';
+      editorId.disabled = true;
+      editorId.placeholder = '';
+      editorName.value = row.form_name || '';
+      editorDesc.value = row.description || '';
+      editorEnabled.checked = (row._status && row._status.variant === 'active');
+      editorSummary.textContent = 'Edit Form: ' + (row.form_id || '');
+      editorSubmit.textContent = 'Update Form';
+    }
+
+    async function loadForms() {
+      table.setLoading(true);
+      try {
+        const resp = await fetch('/settings/admin/forms/list', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify({}),
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const data = await resp.json();
+        table.setColumns(data.columns || COLUMNS);
+        table.setData(data.rows || []);
+        formsState.cache = data.rows || [];
+      } catch (err) {
+        console.error('[forms] load failed:', err);
+        table.setData([]);
+        formsState.cache = [];
+      } finally {
+        table.setLoading(false);
+      }
+    }
+
+    if (createBtn) {
+      createBtn.addEventListener('click', () => {
+        resetEditor();
+        editorBlock.open = true;
+        editorBlock.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setTimeout(() => editorName.focus(), 300);
+      });
+    }
+
+    if (editorCancel) {
+      editorCancel.addEventListener('click', () => {
+        resetEditor();
+        editorBlock.open = false;
+      });
+    }
+
+    if (editorForm) {
+      editorForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = (editorName.value || '').trim();
+        if (!name) {
+          showAdminToast('error', 'Form name is required.');
+          return;
+        }
+
+        const appDialog = document.getElementById('appDialog');
+        const ok = await appDialog.confirm({
+          title: editorMode === 'create' ? 'Create this form?' : 'Save changes?',
+          message: 'You will be asked for your password next.',
+          confirmLabel: 'Continue',
+          cancelLabel: 'Cancel',
+          variant: 'primary',
+          icon: 'info',
+        });
+        if (!ok) return;
+
+        const password = await appDialog.passwordConfirm({
+          title: 'Confirm with password',
+          message: 'Enter your account password to confirm this action.',
+          confirmLabel: 'Confirm',
+          cancelLabel: 'Cancel',
+          icon: 'lock',
+        });
+        if (!password) return;
+
+        const url = editorMode === 'create'
+          ? '/settings/admin/forms/create'
+          : '/settings/admin/forms/update';
+
+        const body = {
+          form_name:   name,
+          description: (editorDesc.value || '').trim(),
+          enabled:     editorEnabled.checked,
+          password:    password,
+        };
+        if (editorMode === 'create') {
+          const cid = (editorId.value || '').trim();
+          if (cid) body.form_id = cid;
+        } else {
+          body.form_id = editorFormId;
+        }
+
+        const { data } = await apiPost(url, body);
+
+        if (data.status === 'success') {
+          showAdminToast('success', data.message || 'Saved.');
+          resetEditor();
+          editorBlock.open = false;
+          loadForms();
+        } else {
+          await appDialog.alert({
+            title: 'Action failed',
+            message: data.message || 'Could not save.',
+            icon: 'danger',
+          });
+        }
+      });
+    }
+
+    async function handleDeleteForm(formId) {
+      const appDialog = document.getElementById('appDialog');
+      if (!formId) return;
+
+      // Pre-check grants from cache for better UX
+      const cached = formsState.cache.find(r => r.form_id === formId);
+      const grantsText = cached && cached._grants ? cached._grants.text : '0';
+      const grants = parseInt(grantsText, 10) || 0;
+      if (grants > 0) {
+        await appDialog.alert({
+          title: 'Cannot delete form',
+          message:
+            'This form has ' + grants + ' active grant(s). ' +
+            'Remove all grants (from the Access section) before deleting.',
+          icon: 'warning',
+        });
+        return;
+      }
+
+      const ok = await appDialog.confirm({
+        title: 'Delete form ' + formId + '?',
+        message: 'This action cannot be undone.',
+        confirmLabel: 'Delete',
+        cancelLabel: 'Cancel',
+        variant: 'danger',
+        icon: 'danger',
+      });
+      if (!ok) return;
+
+      const password = await appDialog.passwordConfirm({
+        title: 'Confirm with password',
+        message: 'Enter your account password to confirm this action.',
+        confirmLabel: 'Delete',
+        cancelLabel: 'Cancel',
+        icon: 'lock',
+      });
+      if (!password) return;
+
+      const { data } = await apiPost('/settings/admin/forms/delete', {
+        form_id: formId,
+        password: password,
+      });
+
+      if (data.status === 'success') {
+        showAdminToast('success', data.message || 'Deleted.');
+        loadForms();
+      } else {
+        await appDialog.alert({
+          title: 'Delete failed',
+          message: data.message || 'Could not delete.',
+          icon: 'danger',
+        });
+      }
+    }
+
+    document.addEventListener('ramz:table-action', async (e) => {
+      if (getCurrentSection() !== 'forms') return;
+      const { action, data } = e.detail || {};
+      const formId = data && data.formId;
+      if (!formId) return;
+
+      if (action === 'edit-form') {
+        const row = formsState.cache.find(r => r.form_id === formId);
+        if (row) {
+          fillEditor(row);
+          editorBlock.open = true;
+          editorBlock.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          setTimeout(() => editorName.focus(), 300);
+        }
+      } else if (action === 'delete-form') {
+        await handleDeleteForm(formId);
+      }
+    });
+
+    resetEditor();
+    loadForms();
+    formsState.initialized = true;
+  }
+
+  window.addEventListener('ramz:content-loaded', () => {
+    if (getCurrentSection() === 'forms') {
+      initFormsPage();
+    }
+  });
+
+  if (getCurrentSection() === 'forms') {
+    setTimeout(initFormsPage, 100);
+  }
 </script>
 
 {% endblock %}

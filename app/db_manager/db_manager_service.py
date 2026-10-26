@@ -671,6 +671,53 @@ class DbManagerService:
         return True, temp_password
 
     # ============================================================
+    # Admin: Forms
+    # ============================================================
+    async def admin_list_forms(self):
+        """
+        Return all forms with grant counts.
+
+        Each item: {form_id, form_name, description, enabled, grants_count}
+        """
+        return await self._form_repo.list_all_with_grant_counts()
+
+    async def admin_get_form(self, form_id):
+        """Return a single form row by id, or None."""
+        return await self._form_repo.get_by_id(form_id)
+
+    async def admin_form_grant_count(self, form_id):
+        """Return the number of form_access rows referencing this form."""
+        try:
+            rows = await self._form_access_repo.list_by_form(form_id)
+            return len(rows or [])
+        except Exception:
+            return 0
+
+    async def admin_create_form(self, form_id, form_name,
+                                 description="", enabled=True):
+        """Insert a new form. Returns True on success."""
+        return await self._form_repo.create(
+            form_id=form_id,
+            form_name=form_name,
+            description=description,
+            enabled=enabled,
+        )
+
+    async def admin_update_form(self, form_id, form_name=None,
+                                 description=None, enabled=None):
+        """Update an existing form. Returns True on success."""
+        return await self._form_repo.update(
+            form_id=form_id,
+            form_name=form_name,
+            description=description,
+            enabled=enabled,
+        )
+
+    async def admin_delete_form(self, form_id):
+        """Delete a form. Returns True on success."""
+        return await self._form_repo.delete(form_id)
+
+    # ============================================================
     # ============================================================
     # Activity
     # ============================================================

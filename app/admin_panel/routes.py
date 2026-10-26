@@ -244,7 +244,8 @@ def register_routes(
     PARTIAL_TEMPLATES = {
         "overview": "partials/overview.html",
         "users":    "partials/users.html",
-        # Phase 3+: forms, access, roles will be added here
+        "forms":    "partials/forms.html",
+        # Phase 4+: access, roles will be added here
     }
 
     @http_api.post("/settings/admin/partials/{section}",
@@ -326,6 +327,62 @@ def register_routes(
                 content="<div class='card'><p>Failed to load section.</p></div>",
                 status_code=500,
             )
+
+    # ------------------------------------------------------------
+    # POST /settings/admin/users/list — JSON endpoint for the users table
+    # ------------------------------------------------------------
+    def _build_form_actions(row):
+        """Build the actions column for one form row."""
+        form_id = row.get("form_id") or ""
+        grants = int(row.get("grants_count") or 0)
+
+        actions = [
+            {
+                "action": "edit-form",
+                "icon": (
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+                    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+                    '<path d="M12 20h9"/>'
+                    '<path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z"/>'
+                    '</svg>'
+                ),
+                "title": "Edit",
+                "data": {"form-id": form_id},
+            },
+        ]
+
+        if grants > 0:
+            actions.append({
+                "action": "delete-form",
+                "icon": (
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+                    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+                    '<path d="M3 6h18"/>'
+                    '<path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>'
+                    '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>'
+                    '</svg>'
+                ),
+                "title": "Cannot delete (has grants)",
+                "variant": "danger",
+                "data": {"form-id": form_id},
+            })
+        else:
+            actions.append({
+                "action": "delete-form",
+                "icon": (
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+                    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+                    '<path d="M3 6h18"/>'
+                    '<path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>'
+                    '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>'
+                    '</svg>'
+                ),
+                "title": "Delete",
+                "variant": "danger",
+                "data": {"form-id": form_id},
+            })
+
+        return actions
 
     # ------------------------------------------------------------
     # POST /settings/admin/users/list — JSON endpoint for the users table
@@ -804,4 +861,397 @@ def register_routes(
             },
             status_code=200,
         )
+
+    # ------------------------------------------------------------
+    # POST /settings/admin/forms/list
+    # ------------------------------------------------------------
+    @http_api.post("/settings/admin/forms/list",
+                   response_class=http_api.JSONResponse)
+    async def admin_forms_list(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "session_expired"},
+                status_code=401,
+            )
+
+        if not await _has_admin_access(user_id):
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            can_manage = await db_service.has_access(
+                user_id, "admin_panel.forms.manage"
+            )
+        except Exception:
+            can_manage = False
+        if not can_manage:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            rows = await db_service.admin_list_forms()
+        except Exception as exc:
+            if logger:
+                logger.log(
+                    f"admin_forms_list failed: {exc}",
+                    level="ERROR", tag="admin",
+                )
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "internal_error"},
+                status_code=500,
+            )
+
+        columns = [
+            {"key": "form_id",     "label": "Form ID",     "className": "mono"},
+            {"key": "form_name",   "label": "Name"},
+            {"key": "description", "label": "Description"},
+            {"key": "_grants",     "label": "Grants",      "type": "badge"},
+            {"key": "_status",     "label": "Status",      "type": "badge"},
+            {"key": "_actions",    "label": "Actions",     "type": "actions"},
+        ]
+
+        row_data = []
+        for row in rows:
+            grants = int(row.get("grants_count") or 0)
+            enabled = bool(row.get("enabled"))
+            row_data.append({
+                "form_id":     row.get("form_id") or "",
+                "form_name":   row.get("form_name") or "",
+                "description": row.get("description") or "",
+                "_grants": {
+                    "text": str(grants),
+                    "variant": "active" if grants > 0 else "idle",
+                },
+                "_status": {
+                    "text": "Enabled" if enabled else "Disabled",
+                    "variant": "active" if enabled else "pending",
+                },
+                "_actions": _build_form_actions(row),
+            })
+
+        return http_api.JSONResponse(
+            content={"columns": columns, "rows": row_data},
+            status_code=200,
+        )
+
+    # ------------------------------------------------------------
+    # POST /settings/admin/forms/create
+    # ------------------------------------------------------------
+    @http_api.post("/settings/admin/forms/create",
+                   response_class=http_api.JSONResponse)
+    async def admin_forms_create(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "session_expired"},
+                status_code=401,
+            )
+
+        if not await _has_admin_access(user_id):
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            can_manage = await db_service.has_access(
+                user_id, "admin_panel.forms.manage"
+            )
+        except Exception:
+            can_manage = False
+        if not can_manage:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        form_id      = str(body.get("form_id") or "").strip()
+        form_name    = str(body.get("form_name") or "").strip()
+        description  = str(body.get("description") or "")
+        enabled      = bool(body.get("enabled", True))
+        password     = str(body.get("password") or "")
+
+        if not form_name:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "invalid_data",
+                         "message": "Form name is required."},
+                status_code=200,
+            )
+
+        if not await _verify_admin_password(user_id, password):
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "invalid_password",
+                         "message": "The password you entered is incorrect."},
+                status_code=200,
+            )
+
+        if not admin_service:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "internal_error",
+                         "message": "Admin service not available."},
+                status_code=500,
+            )
+
+        try:
+            ok, final_id, code = await admin_service.create_form(
+                form_id=form_id,
+                form_name=form_name,
+                description=description,
+                enabled=enabled,
+                current_user_id=user_id,
+            )
+        except Exception as exc:
+            if logger:
+                logger.log(
+                    f"create_form failed: {exc}",
+                    level="ERROR", tag="admin",
+                )
+            ok, final_id, code = False, None, "internal_error"
+
+        if not ok:
+            messages = {
+                "invalid_data":     "Form name is required.",
+                "form_id_exists":   "A form with this ID already exists.",
+                "form_name_exists": "A form with this name already exists.",
+                "internal_error":   "Something went wrong. Please try again.",
+            }
+            return http_api.JSONResponse(
+                content={
+                    "status": "error",
+                    "code": code or "internal_error",
+                    "message": messages.get(code or "internal_error",
+                                            "Something went wrong."),
+                },
+                status_code=200,
+            )
+
+        return http_api.JSONResponse(
+            content={
+                "status": "success",
+                "message": f"Form '{final_id}' created.",
+                "form_id": final_id,
+            },
+            status_code=200,
+        )
+
+    # ------------------------------------------------------------
+    # POST /settings/admin/forms/update
+    # ------------------------------------------------------------
+    @http_api.post("/settings/admin/forms/update",
+                   response_class=http_api.JSONResponse)
+    async def admin_forms_update(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "session_expired"},
+                status_code=401,
+            )
+
+        if not await _has_admin_access(user_id):
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            can_manage = await db_service.has_access(
+                user_id, "admin_panel.forms.manage"
+            )
+        except Exception:
+            can_manage = False
+        if not can_manage:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        form_id      = str(body.get("form_id") or "").strip()
+        form_name    = str(body.get("form_name") or "").strip()
+        description  = str(body.get("description") or "")
+        enabled      = bool(body.get("enabled", True))
+        password     = str(body.get("password") or "")
+
+        if not form_id or not form_name:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "invalid_data",
+                         "message": "Form ID and name are required."},
+                status_code=200,
+            )
+
+        if not await _verify_admin_password(user_id, password):
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "invalid_password",
+                         "message": "The password you entered is incorrect."},
+                status_code=200,
+            )
+
+        if not admin_service:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "internal_error",
+                         "message": "Admin service not available."},
+                status_code=500,
+            )
+
+        try:
+            ok, code = await admin_service.update_form(
+                form_id=form_id,
+                form_name=form_name,
+                description=description,
+                enabled=enabled,
+                current_user_id=user_id,
+            )
+        except Exception as exc:
+            if logger:
+                logger.log(
+                    f"update_form failed: {exc}",
+                    level="ERROR", tag="admin",
+                )
+            ok, code = False, "internal_error"
+
+        if not ok:
+            messages = {
+                "invalid_data":     "Form ID and name are required.",
+                "form_not_found":   "Form not found.",
+                "form_name_exists": "Another form already uses this name.",
+                "internal_error":   "Something went wrong. Please try again.",
+            }
+            return http_api.JSONResponse(
+                content={
+                    "status": "error",
+                    "code": code or "internal_error",
+                    "message": messages.get(code or "internal_error",
+                                            "Something went wrong."),
+                },
+                status_code=200,
+            )
+
+        return http_api.JSONResponse(
+            content={
+                "status": "success",
+                "message": "Form updated.",
+                "form_id": form_id,
+            },
+            status_code=200,
+        )
+
+    # ------------------------------------------------------------
+    # POST /settings/admin/forms/delete
+    # ------------------------------------------------------------
+    @http_api.post("/settings/admin/forms/delete",
+                   response_class=http_api.JSONResponse)
+    async def admin_forms_delete(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "session_expired"},
+                status_code=401,
+            )
+
+        if not await _has_admin_access(user_id):
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            can_manage = await db_service.has_access(
+                user_id, "admin_panel.forms.manage"
+            )
+        except Exception:
+            can_manage = False
+        if not can_manage:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        form_id  = str(body.get("form_id") or "").strip()
+        password = str(body.get("password") or "")
+
+        if not form_id:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "invalid_data",
+                         "message": "Form ID is required."},
+                status_code=200,
+            )
+
+        if not await _verify_admin_password(user_id, password):
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "invalid_password",
+                         "message": "The password you entered is incorrect."},
+                status_code=200,
+            )
+
+        if not admin_service:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "internal_error",
+                         "message": "Admin service not available."},
+                status_code=500,
+            )
+
+        try:
+            ok, code, grants = await admin_service.delete_form(
+                form_id=form_id,
+                current_user_id=user_id,
+            )
+        except Exception as exc:
+            if logger:
+                logger.log(
+                    f"delete_form failed: {exc}",
+                    level="ERROR", tag="admin",
+                )
+            ok, code, grants = False, "internal_error", 0
+
+        if not ok:
+            messages = {
+                "invalid_data":     "Form ID is required.",
+                "form_not_found":   "Form not found.",
+                "internal_error":   "Something went wrong. Please try again.",
+            }
+            if code == "form_has_grants":
+                message = (
+                    f"This form has {grants} active grant(s). "
+                    "Remove all grants before deleting the form."
+                )
+            else:
+                message = messages.get(code or "internal_error",
+                                       "Something went wrong.")
+            return http_api.JSONResponse(
+                content={
+                    "status": "error",
+                    "code": code or "internal_error",
+                    "message": message,
+                    "grants": grants,
+                },
+                status_code=200,
+            )
+
+        return http_api.JSONResponse(
+            content={
+                "status": "success",
+                "message": f"Form '{form_id}' deleted.",
+            },
+            status_code=200,
+        )
+
 
