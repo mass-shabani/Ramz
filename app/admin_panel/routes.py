@@ -334,7 +334,7 @@ def register_routes(
         """Build the actions column for one user row."""
         if int(u.user_id) == int(current_user_id):
             return []
-        if (u.role_name or "").lower() == "super-admin":
+        if u.role_id == "super-admin":
             return []
 
         return [
@@ -452,8 +452,7 @@ def register_routes(
 
         row_data = []
         for u in rows:
-            role_lower    = (u.role_name or "").lower()
-            role_variant  = "active" if role_lower in ("admin", "manager") else "idle"
+            role_variant  = "active" if u.role_id in ("admin", "manager") else "idle"
             status_variant = "active" if u.enabled else "pending"
 
             row_data.append({
@@ -537,13 +536,13 @@ def register_routes(
             target_user_id = int(body.get("user_id") or 0)
         except (TypeError, ValueError):
             target_user_id = 0
-        new_role = str(body.get("new_role") or "").strip()
+        new_role_id = str(body.get("new_role_id") or "").strip()
         password = str(body.get("password") or "")
 
-        if not target_user_id or not new_role:
+        if not target_user_id or not new_role_id:
             return http_api.JSONResponse(
                 content={"status": "error", "code": "invalid_data",
-                         "message": "Missing user_id or new_role."},
+                         "message": "Missing user_id or new_role_id."},
                 status_code=200,
             )
 
@@ -563,7 +562,7 @@ def register_routes(
 
         try:
             ok, code = await admin_service.set_user_role(
-                target_user_id, new_role, user_id
+                target_user_id, new_role_id, user_id
             )
         except Exception as exc:
             if logger:
@@ -595,7 +594,7 @@ def register_routes(
         return http_api.JSONResponse(
             content={
                 "status": "success",
-                "message": f"Role changed to '{new_role}'.",
+                "message": f"Role changed to '{new_role_id}'.",
                 "user_id": target_user_id,
             },
             status_code=200,

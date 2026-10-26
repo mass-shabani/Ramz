@@ -81,8 +81,8 @@ class User:
 
     @property
     def is_admin(self) -> bool:
-        """True if the user's role is 'admin'."""
-        return (self.role_name or "").lower() == "admin"
+        """True if the user's role_id is 'admin'."""
+        return self.role_id == "admin"
 
     # ----------------------------------------------------------
     # Factory

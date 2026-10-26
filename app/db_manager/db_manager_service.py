@@ -546,9 +546,9 @@ class DbManagerService:
         )
 
     async def _get_guest_role_id(self):
-        """Return the role_id (TEXT) for the 'guest' role, or None."""
+        """Return the 'guest' role_id, or None."""
         try:
-            role = await self._role_repo.get_by_name("guest")
+            role = await self._role_repo.get_by_id("guest")
             if role:
                 return role.get("role_id")
         except Exception as exc:
@@ -615,24 +615,24 @@ class DbManagerService:
         """Return the total count matching the admin search term."""
         return await self._user_repo.admin_count_users(query=query)
 
-    async def admin_set_user_role(self, user_id, new_role_name):
+    async def admin_set_user_role(self, user_id, new_role_id):
         """
-        Change a user's role by name (e.g. "admin", "manager").
+        Change a user's role by role_id (e.g. "admin", "manager").
 
         Returns
         -------
         tuple (ok: bool, code: Optional[str])
             code is one of: "role_not_found", "internal_error", or None.
         """
-        if not user_id or not new_role_name:
+        if not user_id or not new_role_id:
             return False, "internal_error"
 
-        role = await self._role_repo.get_by_name(new_role_name)
+        role = await self._role_repo.get_by_id(new_role_id)
         if not role:
             return False, "role_not_found"
 
         ok = await self._user_repo.update_role(
-            user_id, role["role_id"]
+            user_id, new_role_id
         )
         if not ok:
             return False, "internal_error"

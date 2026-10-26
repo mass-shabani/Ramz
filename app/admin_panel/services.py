@@ -26,10 +26,10 @@ class AdminPanelService:
     # Users
     # ============================================================
     async def set_user_role(
-        self, target_user_id, new_role_name, current_user_id
+        self, target_user_id, new_role_id, current_user_id
     ):
         """
-        Change a user's role.
+        Change a user's role (by role_id).
 
         Returns
         -------
@@ -42,14 +42,14 @@ class AdminPanelService:
         if not target:
             return False, "user_not_found"
 
-        if (target.role_name or "").lower() == "super-admin":
+        if target.role_id == "super-admin":
             return False, "cannot_modify_super_admin"
 
-        if (new_role_name or "").lower() == "super-admin":
+        if new_role_id == "super-admin":
             return False, "cannot_promote_to_super_admin"
 
         ok, code = await self.db.admin_set_user_role(
-            target_user_id, new_role_name
+            target_user_id, new_role_id
         )
         return ok, code
 
@@ -64,7 +64,7 @@ class AdminPanelService:
         if not target:
             return False, "user_not_found"
 
-        if (target.role_name or "").lower() == "super-admin":
+        if target.role_id == "super-admin":
             return False, "cannot_modify_super_admin"
 
         ok = await self.db.admin_toggle_user(target_user_id, enabled)
@@ -79,7 +79,7 @@ class AdminPanelService:
         if not target:
             return False, None, "user_not_found"
 
-        if (target.role_name or "").lower() == "super-admin":
+        if target.role_id == "super-admin":
             return False, None, "cannot_modify_super_admin"
 
         ok, temp_password = await self.db.admin_reset_password(

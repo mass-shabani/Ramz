@@ -84,7 +84,7 @@ class Profile:
 
     @property
     def is_admin(self) -> bool:
-        return (self.role_name or "").lower() == "admin"
+        return self.role_id == "admin"
 
     @property
     def has_address(self) -> bool:

@@ -95,11 +95,13 @@ class SignupWorkflow:
             if existing_email:
                 raise SignupError("email_exists")
 
-        # -------- 2. Resolve role --------
-        role_name = data.role_name or self.DEFAULT_ROLE
-        role = await self._db._role_repo.get_by_name(role_name)
+        # -------- 2. Resolve role (by role_id, not name) --------
+        # SignupData.role_name field is kept for API compatibility but
+        # interpreted as a role_id. Defaults to "user".
+        role_id = data.role_name or self.DEFAULT_ROLE
+        role = await self._db._role_repo.get_by_id(role_id)
         if not role:
-            raise SignupError("role_not_found", f"role '{role_name}' not found")
+            raise SignupError("role_not_found", f"role '{role_id}' not found")
         role_id = role["role_id"]
 
         # -------- 3. Hash password (outside transaction) --------
