@@ -1467,15 +1467,21 @@ def register_routes(
         except Exception:
             body = {}
 
-        role_id      = str(body.get("role_id") or "").strip()
-        form_id      = str(body.get("form_id") or "").strip()
-        condition_id = str(body.get("condition_id") or "").strip()
-        password     = str(body.get("password") or "")
+        role_id  = str(body.get("role_id") or "").strip()
+        form_id  = str(body.get("form_id") or "").strip()
+        password = str(body.get("password") or "")
 
-        if not role_id or not form_id or not condition_id:
+        try:
+            level = int(body.get("level", 1))
+        except (TypeError, ValueError):
+            level = 1
+        if level < 0:
+            level = 0
+
+        if not role_id or not form_id:
             return http_api.JSONResponse(
                 content={"status": "error", "code": "invalid_data",
-                         "message": "Role, form, and condition are required."},
+                         "message": "Role and form are required."},
                 status_code=200,
             )
 
@@ -1497,7 +1503,7 @@ def register_routes(
             ok, code = await admin_service.create_grant(
                 role_id=role_id,
                 form_id=form_id,
-                condition_id=condition_id,
+                level=level,
                 current_user_id=user_id,
             )
         except Exception as exc:
@@ -1510,11 +1516,10 @@ def register_routes(
 
         if not ok:
             messages = {
-                "invalid_data":              "Role, form, and condition are required.",
-                "exists":                    "This grant already exists. Use 'Edit' to change its condition.",
+                "invalid_data":              "Role, form, and a valid level are required.",
+                "exists":                    "This grant already exists. Use 'Edit' to change its level.",
                 "role_not_found":            "Role not found.",
                 "form_not_found":            "Form not found.",
-                "condition_not_found":       "Condition not found.",
                 "cannot_modify_super_admin": "Super-admin grants are managed elsewhere.",
                 "internal_error":            "Something went wrong. Please try again.",
             }
@@ -1572,12 +1577,18 @@ def register_routes(
         except Exception:
             body = {}
 
-        role_id      = str(body.get("role_id") or "").strip()
-        form_id      = str(body.get("form_id") or "").strip()
-        condition_id = str(body.get("condition_id") or "").strip()
-        password     = str(body.get("password") or "")
+        role_id  = str(body.get("role_id") or "").strip()
+        form_id  = str(body.get("form_id") or "").strip()
+        password = str(body.get("password") or "")
 
-        if not role_id or not form_id or not condition_id:
+        try:
+            level = int(body.get("level", 1))
+        except (TypeError, ValueError):
+            level = 1
+        if level < 0:
+            level = 0
+
+        if not role_id or not form_id:
             return http_api.JSONResponse(
                 content={"status": "error", "code": "invalid_data",
                          "message": "Role, form, and condition are required."},
@@ -1599,10 +1610,10 @@ def register_routes(
             )
 
         try:
-            ok, code = await admin_service.update_grant_condition(
+            ok, code = await admin_service.update_grant_level(
                 role_id=role_id,
                 form_id=form_id,
-                new_condition_id=condition_id,
+                new_level=level,
                 current_user_id=user_id,
             )
         except Exception as exc:
@@ -1615,9 +1626,8 @@ def register_routes(
 
         if not ok:
             messages = {
-                "invalid_data":              "Role, form, and condition are required.",
+                "invalid_data":              "Role, form, and a valid level are required.",
                 "grant_not_found":           "Grant not found.",
-                "condition_not_found":       "Condition not found.",
                 "cannot_modify_super_admin": "Super-admin grants are managed elsewhere.",
                 "internal_error":            "Something went wrong. Please try again.",
             }
