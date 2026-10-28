@@ -831,7 +831,6 @@
   const accessState = {
     roles: [],
     forms: [],
-    conditions: [],
     roleFilter: '',
     formFilter: '',
     query: '',
@@ -870,7 +869,7 @@
     const editorForm      = document.getElementById('accessEditor');
     const editorRole      = document.getElementById('accessEditorRole');
     const editorFormSel   = document.getElementById('accessEditorForm');
-    const editorCondition = document.getElementById('accessEditorCondition');
+    const editorLevel     = document.getElementById('accessEditorLevel');
     const editorSubmit    = document.getElementById('accessEditorSubmit');
     const editorCancel    = document.getElementById('accessEditorCancel');
     const createBtn       = document.getElementById('accessCreateBtn');
@@ -881,7 +880,7 @@
       searchBtn.disabled = !(hasText || hasFilter);
     }
 
-    function fillDropdowns(roles, forms, conditions) {
+    function fillDropdowns(roles, forms) {
       // Role filter
       const curRole = roleFilter.value;
       roleFilter.innerHTML = '<option value="">All roles</option>';
@@ -921,15 +920,6 @@
         opt.textContent = f.form_name + ' (' + f.form_id + ')';
         editorFormSel.appendChild(opt);
       });
-
-      // Editor condition
-      editorCondition.innerHTML = '';
-      conditions.forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c.condition_id;
-        opt.textContent = c.condition_name;
-        editorCondition.appendChild(opt);
-      });
     }
 
     function renderRoleSummary(roleId, rows) {
@@ -941,13 +931,14 @@
       summaryTitle.textContent = 'View by role — ' + roleLabel;
 
       summaryRows.innerHTML = rows.map(r => {
-        const conditionText = r.condition_name || '—';
+        const level = Number(r.level || 1);
+        const levelText = String(level);
         let badgeClass = 'idle';
-        if (r.condition_id === 'Full' || r.condition_id === 'High') {
+        if (level >= 2) {
           badgeClass = 'active';
-        } else if (r.condition_id === 'Medium' || r.condition_id === 'Low') {
+        } else if (level === 1) {
           badgeClass = 'pending';
-        } else if (!r.condition_id) {
+        } else if (level === 0) {
           badgeClass = '';
         } else {
           badgeClass = 'idle';
@@ -956,15 +947,13 @@
         const formCell = escapeHtml(r.form_name) +
           (r.form_enabled ? '' : ' <span style="color:var(--muted);font-size:11px;">(disabled)</span>');
 
-        const condCell = r.condition_name
-          ? '<span class="status ' + badgeClass + '">' + escapeHtml(conditionText) + '</span>'
-          : '<span style="color:var(--muted);">—</span>';
+        const levelCell = '<span class="status ' + badgeClass + '">' + escapeHtml(levelText) + '</span>';
 
         return '<tr>' +
           '<td style="padding: 8px 12px; font-size: 12.5px; ' +
             'border-bottom: 1px solid var(--border-soft);">' + formCell + '</td>' +
           '<td style="padding: 8px 12px; font-size: 12.5px; ' +
-            'border-bottom: 1px solid var(--border-soft);">' + condCell + '</td>' +
+            'border-bottom: 1px solid var(--border-soft);">' + levelCell + '</td>' +
           '</tr>';
       }).join('');
 
@@ -991,11 +980,10 @@
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         const data = await resp.json();
 
-        accessState.roles      = data.roles || [];
-        accessState.forms      = data.forms || [];
-        accessState.conditions = data.conditions || [];
+        accessState.roles = data.roles || [];
+        accessState.forms = data.forms || [];
 
-        fillDropdowns(accessState.roles, accessState.forms, accessState.conditions);
+        fillDropdowns(accessState.roles, accessState.forms);
 
         table.setColumns(data.columns || COLUMNS);
         table.setData(data.rows || []);
@@ -1038,21 +1026,24 @@
       accessState.editorFormId = '';
       editorRole.disabled = false;
       editorFormSel.disabled = false;
+      if (editorLevel) editorLevel.value = '1';
+      editorRole.value = '';
+      editorFormSel.value = '';
       editorSummary.textContent = 'Add Grant';
       editorSubmit.textContent = 'Add Grant';
     }
 
-    function fillEditorForEdit(roleId, formId, conditionId) {
+    function fillEditorForEdit(roleId, formId, level) {
       accessState.editorMode = 'update';
       accessState.editorRoleId = roleId;
       accessState.editorFormId = formId;
       editorRole.value = roleId;
       editorFormSel.value = formId;
-      editorCondition.value = conditionId;
+      if (editorLevel) editorLevel.value = String(level ?? 1);
       editorRole.disabled = true;
       editorFormSel.disabled = true;
       editorSummary.textContent = 'Edit Grant: ' + roleId + ' × ' + formId;
-      editorSubmit.textContent = 'Update Condition';
+      editorSubmit.textContent = 'Update Level';
     }
 
     if (createBtn) {
@@ -1075,9 +1066,9 @@
         e.preventDefault();
         const roleId = (editorRole.value || '').trim();
         const formId = (editorFormSel.value || '').trim();
-        const condId = (editorCondition.value || '').trim();
-        if (!roleId || !formId || !condId) {
-          showAdminToast('error', 'Role, form, and condition are required.');
+        const level = Number((editorLevel && editorLevel.value) || '1');
+        if (!roleId || !formId) {
+          showAdminToast('error', 'Role and form are required.');
           return;
         }
 
@@ -1108,10 +1099,10 @@
           : '/settings/admin/access/update';
 
         const { data } = await apiPost(url, {
-          role_id:      roleId,
-          form_id:      formId,
-          condition_id: condId,
-          password:     password,
+          role_id: roleId,
+          form_id: formId,
+          level:   isNaN(level) ? 1 : level,
+          password,
         });
 
         if (data.status === 'success') {
@@ -1186,7 +1177,7 @@
         fillEditorForEdit(
           roleId,
           formId,
-          raw.condition_id || ''
+          raw.level ?? 1
         );
         editorBlock.open = true;
         editorBlock.scrollIntoView({ behavior: 'smooth', block: 'start' });
