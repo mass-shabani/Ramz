@@ -227,18 +227,24 @@ class AdminPanelService:
     # Access Grants
     # ============================================================
     async def create_grant(
-        self, role_id, form_id, condition_id, current_user_id
+        self, role_id, form_id, level, current_user_id
     ):
         """
-        Create a new grant.
+        Create a new grant with numeric level (0 = closed, ≥1 = open).
 
         Returns (ok: bool, code: Optional[str]).
         """
         rid = (role_id or "").strip()
         fid = (form_id or "").strip()
-        cid = (condition_id or "").strip()
 
-        if not rid or not fid or not cid:
+        if not rid or not fid:
+            return False, "invalid_data"
+
+        try:
+            lvl = int(level)
+        except (TypeError, ValueError):
+            return False, "invalid_data"
+        if lvl < 0:
             return False, "invalid_data"
 
         if rid == "super-admin":
@@ -252,26 +258,28 @@ class AdminPanelService:
         if not form:
             return False, "form_not_found"
 
-        condition = await self.db._condition_repo.get_by_id(cid)
-        if not condition:
-            return False, "condition_not_found"
-
-        ok, code = await self.db.admin_create_grant(rid, fid, cid)
+        ok, code = await self.db.admin_create_grant(rid, fid, lvl)
         return ok, code
 
-    async def update_grant_condition(
-        self, role_id, form_id, new_condition_id, current_user_id
+    async def update_grant_level(
+        self, role_id, form_id, new_level, current_user_id
     ):
         """
-        Update the condition of an existing grant.
+        Update the level of an existing grant.
 
         Returns (ok: bool, code: Optional[str]).
         """
         rid = (role_id or "").strip()
         fid = (form_id or "").strip()
-        cid = (new_condition_id or "").strip()
 
-        if not rid or not fid or not cid:
+        if not rid or not fid:
+            return False, "invalid_data"
+
+        try:
+            lvl = int(new_level)
+        except (TypeError, ValueError):
+            return False, "invalid_data"
+        if lvl < 0:
             return False, "invalid_data"
 
         if rid == "super-admin":
@@ -281,11 +289,7 @@ class AdminPanelService:
         if not existing:
             return False, "grant_not_found"
 
-        condition = await self.db._condition_repo.get_by_id(cid)
-        if not condition:
-            return False, "condition_not_found"
-
-        ok = await self.db.admin_update_grant_condition(rid, fid, cid)
+        ok = await self.db.admin_update_grant_level(rid, fid, lvl)
         return (True, None) if ok else (False, "internal_error")
 
     async def delete_grant(self, role_id, form_id, current_user_id):

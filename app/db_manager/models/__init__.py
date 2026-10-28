@@ -6,7 +6,7 @@ the application without exposing raw dicts.
 """
 from .user import User
 from .profile import Profile
-from .access import Role, Form, Condition, FormAccess
+from .access import Role, Form, FormAccess
 from .activity import Activity
 from .signup import SignupData
 from .session_user import build_session_user
@@ -16,7 +16,6 @@ __all__ = [
     "Profile",
     "Role",
     "Form",
-    "Condition",
     "FormAccess",
     "Activity",
     "SignupData",

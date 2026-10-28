@@ -43,7 +43,6 @@ class DbManagerService:
         from .repositories.people_repository import PeopleRepository
         from .repositories.role_repository import RoleRepository
         from .repositories.form_repository import FormRepository
-        from .repositories.condition_repository import ConditionRepository
         from .repositories.form_access_repository import FormAccessRepository
         from .repositories.activity_repository import ActivityRepository
         from .repositories.contact_repository import ContactRepository
@@ -62,7 +61,6 @@ class DbManagerService:
         self._people_repo = PeopleRepository(self, logger)
         self._role_repo = RoleRepository(self, logger)
         self._form_repo = FormRepository(self, logger)
-        self._condition_repo = ConditionRepository(self, logger)
         self._form_access_repo = FormAccessRepository(self, logger)
         self._activity_repo = ActivityRepository(self, logger)
         self._contact_repo = ContactRepository(self, logger)
@@ -500,50 +498,57 @@ class DbManagerService:
     # ============================================================
     # Access Control
     # ============================================================
-    async def has_access(self, user_id, form_id, required_condition=None):
+    async def has_access(self, user_id, form_id, min_level=1,
+                         required_condition=None):
         """
-        Return True if the user has access to the given form.
+        Return True if user's level for the form is >= min_level.
 
-        If required_condition is None, any condition counts as access.
-        Otherwise the user's condition must match exactly.
+        `required_condition` is deprecated and ignored (kept for
+        backward compatibility with older call sites).
         """
         return await self._access.has_access(
-            user_id, form_id, required_condition=required_condition
+            user_id, form_id, min_level=min_level
         )
 
     async def has_public_access(
-        self, form_id, required_condition=None
+        self, form_id, min_level=1, required_condition=None
     ):
         """
         Check if a public (unauthenticated) visitor has access to a
-        given form.
+        given form (treated as the 'guest' role).
 
-        Public visitors are treated as members of the 'guest' role.
-        If the guest role does not exist or the form is not assigned
-        to it, this returns False.
-
-        This is the correct way to make a page conditionally
-        available to anonymous users (e.g. /signup can be disabled
-        by the admin by revoking guest access to auth.signup.view).
+        `required_condition` is deprecated and ignored.
         """
         guest_role_id = await self._get_guest_role_id()
         if guest_role_id is None:
             return False
         return await self._access.has_role_access(
-            guest_role_id, form_id, required_condition
+            guest_role_id, form_id, min_level=min_level
         )
 
-    async def get_public_condition(self, form_id):
+    async def get_public_level(self, form_id):
         """
-        Return the condition name the guest role has for the form,
-        or None if no access is granted.
+        Return the guest role's level for the form, or None if no grant.
         """
         guest_role_id = await self._get_guest_role_id()
         if guest_role_id is None:
             return None
-        return await self._access.get_form_condition_by_role(
-            guest_role_id, form_id
-        )
+        row = await self._form_access_repo.get(guest_role_id, form_id)
+        if not row:
+            return None
+        return int(row.get("level", 0))
+
+    async def get_public_condition(self, form_id):
+        """
+        DEPRECATED: use get_public_level().
+
+        Returns "Open" if level >= 1, "Closed" if level 0, or None if
+        no grant exists.
+        """
+        level = await self.get_public_level(form_id)
+        if level is None:
+            return None
+        return "Open" if level >= 1 else "Closed"
 
     async def _get_guest_role_id(self):
         """Return the 'guest' role_id, or None."""
@@ -736,20 +741,17 @@ class DbManagerService:
         """Return a single grant row (with join info), or None."""
         return await self._form_access_repo.get_full_access_one(role_id, form_id)
 
-    async def admin_create_grant(self, role_id, form_id, condition_id):
+    async def admin_create_grant(self, role_id, form_id, level=1):
         """
-        Insert a new grant.
+        Insert a new grant with the given numeric level.
 
-        Returns
-        -------
-        tuple (ok: bool, code: Optional[str])
-            code is one of: "exists", "internal_error", or None.
+        Returns (ok: bool, code: Optional[str]).
         """
         existing = await self._form_access_repo.get(role_id, form_id)
         if existing:
             return False, "exists"
 
-        ok = await self._form_access_repo.create(role_id, form_id, condition_id)
+        ok = await self._form_access_repo.create(role_id, form_id, int(level))
         if not ok:
             return False, "internal_error"
 
@@ -757,10 +759,10 @@ class DbManagerService:
         self.invalidate_form_cache(form_id)
         return True, None
 
-    async def admin_update_grant_condition(self, role_id, form_id, new_condition_id):
-        """Update the condition of an existing grant. Returns True on success."""
-        ok = await self._form_access_repo.update_condition(
-            role_id, form_id, new_condition_id
+    async def admin_update_grant_level(self, role_id, form_id, new_level):
+        """Update the level of an existing grant. Returns True on success."""
+        ok = await self._form_access_repo.update_level(
+            role_id, form_id, int(new_level)
         )
         if ok:
             self.invalidate_role_cache(role_id)
@@ -779,13 +781,6 @@ class DbManagerService:
         """Return all enabled roles (id + name), sorted by role_id."""
         try:
             return await self._role_repo.list_enabled()
-        except Exception:
-            return []
-
-    async def admin_list_conditions(self):
-        """Return all enabled conditions, sorted by condition_id."""
-        try:
-            return await self._condition_repo.list_enabled()
         except Exception:
             return []
 

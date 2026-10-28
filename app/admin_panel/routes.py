@@ -1295,12 +1295,11 @@ def register_routes(
     def _grant_row_payload(row):
         """Convert a repo row into the JSON shape used by the UI."""
         return {
-            "role_id":       row.get("role_id") or "",
-            "role_name":     row.get("role_name") or row.get("role_id") or "",
-            "form_id":       row.get("form_id") or "",
-            "form_name":     row.get("form_name") or row.get("form_id") or "",
-            "condition_id":  row.get("condition_id") or "",
-            "condition_name": row.get("condition_name") or row.get("condition_id") or "",
+            "role_id":   row.get("role_id") or "",
+            "role_name": row.get("role_name") or row.get("role_id") or "",
+            "form_id":   row.get("form_id") or "",
+            "form_name": row.get("form_name") or row.get("form_id") or "",
+            "level":     int(row.get("level") or 0),
         }
 
     # ------------------------------------------------------------
@@ -1350,7 +1349,6 @@ def register_routes(
                 query=query,
             )
             roles        = await db_service.admin_list_roles()
-            conditions   = await db_service.admin_list_conditions()
             forms        = await db_service.admin_list_forms()
         except Exception as exc:
             if logger:
@@ -1371,51 +1369,43 @@ def register_routes(
             for r in roles
             if r.get("role_id") != "super-admin"
         ]
-        condition_options = [
-            {"condition_id": c.get("condition_id"),
-             "condition_name": c.get("condition_name")}
-            for c in conditions
-        ]
         form_options = [
             {"form_id": f.get("form_id"), "form_name": f.get("form_name")}
             for f in forms
         ]
 
         columns = [
-            {"key": "_role",      "label": "Role",      "type": "badge"},
-            {"key": "_form",      "label": "Form"},
-            {"key": "_condition", "label": "Condition", "type": "badge"},
-            {"key": "_actions",   "label": "Actions",   "type": "actions"},
+            {"key": "_role",  "label": "Role",    "type": "badge"},
+            {"key": "_form",  "label": "Form"},
+            {"key": "_level", "label": "Level",   "type": "badge"},
+            {"key": "_actions", "label": "Actions", "type": "actions"},
         ]
 
         row_data = []
         for row in grants:
             payload = _grant_row_payload(row)
+            lvl = payload["level"]
             row_data.append({
                 "_role": {
                     "text":    payload["role_name"],
                     "variant": "active" if payload["role_id"] in ("admin", "manager") else "idle",
                 },
                 "_form": f"{payload['form_name']}",
-                "_condition": {
-                    "text":    payload["condition_name"],
-                    "variant": (
-                        "active"  if payload["condition_id"] in ("Full", "High") else
-                        "pending" if payload["condition_id"] in ("Medium", "Low") else
-                        "idle"
-                    ),
+                "_level": {
+                    "text":    "Closed" if lvl == 0 else f"Level {lvl}",
+                    "variant": "idle" if lvl == 0 else
+                               "active" if lvl <= 2 else
+                               "pending",
                 },
                 "_actions": _build_grant_actions(payload),
-                # Extra fields used by the JS editor
                 "_raw": payload,
             })
 
         response_payload = {
-            "columns":     columns,
-            "rows":        row_data,
-            "roles":       role_options,
-            "conditions":  condition_options,
-            "forms":       form_options,
+            "columns": columns,
+            "rows":    row_data,
+            "roles":   role_options,
+            "forms":   form_options,
         }
 
         # If a role filter is active, also return the role summary
@@ -1427,11 +1417,10 @@ def register_routes(
                 summary_rows = []
             response_payload["role_summary"] = [
                 {
-                    "form_id":        (r.get("form_id") or ""),
-                    "form_name":      (r.get("form_name") or ""),
-                    "form_enabled":   bool(r.get("form_enabled")),
-                    "condition_id":   r.get("condition_id"),
-                    "condition_name": r.get("condition_name"),
+                    "form_id":      (r.get("form_id") or ""),
+                    "form_name":    (r.get("form_name") or ""),
+                    "form_enabled": bool(r.get("form_enabled")),
+                    "level":        (None if r.get("level") is None else int(r.get("level"))),
                 }
                 for r in summary_rows
             ]

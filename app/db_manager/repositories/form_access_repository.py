@@ -2,11 +2,13 @@
 Form access repository.
 
 Handles the `form_access` table — the many-to-many join between `role`
-and `form` that also carries the `condition_id` describing *how* the
-access is granted.
+and `form` that carries a numeric `level`.
 
-This table has a composite primary key (role_id, form_id) and is
-typically queried by one of the two keys.
+`level` semantics:
+    0 = Closed (no access)
+    ≥1 = Open; higher values indicate privileged levels
+
+This table has a composite primary key (role_id, form_id).
 """
 from typing import Optional
 
@@ -61,12 +63,7 @@ class FormAccessRepository:
     ) -> list[dict]:
         """
         Return all grants, enriched with role_name, form_name,
-        condition_name, form_enabled, and role_enabled.
-
-        Filters (all optional, AND-combined):
-            • role_filter — exact match on role_id
-            • form_filter — exact match on form_id
-            • query       — LIKE match on role_id, form_id, form_name
+        role_enabled, and form_enabled.
         """
         where_parts = []
         params = []
@@ -92,16 +89,14 @@ class FormAccessRepository:
             SELECT
                 fa.role_id,
                 fa.form_id,
-                fa.condition_id,
+                fa.level,
                 r.role_name,
                 r.enabled   AS role_enabled,
                 f.form_name,
-                f.enabled   AS form_enabled,
-                c.condition_name
+                f.enabled   AS form_enabled
             FROM form_access fa
-            LEFT JOIN role         r ON r.role_id      = fa.role_id
-            LEFT JOIN form         f ON f.form_id      = fa.form_id
-            LEFT JOIN condition_of c ON c.condition_id = fa.condition_id
+            LEFT JOIN role r ON r.role_id = fa.role_id
+            LEFT JOIN form f ON f.form_id = fa.form_id
             {where_sql}
             ORDER BY fa.role_id ASC, fa.form_id ASC
         """
@@ -109,12 +104,12 @@ class FormAccessRepository:
 
     async def list_role_form_summary(self, role_id: str) -> list[dict]:
         """
-        Return all forms, each annotated with the condition (if any)
-        the given role has for it. Used by the "View by role" panel.
+        Return all forms, each annotated with the level (if any) the
+        given role has for it. Used by the "View by role" panel.
 
         Each item:
-            {form_id, form_name, form_enabled,
-             condition_id, condition_name}   (condition_* is None if no grant)
+            {form_id, form_name, form_enabled, level}
+            level is None if no grant exists for this role/form.
         """
         if not role_id:
             return []
@@ -123,13 +118,10 @@ class FormAccessRepository:
                 f.form_id,
                 f.form_name,
                 f.enabled AS form_enabled,
-                fa.condition_id,
-                c.condition_name
+                fa.level
             FROM form f
             LEFT JOIN form_access fa
                    ON fa.form_id = f.form_id AND fa.role_id = ?
-            LEFT JOIN condition_of c
-                   ON c.condition_id = fa.condition_id
             ORDER BY f.form_id ASC
         """
         return await self._conn().fetch_all(sql, (role_id,)) or []
@@ -141,12 +133,10 @@ class FormAccessRepository:
             SELECT
                 fa.role_id,
                 fa.form_id,
-                f.form_name,
-                fa.condition_id,
-                c.condition_name
+                fa.level,
+                f.form_name
             FROM form_access fa
-            JOIN form         f ON f.form_id      = fa.form_id
-            JOIN condition_of c ON c.condition_id = fa.condition_id
+            JOIN form f ON f.form_id = fa.form_id
             WHERE fa.role_id = ?
         """
         return await self._conn().fetch_all(sql, (role_id,))
@@ -160,12 +150,10 @@ class FormAccessRepository:
             SELECT
                 fa.role_id,
                 fa.form_id,
-                f.form_name,
-                fa.condition_id,
-                c.condition_name
+                fa.level,
+                f.form_name
             FROM form_access fa
-            JOIN form         f ON f.form_id      = fa.form_id
-            JOIN condition_of c ON c.condition_id = fa.condition_id
+            JOIN form f ON f.form_id = fa.form_id
             WHERE fa.role_id = ? AND fa.form_id = ?
             LIMIT 1
         """
@@ -178,28 +166,28 @@ class FormAccessRepository:
         self,
         role_id,
         form_id: str,
-        condition_id,
+        level: int = 1,
     ) -> bool:
-        if not role_id or not form_id or not condition_id:
+        if not role_id or not form_id:
             return False
         result = await db_insert(self._conn(), self.TABLE, {
-            "role_id":      role_id,
-            "form_id":      form_id,
-            "condition_id": condition_id,
+            "role_id": role_id,
+            "form_id": form_id,
+            "level":   int(level),
         })
         return result_ok(result)
 
-    async def update_condition(
-        self, role_id, form_id: str, new_condition_id: str
+    async def update_level(
+        self, role_id, form_id: str, new_level: int
     ) -> bool:
-        """Update the condition of an existing grant."""
-        if not role_id or not form_id or not new_condition_id:
+        """Update the level of an existing grant."""
+        if not role_id or not form_id:
             return False
         result = await db_update(
             self._conn(),
             self.TABLE,
             where={"role_id": role_id, "form_id": form_id},
-            values={"condition_id": new_condition_id},
+            values={"level": int(new_level)},
         )
         return result_ok(result)
 

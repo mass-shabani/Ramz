@@ -1,9 +1,12 @@
 """
 Access control checker.
 
-Combines the `role`, `form`, `condition_of`, and `form_access` tables
-to answer whether a user has access to a given form. Uses an in-memory
-cache with TTL to avoid hitting the database on every request.
+Uses the `form_access` table (role × form → level) to answer whether
+a user has access to a given form. Caches results with a TTL.
+
+`level` semantics:
+    0     = Closed (no access)
+    ≥1    = Open; higher values indicate privileged levels
 """
 import time
 from typing import Optional
@@ -12,20 +15,10 @@ from ..models.access import Role, FormAccess
 
 
 class AccessChecker:
-    """
-    Role-based access checker with TTL cache.
-
-    Parameters
-    ----------
-    db_service : DbManagerService
-        The facade that exposes the access repositories.
-    logger : optional
-        Shared logger.
-    """
 
     # --- Cache TTLs (seconds) ---
     USER_ENABLED_TTL = 15.0
-    USER_ROLE_TTL    = 60.0     # shorter — role changes must reflect quickly
+    USER_ROLE_TTL    = 60.0
     ROLE_FORM_TTL    = 60.0
 
     def __init__(self, db_service, logger=None, debug=False):
@@ -33,16 +26,15 @@ class AccessChecker:
         self._logger = logger
         self._debug = bool(debug)
 
-        # Cache: user_id (int) -> (timestamp, role_id_str_or_None)
+        # (timestamp, role_id or None)
         self._user_role_cache: dict[int, tuple[float, Optional[str]]] = {}
-
-        # Cache: (role_id_str, form_id) -> (timestamp, condition_name_or_None)
-        self._role_form_cache: dict[tuple[str, str], tuple[float, Optional[str]]] = {}
-
+        # (role_id, form_id) → (timestamp, level: int)  ; missing = no grant
+        self._role_form_cache: dict[tuple[str, str], tuple[float, int]] = {}
+        # (timestamp, enabled)
         self._user_enabled_cache: dict[int, tuple[float, bool]] = {}
 
     # ============================================================
-    # Internal helpers
+    # Internal
     # ============================================================
     def _now(self) -> float:
         return time.monotonic()
@@ -58,19 +50,11 @@ class AccessChecker:
     # User state
     # ============================================================
     async def is_user_enabled(self, user_id: int) -> bool:
-        """
-        Return True if the user is currently enabled.
-
-        Cached with a short TTL so that disabled users are ejected from
-        the application within USER_ENABLED_TTL seconds.
-        """
         if not user_id:
             return False
-
         cached = self._user_enabled_cache.get(user_id)
         if cached and (self._now() - cached[0]) < self.USER_ENABLED_TTL:
             return cached[1]
-
         enabled = await self._db._user_repo.is_enabled(user_id)
         self._user_enabled_cache[user_id] = (self._now(), enabled)
         return enabled
@@ -78,11 +62,9 @@ class AccessChecker:
     async def get_user_role_id(self, user_id: int) -> Optional[str]:
         if not user_id:
             return None
-
         cached = self._user_role_cache.get(user_id)
         if cached and (self._now() - cached[0]) < self.USER_ROLE_TTL:
             return cached[1]
-
         user = await self._db._user_repo.get_by_id(user_id)
         role_id = user.role_id if user else None
         self._user_role_cache[user_id] = (self._now(), role_id)
@@ -91,178 +73,128 @@ class AccessChecker:
     # ============================================================
     # Access resolution
     # ============================================================
-    async def get_form_condition(
-        self, user_id: int, form_id: str
-    ) -> Optional[str]:
+    async def get_form_level_by_role(
+        self, role_id: str, form_id: str
+    ) -> int:
         """
-        Return the condition name the user has for the given form, or
-        None if the user has no access to it.
-
-        The caller decides what the condition name means (e.g. "low",
-        "high", or a numeric level).
+        Return the level the given role has for the given form.
+        0 if no grant exists.
         """
-        if not user_id or not form_id:
-            return None
-
-        # Must be enabled
-        if not await self.is_user_enabled(user_id):
-            return None
-
-        role_id = await self.get_user_role_id(user_id)
-        if role_id is None:
-            if self._debug:
-                self._log(
-                f"Access denied: user_id={user_id} form='{form_id}' "
-                f"reason=user_has_no_role"
-            )
-            return None
-
+        if not role_id or not form_id:
+            return 0
         key = (role_id, form_id)
         cached = self._role_form_cache.get(key)
         if cached and (self._now() - cached[0]) < self.ROLE_FORM_TTL:
             return cached[1]
+        row = await self._db._form_access_repo.get(role_id, form_id)
+        level = int(row.get("level", 0)) if row else 0
+        self._role_form_cache[key] = (self._now(), level)
+        return level
 
-        row = await self._db._form_access_repo.get_full_access_one(
-            role_id=role_id, form_id=form_id
-        )
-        if not row and self._debug:
-            self._log(
-                f"Access denied: user_id={user_id} form='{form_id}' "
-                f"role_id='{role_id}' reason=no_matching_row"
-            )
-        condition_name = row.get("condition_name") if row else None
-        self._role_form_cache[key] = (self._now(), condition_name)
-        return condition_name
+    async def get_form_level(
+        self, user_id: int, form_id: str
+    ) -> int:
+        """
+        Return the level the user has for the given form.
+        0 if user is disabled, has no role, or has no grant.
+        """
+        if not user_id or not form_id:
+            return 0
+        if not await self.is_user_enabled(user_id):
+            return 0
+        role_id = await self.get_user_role_id(user_id)
+        if role_id is None:
+            return 0
+        return await self.get_form_level_by_role(role_id, form_id)
 
     async def has_access(
         self,
         user_id: int,
         form_id: str,
-        required_condition: Optional[str] = None,
+        min_level: int = 1,
+        required_condition: Optional[str] = None,   # deprecated, ignored
     ) -> bool:
         """
-        Return True if the user has access to the given form.
+        Return True if user's level for this form is >= min_level.
 
-        If `required_condition` is None, any condition counts as access.
-        If `required_condition` is provided, the user's condition name
-        must match it exactly.
-
-        For complex logic (e.g. numeric levels), use get_form_condition()
-        and interpret the result in the caller.
+        A level of 0 (Closed) always returns False regardless of
+        min_level (0 is treated as "no access").
         """
-        condition = await self.get_form_condition(user_id, form_id)
-        if condition is None:
-            if self._debug:
-                self._log(
-                f"Access denied: user_id={user_id} form='{form_id}' "
-                f"reason=no_grant_in_form_access"
-            )
-            return False
-
-        # "Closed" is a special condition meaning "no access at all",
-        # regardless of what the caller asked for.
-        if _is_closed(condition):
-            if self._debug:
-                self._log(
-                f"Access denied: user_id={user_id} form='{form_id}' "
-                f"reason=condition_is_Closed"
-            )
-            return False
-
-        if required_condition is None:
-            return True
-
-        if condition != required_condition:
-            if self._debug:
-                self._log(
-                f"Access denied: user_id={user_id} form='{form_id}' "
-                f"reason=condition_mismatch (have='{condition}' "
-                f"need='{required_condition}')"
-            )
-            return False
-
-        return True
+        if min_level <= 0:
+            min_level = 1
+        level = await self.get_form_level(user_id, form_id)
+        return level >= min_level
 
     async def has_role_access(
         self,
         role_id: Optional[str],
         form_id: str,
-        required_condition: Optional[str] = None,
+        min_level: int = 1,
+        required_condition: Optional[str] = None,   # deprecated, ignored
     ) -> bool:
         """
-        Return True if the given role has access to the form.
-
-        Same logic as has_access() but based on a role_id directly,
-        without needing a user. Used for guest/public checks.
+        Return True if role's level for this form is >= min_level.
         """
+        if min_level <= 0:
+            min_level = 1
         if role_id is None or not form_id:
             return False
+        level = await self.get_form_level_by_role(role_id, form_id)
+        return level >= min_level
 
-        key = (role_id, form_id)
-        cached = self._role_form_cache.get(key)
+    async def get_form_condition(
+        self, user_id: int, form_id: str
+    ) -> Optional[str]:
+        """
+        DEPRECATED: use get_form_level().
 
-        if cached and (self._now() - cached[0]) < self.ROLE_FORM_TTL:
-            condition = cached[1]
-        else:
-            row = await self._db._form_access_repo.get_full_access_one(
-                role_id=role_id, form_id=form_id
-            )
-            condition = row.get("condition_name") if row else None
-            self._role_form_cache[key] = (self._now(), condition)
-
-        if condition is None:
-            return False
-
-        # "Closed" is a special condition meaning "no access at all".
-        if _is_closed(condition):
-            return False
-
-        if required_condition is None:
-            return True
-        return condition == required_condition
+        Returns "Open" if level >= 1, "Closed" if level 0 with a grant,
+        or None if no grant exists.
+        """
+        if not user_id or not form_id:
+            return None
+        if not await self.is_user_enabled(user_id):
+            return None
+        role_id = await self.get_user_role_id(user_id)
+        if role_id is None:
+            return None
+        row = await self._db._form_access_repo.get(role_id, form_id)
+        if not row:
+            return None
+        level = int(row.get("level", 0))
+        return "Open" if level >= 1 else "Closed"
 
     async def get_form_condition_by_role(
         self, role_id: str, form_id: str
     ) -> Optional[str]:
         """
-        Same as get_form_condition() but by role_id directly.
+        DEPRECATED: use get_form_level_by_role().
         """
-        if role_id is None or not form_id:
+        if not role_id or not form_id:
             return None
-
-        key = (role_id, form_id)
-        cached = self._role_form_cache.get(key)
-        if cached and (self._now() - cached[0]) < self.ROLE_FORM_TTL:
-            return cached[1]
-
-        row = await self._db._form_access_repo.get_full_access_one(
-            role_id=role_id, form_id=form_id
-        )
-        condition_name = row.get("condition_name") if row else None
-        self._role_form_cache[key] = (self._now(), condition_name)
-        return condition_name
+        row = await self._db._form_access_repo.get(role_id, form_id)
+        if not row:
+            return None
+        level = int(row.get("level", 0))
+        return "Open" if level >= 1 else "Closed"
 
     async def get_accessible_forms(self, user_id: int) -> list[str]:
-        """
-        Return the list of form_ids the user has access to.
-        """
+        """Return the list of form_ids where the user's level >= 1."""
         if not user_id:
             return []
-
         if not await self.is_user_enabled(user_id):
             return []
-
         role_id = await self.get_user_role_id(user_id)
         if role_id is None:
             return []
-
         rows = await self._db._form_access_repo.list_by_role(role_id)
-        return [row["form_id"] for row in rows if row.get("form_id")]
+        return [
+            row["form_id"]
+            for row in rows
+            if row.get("form_id") and int(row.get("level", 0)) >= 1
+        ]
 
     async def get_user_role(self, user_id: int) -> Optional[Role]:
-        """
-        Return the user's Role as a Role dataclass, or None.
-        """
         role_id = await self.get_user_role_id(user_id)
         if role_id is None:
             return None
@@ -270,10 +202,6 @@ class AccessChecker:
         return Role.from_row(row) if row else None
 
     async def list_role_forms(self, role_id: str) -> list[FormAccess]:
-        """
-        Return all form accesses attached to the given role, enriched
-        with form_name and condition_name.
-        """
         if not role_id:
             return []
         rows = await self._db._form_access_repo.get_full_access(role_id)
@@ -283,11 +211,6 @@ class AccessChecker:
     # Cache management
     # ============================================================
     def invalidate_user(self, user_id: Optional[int] = None) -> None:
-        """
-        Clear the personal caches (enabled + role) for a user.
-
-        If user_id is None, clears the entire personal caches.
-        """
         if user_id is None:
             self._user_enabled_cache.clear()
             self._user_role_cache.clear()
@@ -304,11 +227,6 @@ class AccessChecker:
             self._role_form_cache.pop(k, None)
 
     def invalidate_form(self, form_id: Optional[str] = None) -> None:
-        """
-        Clear cache entries referring to the given form_id.
-
-        If form_id is None, clears the entire role-form cache.
-        """
         if form_id is None:
             self._role_form_cache.clear()
             return
@@ -317,22 +235,6 @@ class AccessChecker:
             self._role_form_cache.pop(k, None)
 
     def clear_cache(self) -> None:
-        """Clear every cache."""
         self._user_enabled_cache.clear()
         self._user_role_cache.clear()
         self._role_form_cache.clear()
-
-
-# --------------------------------------------------------------
-# Helpers
-# --------------------------------------------------------------
-def _is_closed(condition: Optional[str]) -> bool:
-    """
-    Return True if the given condition means "no access".
-
-    Comparison is case-insensitive so that 'Closed', 'closed' and
-    'CLOSED' all behave the same.
-    """
-    if not condition:
-        return False
-    return condition.strip().lower() == "closed"
