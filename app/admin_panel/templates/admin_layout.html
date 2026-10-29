@@ -570,7 +570,7 @@
   /* ============================================================
      Forms CRUD — only when section=forms
      ============================================================ */
-  const formsState = { initialized: false, cache: [] };
+  const formsState = { initialized: false, cache: [], currentListener: null };
 
   function initFormsPage() {
     const table = document.getElementById('formsTable');
@@ -791,7 +791,11 @@
       }
     }
 
-    document.addEventListener('ramz:table-action', async (e) => {
+    // Remove previous listener to avoid duplicates (bug: dialog is already open)
+    if (formsState.currentListener) {
+      document.removeEventListener('ramz:table-action', formsState.currentListener);
+    }
+    formsState.currentListener = async (e) => {
       if (getCurrentSection() !== 'forms') return;
       const { action, data } = e.detail || {};
       const formId = data && data.formId;
@@ -808,7 +812,8 @@
       } else if (action === 'delete-form') {
         await handleDeleteForm(formId);
       }
-    });
+    };
+    document.addEventListener('ramz:table-action', formsState.currentListener);
 
     resetEditor();
     loadForms();
@@ -837,6 +842,7 @@
     editorMode: 'create',
     editorRoleId: '',
     editorFormId: '',
+    currentListener: null,
   };
 
   function initAccessPage() {
@@ -1171,7 +1177,11 @@
       }
     }
 
-    document.addEventListener('ramz:table-action', async (e) => {
+    // Remove previous listener to avoid duplicates (bug: dialog is already open)
+    if (accessState.currentListener) {
+      document.removeEventListener('ramz:table-action', accessState.currentListener);
+    }
+    accessState.currentListener = async (e) => {
       if (getCurrentSection() !== 'access') return;
       const detail = e.detail || {};
       const action = detail.action;
@@ -1193,7 +1203,8 @@
       } else if (action === 'delete-grant') {
         await handleDeleteGrant(roleId, formId);
       }
-    });
+    };
+    document.addEventListener('ramz:table-action', accessState.currentListener);
 
     searchInput.addEventListener('input', syncSearchBtnState);
     searchInput.addEventListener('keydown', (e) => {
