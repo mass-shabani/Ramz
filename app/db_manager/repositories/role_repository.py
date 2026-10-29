@@ -48,19 +48,20 @@ class RoleRepository:
     async def list_all_with_grant_counts(self) -> list[dict]:
         """
         Return all roles (enabled + disabled), each enriched with
-        `grants_count` = number of form_access rows referencing it.
-        Sorted by role_id ascending.
+        `grants_count` = number of form_access rows referencing it
+        and `rank` (numeric hierarchy). Sorted by role_id ascending.
         """
         sql = """
             SELECT
                 r.role_id,
                 r.role_name,
                 r.description,
+                r.rank,
                 r.enabled,
                 COUNT(fa.form_id) AS grants_count
             FROM role r
             LEFT JOIN form_access fa ON fa.role_id = r.role_id
-            GROUP BY r.role_id, r.role_name, r.description, r.enabled
+            GROUP BY r.role_id, r.role_name, r.description, r.rank, r.enabled
             ORDER BY r.role_id ASC
         """
         return await self._conn().fetch_all(sql) or []

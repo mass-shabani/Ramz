@@ -1822,6 +1822,11 @@ def register_routes(
             )
 
         try:
+            current_rank = await db_service.get_user_rank(user_id)
+        except Exception:
+            current_rank = 0
+
+        try:
             rows = await db_service.admin_list_roles_with_counts()
         except Exception as exc:
             if logger:
@@ -1834,10 +1839,19 @@ def register_routes(
                 status_code=500,
             )
 
+        # Show only roles with strictly lower rank than the current user.
+        # This automatically excludes super-admin (max rank) from every
+        # viewer, and excludes the current user's own role (equal rank).
+        rows = [
+            r for r in rows
+            if int(r.get("rank") or 0) < int(current_rank)
+        ]
+
         columns = [
             {"key": "role_id",   "label": "Role ID",     "className": "mono"},
             {"key": "role_name", "label": "Name"},
             {"key": "description", "label": "Description"},
+            {"key": "_rank",     "label": "Rank",        "type": "badge"},
             {"key": "_grants",   "label": "Grants",      "type": "badge"},
             {"key": "_status",   "label": "Status",      "type": "badge"},
             {"key": "_actions",  "label": "Actions",     "type": "actions"},
@@ -1848,38 +1862,31 @@ def register_routes(
             role_id = row.get("role_id") or ""
             grants  = int(row.get("grants_count") or 0)
             enabled = bool(row.get("enabled"))
+            rank    = int(row.get("rank") or 0)
 
-            if role_id == "super-admin":
-                actions = [{
-                    "action": "view-grants",
-                    "icon": (
-                        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
-                        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
-                        '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/>'
-                        '<circle cx="12" cy="12" r="3"/>'
-                        '</svg>'
-                    ),
-                    "title": "Super-admin grants are managed in system settings",
-                    "data": {"role-id": role_id, "disabled": "1"},
-                }]
-            else:
-                actions = [{
-                    "action": "view-grants",
-                    "icon": (
-                        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
-                        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
-                        '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/>'
-                        '<circle cx="12" cy="12" r="3"/>'
-                        '</svg>'
-                    ),
-                    "title": "View grants",
-                    "data": {"role-id": role_id},
-                }]
+            actions = [{
+                "action": "view-grants",
+                "icon": (
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+                    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+                    '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/>'
+                    '<circle cx="12" cy="12" r="3"/>'
+                    '</svg>'
+                ),
+                "title": "View grants",
+                "data": {"role-id": role_id},
+            }]
 
             row_data.append({
                 "role_id":     role_id,
                 "role_name":   row.get("role_name") or "",
                 "description": row.get("description") or "",
+                "_rank": {
+                    "text":    str(rank),
+                    "variant": "active" if rank >= 50 else
+                               "pending" if rank >= 30 else
+                               "idle",
+                },
                 "_grants": {
                     "text":    str(grants),
                     "variant": "active" if grants > 0 else "idle",

@@ -1308,8 +1308,6 @@
       if (detail.action !== 'view-grants') return;
 
       const data = detail.data || {};
-      if (data.disabled === '1') return;   // super-admin: no-op
-
       const roleId = data.roleId || '';
       if (!roleId) return;
 
