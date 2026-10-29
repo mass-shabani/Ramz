@@ -51,17 +51,18 @@ class UserRepository:
                 p.birth_date,
                 p.gender,
                 p.national_code,
-                r.role_name,
-                s.subscription_name,
-                e.email_address,
-                ph.phone_number
-            FROM user u
-            JOIN      people        p  ON p.people_id       = u.people_id
-            LEFT JOIN role          r  ON r.role_id         = u.role_id
-            LEFT JOIN subscription  s  ON s.subscription_id = u.subscription_id
-            LEFT JOIN email         e  ON e.email_id        = u.email_id
-            LEFT JOIN phone         ph ON ph.phone_id       = u.phone_id
-            WHERE {{{{ where_clause }}}}
+            r.role_name,
+            r.rank AS role_rank,
+            s.subscription_name,
+            e.email_address,
+            ph.phone_number
+        FROM user u
+        JOIN      people        p  ON p.people_id       = u.people_id
+        LEFT JOIN role          r  ON r.role_id         = u.role_id
+        LEFT JOIN subscription  s  ON s.subscription_id = u.subscription_id
+        LEFT JOIN email         e  ON e.email_id        = u.email_id
+        LEFT JOIN phone         ph ON ph.phone_id       = u.phone_id
+        WHERE {{{{ where_clause }}}}
             LIMIT 1
         """
 
@@ -158,6 +159,7 @@ class UserRepository:
                 p.first_name,
                 p.last_name,
                 r.role_name,
+                r.rank AS role_rank,
                 s.subscription_name,
                 e.email_address,
                 ph.phone_number

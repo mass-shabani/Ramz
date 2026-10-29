@@ -16,6 +16,7 @@ class Role:
     role_name: str
     description: str = ""
     enabled: bool = True
+    rank: int = 0
 
     @classmethod
     def from_row(cls, row: dict) -> "Role":
@@ -24,6 +25,7 @@ class Role:
             role_name=row.get("role_name") or "",
             description=row.get("description") or "",
             enabled=bool(row.get("enabled", 1)),
+            rank=int(row.get("rank") or 0),
         )
 
 

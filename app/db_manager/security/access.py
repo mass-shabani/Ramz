@@ -201,6 +201,21 @@ class AccessChecker:
         row = await self._db._role_repo.get_by_id(role_id)
         return Role.from_row(row) if row else None
 
+    async def get_user_role_rank(self, user_id: int) -> int:
+        """
+        Return the rank of the user's role, or 0 if unknown.
+        Used for rank-based authorization (see admin_panel).
+        """
+        if not user_id:
+            return 0
+        role_id = await self.get_user_role_id(user_id)
+        if role_id is None:
+            return 0
+        role = await self._db._role_repo.get_by_id(role_id)
+        if not role:
+            return 0
+        return int(role.get("rank") or 0)
+
     async def list_role_forms(self, role_id: str) -> list[FormAccess]:
         if not role_id:
             return []

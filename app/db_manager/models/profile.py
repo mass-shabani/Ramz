@@ -40,6 +40,7 @@ class Profile:
     # --- From `role` ---
     role_id: str = ""       # was int
     role_name: str = ""
+    role_rank: int = 0
 
     # --- From `subscription` ---
     subscription_id: Optional[int] = None

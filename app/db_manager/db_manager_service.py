@@ -575,6 +575,15 @@ class DbManagerService:
         """Return the user's Role dataclass, or None."""
         return await self._access.get_user_role(user_id)
 
+    async def get_user_rank(self, user_id):
+        """
+        Return the rank of the user's role, or 0 if unknown.
+
+        Used for rank-based authorization in admin_panel:
+        a user can only modify users whose rank is strictly lower.
+        """
+        return await self._access.get_user_role_rank(user_id)
+
     async def list_user_roles(self, user_id):
         """
         Return the user's roles as a list.

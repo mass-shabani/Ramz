@@ -91,6 +91,7 @@ class ProfileWorkflow:
             # role
             role_id=user.role_id,
             role_name=user.role_name or "",
+            role_rank=user.role_rank,
 
             # subscription
             subscription_id=user.subscription_id,
