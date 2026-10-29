@@ -18,6 +18,7 @@ from ._helpers import db_insert, db_update, db_delete, result_ok
 class FormAccessRepository:
 
     TABLE = "form_access"
+    FORM_TABLE = "form"
 
     def __init__(self, db_service, logger=None):
         self._db = db_service
@@ -110,21 +111,37 @@ class FormAccessRepository:
         Each item:
             {form_id, form_name, form_enabled, level}
             level is None if no grant exists for this role/form.
+
+        Implementation note: this uses two simple queries and merges in
+        Python instead of a LEFT JOIN with a parameter in the ON clause.
+        SQLite drivers occasionally fail to bind `?` correctly in
+        `JOIN ... ON` — this approach is driver-agnostic and safe.
         """
         if not role_id:
             return []
-        sql = """
-            SELECT
-                f.form_id,
-                f.form_name,
-                f.enabled AS form_enabled,
-                fa.level
-            FROM form f
-            LEFT JOIN form_access fa
-                   ON fa.form_id = f.form_id AND fa.role_id = ?
-            ORDER BY f.form_id ASC
-        """
-        return await self._conn().fetch_all(sql, (role_id,)) or []
+
+        forms = await self._conn().find_many(self.FORM_TABLE, where={})
+        forms = sorted(forms or [], key=lambda r: r.get("form_id", ""))
+
+        grants = await self._conn().find_many(
+            self.TABLE, where={"role_id": role_id}
+        )
+        level_map = {}
+        for g in grants or []:
+            fid = g.get("form_id")
+            if fid:
+                level_map[fid] = int(g.get("level", 0))
+
+        result = []
+        for f in forms:
+            fid = f.get("form_id")
+            result.append({
+                "form_id":      fid,
+                "form_name":    f.get("form_name") or "",
+                "form_enabled": bool(f.get("enabled")),
+                "level":        level_map.get(fid),
+            })
+        return result
 
     async def get_full_access(self, role_id) -> list[dict]:
         if not role_id:

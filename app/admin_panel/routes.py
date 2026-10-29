@@ -1619,7 +1619,7 @@ def register_routes(
         except Exception as exc:
             if logger:
                 logger.log(
-                    f"update_grant_condition failed: {exc}",
+                    f"update_grant_level failed: {exc}",
                     level="ERROR", tag="admin",
                 )
             ok, code = False, "internal_error"

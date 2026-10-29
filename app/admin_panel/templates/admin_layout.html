@@ -931,29 +931,38 @@
       summaryTitle.textContent = 'View by role — ' + roleLabel;
 
       summaryRows.innerHTML = rows.map(r => {
-        const level = Number(r.level || 1);
-        const levelText = String(level);
-        let badgeClass = 'idle';
-        if (level >= 2) {
-          badgeClass = 'active';
-        } else if (level === 1) {
-          badgeClass = 'pending';
+        // IMPORTANT: distinguish "no grant" (null) from level 0 (Closed).
+        // Do NOT use `r.level || 1` — that would turn 0 and null into 1.
+        const hasGrant = (r.level !== null && r.level !== undefined);
+        const level = hasGrant ? Number(r.level) : null;
+
+        let badgeClass = '';
+        let levelText = '';
+        if (!hasGrant) {
+          levelText = '';               // will be rendered as a dash
         } else if (level === 0) {
-          badgeClass = '';
-        } else {
           badgeClass = 'idle';
+          levelText = 'Closed';
+        } else if (level <= 2) {
+          badgeClass = 'active';
+          levelText = 'Level ' + level;
+        } else {
+          badgeClass = 'pending';
+          levelText = 'Level ' + level;
         }
 
         const formCell = escapeHtml(r.form_name) +
           (r.form_enabled ? '' : ' <span style="color:var(--muted);font-size:11px;">(disabled)</span>');
 
-        const levelCell = '<span class="status ' + badgeClass + '">' + escapeHtml(levelText) + '</span>';
+        const lvlCell = hasGrant
+          ? '<span class="status ' + badgeClass + '">' + escapeHtml(levelText) + '</span>'
+          : '<span style="color:var(--muted);">—</span>';
 
         return '<tr>' +
           '<td style="padding: 8px 12px; font-size: 12.5px; ' +
             'border-bottom: 1px solid var(--border-soft);">' + formCell + '</td>' +
           '<td style="padding: 8px 12px; font-size: 12.5px; ' +
-            'border-bottom: 1px solid var(--border-soft);">' + levelCell + '</td>' +
+            'border-bottom: 1px solid var(--border-soft);">' + lvlCell + '</td>' +
           '</tr>';
       }).join('');
 
