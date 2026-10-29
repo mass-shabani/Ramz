@@ -388,11 +388,13 @@ def register_routes(
     # ------------------------------------------------------------
     # POST /settings/admin/users/list — JSON endpoint for the users table
     # ------------------------------------------------------------
-    def _build_user_actions(u, current_user_id):
+    def _build_user_actions(u, current_user_id, current_rank):
         """Build the actions column for one user row."""
         if int(u.user_id) == int(current_user_id):
             return []
         if u.role_id == "super-admin":
+            return []
+        if int(current_rank) <= int(u.role_rank or 0):
             return []
 
         return [
@@ -468,6 +470,11 @@ def register_routes(
             )
 
         try:
+            current_rank = await db_service.get_user_rank(user_id)
+        except Exception:
+            current_rank = 0
+
+        try:
             body = await request.json()
         except Exception:
             body = {}
@@ -530,7 +537,7 @@ def register_routes(
                     "variant": status_variant,
                 },
                 "_joined": u.created_at.isoformat() if u.created_at else "",
-                "_actions": _build_user_actions(u, user_id),
+                "_actions": _build_user_actions(u, user_id, current_rank),
             })
 
         return http_api.JSONResponse(
@@ -635,6 +642,7 @@ def register_routes(
                 "cannot_modify_self": "You cannot change your own role from this page.",
                 "cannot_modify_super_admin": "Super-admin accounts cannot be modified here.",
                 "cannot_promote_to_super_admin": "You cannot promote a user to super-admin.",
+                "insufficient_rank": "You do not have sufficient rank to modify this user.",
                 "user_not_found": "User not found.",
                 "role_not_found": "Role not found.",
                 "internal_error": "Something went wrong. Please try again.",
@@ -738,6 +746,7 @@ def register_routes(
             messages = {
                 "cannot_modify_self": "You cannot change your own status from this page.",
                 "cannot_modify_super_admin": "Super-admin accounts cannot be modified here.",
+                "insufficient_rank": "You do not have sufficient rank to modify this user.",
                 "user_not_found": "User not found.",
                 "internal_error": "Something went wrong. Please try again.",
             }
@@ -840,6 +849,7 @@ def register_routes(
             messages = {
                 "cannot_modify_self": "You cannot reset your own password from this page.",
                 "cannot_modify_super_admin": "Super-admin accounts cannot be modified here.",
+                "insufficient_rank": "You do not have sufficient rank to modify this user.",
                 "user_not_found": "User not found.",
                 "internal_error": "Something went wrong. Please try again.",
             }

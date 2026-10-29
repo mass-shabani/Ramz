@@ -50,9 +50,14 @@ class AdminPanelService:
         """
         Change a user's role (by role_id).
 
-        Returns
-        -------
-        tuple (ok: bool, code: Optional[str])
+        Order of checks:
+          1. self-modification
+          2. super-admin target protection
+          3. promote-to-super-admin protection
+          4. rank: current.rank > target.rank
+          5. rank: current.rank > new_role.rank
+
+        Returns (ok: bool, code: Optional[str]).
         """
         if int(target_user_id) == int(current_user_id):
             return False, "cannot_modify_self"
@@ -67,6 +72,20 @@ class AdminPanelService:
         if new_role_id == "super-admin":
             return False, "cannot_promote_to_super_admin"
 
+        # Rank enforcement (rule 4: target's current rank)
+        current_rank = await self.db.get_user_rank(current_user_id)
+        target_rank = int(target.role_rank or 0)
+        if current_rank <= target_rank:
+            return False, "insufficient_rank"
+
+        # Rank enforcement (rule 5: new role's rank)
+        new_role = await self.db._role_repo.get_by_id(new_role_id)
+        if not new_role:
+            return False, "role_not_found"
+        new_role_rank = int(new_role.get("rank") or 0)
+        if current_rank <= new_role_rank:
+            return False, "insufficient_rank"
+
         ok, code = await self.db.admin_set_user_role(
             target_user_id, new_role_id
         )
@@ -75,7 +94,14 @@ class AdminPanelService:
     async def toggle_user(
         self, target_user_id, enabled, current_user_id
     ):
-        """Enable/disable a user. Returns (ok, code)."""
+        """
+        Enable/disable a user. Returns (ok, code).
+
+        Order of checks:
+          1. self-modification
+          2. super-admin target protection
+          3. rank: current.rank > target.rank
+        """
         if int(target_user_id) == int(current_user_id):
             return False, "cannot_modify_self"
 
@@ -86,11 +112,24 @@ class AdminPanelService:
         if target.role_id == "super-admin":
             return False, "cannot_modify_super_admin"
 
+        # Rank enforcement
+        current_rank = await self.db.get_user_rank(current_user_id)
+        target_rank = int(target.role_rank or 0)
+        if current_rank <= target_rank:
+            return False, "insufficient_rank"
+
         ok = await self.db.admin_toggle_user(target_user_id, enabled)
         return (ok, None) if ok else (False, "internal_error")
 
     async def reset_password(self, target_user_id, current_user_id):
-        """Reset a user's password. Returns (ok, temp_password, code)."""
+        """
+        Reset a user's password. Returns (ok, temp_password, code).
+
+        Order of checks:
+          1. self-modification
+          2. super-admin target protection
+          3. rank: current.rank > target.rank
+        """
         if int(target_user_id) == int(current_user_id):
             return False, None, "cannot_modify_self"
 
@@ -100,6 +139,12 @@ class AdminPanelService:
 
         if target.role_id == "super-admin":
             return False, None, "cannot_modify_super_admin"
+
+        # Rank enforcement
+        current_rank = await self.db.get_user_rank(current_user_id)
+        target_rank = int(target.role_rank or 0)
+        if current_rank <= target_rank:
+            return False, None, "insufficient_rank"
 
         ok, temp_password = await self.db.admin_reset_password(
             target_user_id
