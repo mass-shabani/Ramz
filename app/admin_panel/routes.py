@@ -471,6 +471,18 @@ def register_routes(
             current_rank = 0
 
         try:
+            can_view_all = await db_service.has_access(
+                user_id, "admin_panel.users.view_all"
+            )
+        except Exception:
+            can_view_all = False
+
+        # Visibility rule:
+        #   • if the user has "admin_panel.users.view_all" → see everyone
+        #   • otherwise → see only users with role_rank < current_rank
+        max_role_rank = None if can_view_all else int(current_rank)
+
+        try:
             body = await request.json()
         except Exception:
             body = {}
@@ -488,9 +500,12 @@ def register_routes(
 
         try:
             rows  = await db_service.admin_list_users(
-                query=query, offset=offset, limit=limit
+                query=query, offset=offset, limit=limit,
+                max_role_rank=max_role_rank,
             )
-            total = await db_service.admin_count_users(query=query)
+            total = await db_service.admin_count_users(
+                query=query, max_role_rank=max_role_rank,
+            )
         except Exception as exc:
             if logger:
                 logger.log(
@@ -1883,9 +1898,7 @@ def register_routes(
                 "description": row.get("description") or "",
                 "_rank": {
                     "text":    str(rank),
-                    "variant": "active" if rank >= 50 else
-                               "pending" if rank >= 30 else
-                               "idle",
+                    "variant": "idle",
                 },
                 "_grants": {
                     "text":    str(grants),

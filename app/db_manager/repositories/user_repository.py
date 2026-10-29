@@ -124,12 +124,17 @@ class UserRepository:
         query: str = "",
         offset: int = 0,
         limit: int = 20,
+        max_role_rank: Optional[int] = None,
     ) -> list[User]:
         """
         List users for the admin panel with optional text search.
 
         The search term matches (case-insensitive LIKE) against
         username, first_name, last_name, and email_address.
+
+        If max_role_rank is provided (int), only users whose role's
+        rank is STRICTLY LESS than max_role_rank are returned.
+        Users with no role (role_id NULL) are excluded in this mode.
 
         Returns a list of User objects, newest registered first.
         """
@@ -142,7 +147,13 @@ class UserRepository:
 
         search = f"%{(query or '').strip()}%"
 
-        sql = """
+        rank_clause = ""
+        rank_params: tuple = ()
+        if max_role_rank is not None:
+            rank_clause = "AND COALESCE(r.rank, 0) < ?"
+            rank_params = (int(max_role_rank),)
+
+        sql = f"""
             SELECT
                 u.user_id,
                 u.username,
@@ -175,24 +186,38 @@ class UserRepository:
                 p.last_name  LIKE ? OR
                 e.email_address LIKE ?
             )
+            {rank_clause}
             ORDER BY u.user_id DESC
             LIMIT ? OFFSET ?
         """
-        rows = await self._conn().fetch_all(
-            sql, (search, search, search, search, limit, offset)
-        )
+        params = (search, search, search, search) + rank_params + (limit, offset)
+        rows = await self._conn().fetch_all(sql, params)
         return [User.from_row(row) for row in rows or []]
 
-    async def admin_count_users(self, query: str = "") -> int:
+    async def admin_count_users(
+        self,
+        query: str = "",
+        max_role_rank: Optional[int] = None,
+    ) -> int:
         """
         Count users matching the same search term as admin_list_users.
+
+        If max_role_rank is provided, only users with role rank strictly
+        less than max_role_rank are counted.
         """
         search = f"%{(query or '').strip()}%"
 
-        sql = """
+        rank_clause = ""
+        rank_params: tuple = ()
+        if max_role_rank is not None:
+            rank_clause = "AND COALESCE(r.rank, 0) < ?"
+            rank_params = (int(max_role_rank),)
+
+        sql = f"""
             SELECT COUNT(*) AS c
             FROM user u
             JOIN      people p ON p.people_id = u.people_id
+            LEFT JOIN role   r ON r.role_id   = u.role_id
             LEFT JOIN email  e ON e.email_id  = u.email_id
             WHERE (
                 u.username   LIKE ? OR
@@ -200,10 +225,10 @@ class UserRepository:
                 p.last_name  LIKE ? OR
                 e.email_address LIKE ?
             )
+            {rank_clause}
         """
-        row = await self._conn().fetch_one(
-            sql, (search, search, search, search)
-        )
+        params = (search, search, search, search) + rank_params
+        row = await self._conn().fetch_one(sql, params)
         return int(row["c"]) if row else 0
 
     # ----------------------------------------------------------

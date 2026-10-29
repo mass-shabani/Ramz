@@ -614,20 +614,24 @@ class DbManagerService:
     # ============================================================
     # Admin: Users
     # ============================================================
-    async def admin_list_users(self, query="", offset=0, limit=20):
+    async def admin_list_users(self, query="", offset=0, limit=20,
+                               max_role_rank=None):
         """
         List users for the admin panel.
 
-        Returns a list of User dataclasses.
-        See UserRepository.admin_list_users for details.
+        If max_role_rank is provided, only users with role rank strictly
+        less than that value are returned. See UserRepository for details.
         """
         return await self._user_repo.admin_list_users(
-            query=query, offset=offset, limit=limit
+            query=query, offset=offset, limit=limit,
+            max_role_rank=max_role_rank,
         )
 
-    async def admin_count_users(self, query=""):
+    async def admin_count_users(self, query="", max_role_rank=None):
         """Return the total count matching the admin search term."""
-        return await self._user_repo.admin_count_users(query=query)
+        return await self._user_repo.admin_count_users(
+            query=query, max_role_rank=max_role_rank,
+        )
 
     async def admin_set_user_role(self, user_id, new_role_id):
         """
