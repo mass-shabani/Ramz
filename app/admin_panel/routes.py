@@ -1342,6 +1342,11 @@ def register_routes(
         query       = str(body.get("query") or "").strip()
 
         try:
+            current_rank = await db_service.get_user_rank(user_id)
+        except Exception:
+            current_rank = 0
+
+        try:
             grants = await db_service.admin_list_grants(
                 role_filter=role_filter,
                 form_filter=form_filter,
@@ -1360,13 +1365,49 @@ def register_routes(
                 status_code=500,
             )
 
-        # Filter roles used in dropdowns: exclude super-admin from
-        # grant creation/editing (super-admin grants are reserved for
-        # the future system_settings module).
+        # Visible roles: only those with rank strictly lower than
+        # current user's rank. This also excludes super-admin (max rank).
+        visible_roles = [
+            r for r in roles
+            if int(r.get("rank") or 0) < int(current_rank)
+        ]
+        visible_role_ids = {r.get("role_id") for r in visible_roles}
+
+        # If a specific role_filter was requested but that role is not
+        # visible to the current user, return an empty result set.
+        if role_filter and role_filter not in visible_role_ids:
+            return http_api.JSONResponse(
+                content={
+                    "columns": [
+                        {"key": "_role",  "label": "Role",    "type": "badge"},
+                        {"key": "_form",  "label": "Form"},
+                        {"key": "_level", "label": "Level",   "type": "badge"},
+                        {"key": "_actions", "label": "Actions", "type": "actions"},
+                    ],
+                    "rows":  [],
+                    "roles": [
+                        {"role_id": r.get("role_id"),
+                         "role_name": r.get("role_name")}
+                        for r in visible_roles
+                    ],
+                    "forms": [
+                        {"form_id": f.get("form_id"),
+                         "form_name": f.get("form_name")}
+                        for f in forms
+                    ],
+                },
+                status_code=200,
+            )
+
+        # Filter grants to visible roles only.
+        grants = [
+            g for g in grants
+            if (g.get("role_id") or "") in visible_role_ids
+        ]
+
         role_options = [
             {"role_id": r.get("role_id"), "role_name": r.get("role_name")}
-            for r in roles
-            if r.get("role_id") != "super-admin"
+            for r in visible_roles
         ]
         form_options = [
             {"form_id": f.get("form_id"), "form_name": f.get("form_name")}
@@ -1407,9 +1448,8 @@ def register_routes(
             "forms":   form_options,
         }
 
-        # If a role filter is active, also return the role summary
-        # (mini-matrix for the "View by role" panel).
-        if role_filter and role_filter != "super-admin":
+        # Role summary (mini-matrix) — only for visible roles.
+        if role_filter and role_filter in visible_role_ids:
             try:
                 summary_rows = await db_service.admin_list_role_summary(role_filter)
             except Exception:
@@ -1515,12 +1555,12 @@ def register_routes(
 
         if not ok:
             messages = {
-                "invalid_data":              "Role, form, and a valid level are required.",
-                "exists":                    "This grant already exists. Use 'Edit' to change its level.",
-                "role_not_found":            "Role not found.",
-                "form_not_found":            "Form not found.",
-                "cannot_modify_super_admin": "Super-admin grants are managed elsewhere.",
-                "internal_error":            "Something went wrong. Please try again.",
+                "invalid_data":      "Role, form, and a valid level are required.",
+                "exists":            "This grant already exists. Use 'Edit' to change its level.",
+                "role_not_found":    "Role not found.",
+                "form_not_found":    "Form not found.",
+                "insufficient_rank": "You do not have sufficient rank to manage grants for this role.",
+                "internal_error":    "Something went wrong. Please try again.",
             }
             return http_api.JSONResponse(
                 content={
@@ -1625,10 +1665,11 @@ def register_routes(
 
         if not ok:
             messages = {
-                "invalid_data":              "Role, form, and a valid level are required.",
-                "grant_not_found":           "Grant not found.",
-                "cannot_modify_super_admin": "Super-admin grants are managed elsewhere.",
-                "internal_error":            "Something went wrong. Please try again.",
+                "invalid_data":      "Role, form, and a valid level are required.",
+                "grant_not_found":   "Grant not found.",
+                "role_not_found":    "Role not found.",
+                "insufficient_rank": "You do not have sufficient rank to manage grants for this role.",
+                "internal_error":    "Something went wrong. Please try again.",
             }
             return http_api.JSONResponse(
                 content={
@@ -1725,10 +1766,11 @@ def register_routes(
 
         if not ok:
             messages = {
-                "invalid_data":              "Role and form are required.",
-                "grant_not_found":           "Grant not found.",
-                "cannot_modify_super_admin": "Super-admin grants are managed elsewhere.",
-                "internal_error":            "Something went wrong. Please try again.",
+                "invalid_data":      "Role and form are required.",
+                "grant_not_found":   "Grant not found.",
+                "role_not_found":    "Role not found.",
+                "insufficient_rank": "You do not have sufficient rank to manage grants for this role.",
+                "internal_error":    "Something went wrong. Please try again.",
             }
             return http_api.JSONResponse(
                 content={

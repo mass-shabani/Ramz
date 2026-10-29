@@ -252,6 +252,8 @@ class AdminPanelService:
         """
         Create a new grant with numeric level (0 = closed, ≥1 = open).
 
+        Authorization is rank-based: current.rank > role.rank.
+
         Returns (ok: bool, code: Optional[str]).
         """
         rid = (role_id or "").strip()
@@ -267,12 +269,14 @@ class AdminPanelService:
         if lvl < 0:
             return False, "invalid_data"
 
-        if rid == "super-admin":
-            return False, "cannot_modify_super_admin"
-
         role = await self.db._role_repo.get_by_id(rid)
         if not role:
             return False, "role_not_found"
+
+        current_rank = await self.db.get_user_rank(current_user_id)
+        role_rank = int(role.get("rank") or 0)
+        if current_rank <= role_rank:
+            return False, "insufficient_rank"
 
         form = await self.db.admin_get_form(fid)
         if not form:
@@ -286,6 +290,8 @@ class AdminPanelService:
     ):
         """
         Update the level of an existing grant.
+
+        Authorization is rank-based: current.rank > role.rank.
 
         Returns (ok: bool, code: Optional[str]).
         """
@@ -302,8 +308,14 @@ class AdminPanelService:
         if lvl < 0:
             return False, "invalid_data"
 
-        if rid == "super-admin":
-            return False, "cannot_modify_super_admin"
+        role = await self.db._role_repo.get_by_id(rid)
+        if not role:
+            return False, "role_not_found"
+
+        current_rank = await self.db.get_user_rank(current_user_id)
+        role_rank = int(role.get("rank") or 0)
+        if current_rank <= role_rank:
+            return False, "insufficient_rank"
 
         existing = await self.db.admin_get_grant(rid, fid)
         if not existing:
@@ -316,6 +328,8 @@ class AdminPanelService:
         """
         Delete a grant.
 
+        Authorization is rank-based: current.rank > role.rank.
+
         Returns (ok: bool, code: Optional[str]).
         """
         rid = (role_id or "").strip()
@@ -323,8 +337,14 @@ class AdminPanelService:
         if not rid or not fid:
             return False, "invalid_data"
 
-        if rid == "super-admin":
-            return False, "cannot_modify_super_admin"
+        role = await self.db._role_repo.get_by_id(rid)
+        if not role:
+            return False, "role_not_found"
+
+        current_rank = await self.db.get_user_rank(current_user_id)
+        role_rank = int(role.get("rank") or 0)
+        if current_rank <= role_rank:
+            return False, "insufficient_rank"
 
         existing = await self.db.admin_get_grant(rid, fid)
         if not existing:
