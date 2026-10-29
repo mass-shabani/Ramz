@@ -50,39 +50,32 @@ class AdminPanelService:
         """
         Change a user's role (by role_id).
 
-        Order of checks:
-          1. self-modification
-          2. super-admin target protection
-          3. promote-to-super-admin protection
-          4. rank: current.rank > target.rank
-          5. rank: current.rank > new_role.rank
+        Authorization is purely rank-based:
+          • current.rank > target.rank      (cannot modify equal/higher rank)
+          • current.rank > new_role.rank    (cannot promote to equal/higher rank)
+
+        These two rules automatically cover:
+          • self-modification (equal rank)
+          • super-admin target (max rank, no one above)
+          • promote-to-super-admin (equal rank for non-super-admins)
 
         Returns (ok: bool, code: Optional[str]).
         """
-        if int(target_user_id) == int(current_user_id):
-            return False, "cannot_modify_self"
-
         target = await self.db.get_user_by_id(target_user_id)
         if not target:
             return False, "user_not_found"
 
-        if target.role_id == "super-admin":
-            return False, "cannot_modify_super_admin"
-
-        if new_role_id == "super-admin":
-            return False, "cannot_promote_to_super_admin"
-
-        # Rank enforcement (rule 4: target's current rank)
-        current_rank = await self.db.get_user_rank(current_user_id)
-        target_rank = int(target.role_rank or 0)
-        if current_rank <= target_rank:
-            return False, "insufficient_rank"
-
-        # Rank enforcement (rule 5: new role's rank)
         new_role = await self.db._role_repo.get_by_id(new_role_id)
         if not new_role:
             return False, "role_not_found"
+
+        current_rank = await self.db.get_user_rank(current_user_id)
+        target_rank = int(target.role_rank or 0)
         new_role_rank = int(new_role.get("rank") or 0)
+
+        if current_rank <= target_rank:
+            return False, "insufficient_rank"
+
         if current_rank <= new_role_rank:
             return False, "insufficient_rank"
 
@@ -97,22 +90,13 @@ class AdminPanelService:
         """
         Enable/disable a user. Returns (ok, code).
 
-        Order of checks:
-          1. self-modification
-          2. super-admin target protection
-          3. rank: current.rank > target.rank
+        Authorization is purely rank-based:
+          • current.rank > target.rank
         """
-        if int(target_user_id) == int(current_user_id):
-            return False, "cannot_modify_self"
-
         target = await self.db.get_user_by_id(target_user_id)
         if not target:
             return False, "user_not_found"
 
-        if target.role_id == "super-admin":
-            return False, "cannot_modify_super_admin"
-
-        # Rank enforcement
         current_rank = await self.db.get_user_rank(current_user_id)
         target_rank = int(target.role_rank or 0)
         if current_rank <= target_rank:
@@ -125,22 +109,13 @@ class AdminPanelService:
         """
         Reset a user's password. Returns (ok, temp_password, code).
 
-        Order of checks:
-          1. self-modification
-          2. super-admin target protection
-          3. rank: current.rank > target.rank
+        Authorization is purely rank-based:
+          • current.rank > target.rank
         """
-        if int(target_user_id) == int(current_user_id):
-            return False, None, "cannot_modify_self"
-
         target = await self.db.get_user_by_id(target_user_id)
         if not target:
             return False, None, "user_not_found"
 
-        if target.role_id == "super-admin":
-            return False, None, "cannot_modify_super_admin"
-
-        # Rank enforcement
         current_rank = await self.db.get_user_rank(current_user_id)
         target_rank = int(target.role_rank or 0)
         if current_rank <= target_rank:
