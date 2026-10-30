@@ -1471,10 +1471,10 @@ def register_routes(
                 summary_rows = []
             response_payload["role_summary"] = [
                 {
-                    "form_id":      (r.get("form_id") or ""),
-                    "form_name":    (r.get("form_name") or ""),
-                    "form_enabled": bool(r.get("form_enabled")),
-                    "level":        (None if r.get("level") is None else int(r.get("level"))),
+                    "form_id":     (r.get("form_id") or ""),
+                    "form_name":   (r.get("form_name") or ""),
+                    "form_locked": bool(r.get("form_locked")),
+                    "level":       (None if r.get("level") is None else int(r.get("level"))),
                 }
                 for r in summary_rows
             ]

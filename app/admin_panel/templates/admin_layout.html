@@ -958,7 +958,7 @@
         }
 
         const formCell = escapeHtml(r.form_name) +
-          (r.form_enabled ? '' : ' <span style="color:var(--muted);font-size:11px;">(disabled)</span>');
+          (r.form_locked ? ' <span style="color:#fbbf24;font-size:11px;">🔒</span>' : '');
 
         const lvlCell = hasGrant
           ? '<span class="status ' + badgeClass + '">' + escapeHtml(levelText) + '</span>'

@@ -64,7 +64,7 @@ class FormAccessRepository:
     ) -> list[dict]:
         """
         Return all grants, enriched with role_name, form_name,
-        role_enabled, and form_enabled.
+        role_enabled, and form_locked.
         """
         where_parts = []
         params = []
@@ -94,7 +94,7 @@ class FormAccessRepository:
                 r.role_name,
                 r.enabled   AS role_enabled,
                 f.form_name,
-                f.enabled   AS form_enabled
+                f.lock      AS form_locked
             FROM form_access fa
             LEFT JOIN role r ON r.role_id = fa.role_id
             LEFT JOIN form f ON f.form_id = fa.form_id
@@ -109,7 +109,7 @@ class FormAccessRepository:
         given role has for it. Used by the "View by role" panel.
 
         Each item:
-            {form_id, form_name, form_enabled, level}
+            {form_id, form_name, form_locked, level}
             level is None if no grant exists for this role/form.
 
         Implementation note: this uses two simple queries and merges in
@@ -136,10 +136,10 @@ class FormAccessRepository:
         for f in forms:
             fid = f.get("form_id")
             result.append({
-                "form_id":      fid,
-                "form_name":    f.get("form_name") or "",
-                "form_enabled": bool(f.get("enabled")),
-                "level":        level_map.get(fid),
+                "form_id":     fid,
+                "form_name":   f.get("form_name") or "",
+                "form_locked": bool(f.get("lock", 0)),
+                "level":       level_map.get(fid),
             })
         return result
 
