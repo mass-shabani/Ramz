@@ -926,10 +926,18 @@ def register_routes(
             {"key": "form_name",   "label": "Name"},
             {"key": "description", "label": "Description"},
             {"key": "_grants",     "label": "Grants",      "type": "badge"},
-            {"key": "_lock",       "label": "Lock",        "type": "badge"},
+            {"key": "_lock",       "label": "Lock",        "type": "html", "width": "60px"},
             {"key": "_actions",    "label": "Actions",     "type": "actions"},
         ]
 
+        LOCK_SVG = (
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+            'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+            'style="width:16px;height:16px;color:#fbbf24;vertical-align:middle;width:stretch">'
+            '<rect x="4" y="10" width="16" height="11" rx="3"/>'
+            '<path d="M8 10V7a4 4 0 0 1 8 0v3"/>'
+            '</svg>'
+        )
         row_data = []
         for row in rows:
             grants = int(row.get("grants_count") or 0)
@@ -942,10 +950,7 @@ def register_routes(
                     "text": str(grants),
                     "variant": "active" if grants > 0 else "idle",
                 },
-                "_lock": {
-                    "text":    "Locked" if locked else "Unlocked",
-                    "variant": "pending" if locked else "idle",
-                },
+                "_lock": LOCK_SVG if locked else "",
                 "_actions": _build_form_actions(row),
             })
 
@@ -1411,12 +1416,14 @@ def register_routes(
                     "rows":  [],
                     "roles": [
                         {"role_id": r.get("role_id"),
-                         "role_name": r.get("role_name")}
+                         "role_name": r.get("role_name"),
+                         "lock": bool(r.get("lock"))}
                         for r in visible_roles
                     ],
                     "forms": [
                         {"form_id": f.get("form_id"),
-                         "form_name": f.get("form_name")}
+                         "form_name": f.get("form_name"),
+                         "lock": bool(f.get("lock"))}
                         for f in forms
                     ],
                 },
@@ -1430,11 +1437,13 @@ def register_routes(
         ]
 
         role_options = [
-            {"role_id": r.get("role_id"), "role_name": r.get("role_name")}
+            {"role_id": r.get("role_id"), "role_name": r.get("role_name"),
+             "lock": bool(r.get("lock"))}
             for r in visible_roles
         ]
         form_options = [
-            {"form_id": f.get("form_id"), "form_name": f.get("form_name")}
+            {"form_id": f.get("form_id"), "form_name": f.get("form_name"),
+             "lock": bool(f.get("lock"))}
             for f in forms
         ]
 
@@ -1442,13 +1451,23 @@ def register_routes(
             {"key": "_role",  "label": "Role",    "type": "badge"},
             {"key": "_form",  "label": "Form"},
             {"key": "_level", "label": "Level",   "type": "badge"},
+            {"key": "_lock",  "label": "Lock",    "type": "html", "width": "60px"},
             {"key": "_actions", "label": "Actions", "type": "actions"},
         ]
 
+        LOCK_SVG = (
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+            'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+            'style="width:16px;height:16px;color:#fbbf24;vertical-align:middle;width:stretch">'
+            '<rect x="4" y="10" width="16" height="11" rx="3"/>'
+            '<path d="M8 10V7a4 4 0 0 1 8 0v3"/>'
+            '</svg>'
+        )
         row_data = []
         for row in grants:
             payload = _grant_row_payload(row)
             lvl = payload["level"]
+            is_locked = bool(payload["role_locked"] or payload["form_locked"])
             row_data.append({
                 "_role": {
                     "text":    payload["role_name"],
@@ -1461,6 +1480,7 @@ def register_routes(
                                "active" if lvl <= 2 else
                                "pending",
                 },
+                "_lock": LOCK_SVG if is_locked else "",
                 "_actions": _build_grant_actions(payload),
                 "_raw": payload,
             })
@@ -1884,14 +1904,24 @@ def register_routes(
             {"key": "_rank",     "label": "Rank",        "type": "badge"},
             {"key": "_grants",   "label": "Grants",      "type": "badge"},
             {"key": "_status",   "label": "Status",      "type": "badge"},
+            {"key": "_lock",     "label": "Lock",        "type": "html", "width": "60px"},
             {"key": "_actions",  "label": "Actions",     "type": "actions"},
         ]
 
+        LOCK_SVG = (
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+            'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+            'style="width:16px;height:16px;color:#fbbf24;vertical-align:middle;width:stretch">'
+            '<rect x="4" y="10" width="16" height="11" rx="3"/>'
+            '<path d="M8 10V7a4 4 0 0 1 8 0v3"/>'
+            '</svg>'
+        )
         row_data = []
         for row in rows:
             role_id = row.get("role_id") or ""
             grants  = int(row.get("grants_count") or 0)
             enabled = bool(row.get("enabled"))
+            locked  = bool(row.get("lock"))
             rank    = int(row.get("rank") or 0)
 
             actions = [{
@@ -1923,6 +1953,7 @@ def register_routes(
                     "text":    "Enabled" if enabled else "Disabled",
                     "variant": "active" if enabled else "pending",
                 },
+                "_lock": LOCK_SVG if locked else "",
                 "_actions": actions,
             })
 

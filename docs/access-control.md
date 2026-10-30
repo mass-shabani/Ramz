@@ -134,3 +134,27 @@ To add a new permission:
 
 Do not add `if user.role == ...` checks in routes. Access is always
 driven by `form_access` grants.
+
+## Locks vs. Level vs. Rank
+
+Three independent axes:
+
+| Axis | Field | Enforcement |
+|------|-------|-------------|
+| **Level** | `form_access.level` | `has_access(user_id, form_id, min_level)` |
+| **Rank** | `role.rank` | service layer, `current.rank > target.rank` |
+| **Lock** | `form.lock`, `role.lock` | service layer, blocks grant CRUD only |
+
+Notes:
+
+- **Lock does not change `has_access`.** A locked form still respects
+  its grants. Locking a form does not revoke anyone's access; it only
+  freezes the grants themselves.
+- **Lock does not affect user sessions.** Only `role.enabled = 0` does
+  (via `is_enabled` JOIN, ejected within 15s).
+- **Lock is enforced in `AdminPanelService.create_grant`,
+  `update_grant_level`, `delete_grant`.** Error codes:
+  `form_locked`, `role_locked`.
+- **A super-admin may still need to bypass lock.** Currently there is
+  no bypass — locking is absolute from the admin panel. If a lock must
+  be broken, do it via SQL and re-lock after.

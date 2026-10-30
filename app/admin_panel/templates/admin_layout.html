@@ -887,43 +887,49 @@
     }
 
     function fillDropdowns(roles, forms) {
-      // Role filter
+      // Role filter (all visible roles, including locked — for read-only inspection)
       const curRole = roleFilter.value;
       roleFilter.innerHTML = '<option value="">All roles</option>';
       roles.forEach(r => {
         const opt = document.createElement('option');
         opt.value = r.role_id;
-        opt.textContent = r.role_name + ' (' + r.role_id + ')';
+        opt.textContent = r.role_name + ' (' + r.role_id + ')'
+                        + (r.lock ? ' 🔒' : '');
         roleFilter.appendChild(opt);
       });
       roleFilter.value = curRole;
 
-      // Form filter
+      // Form filter (all forms, including locked)
       const curForm = formFilter.value;
       formFilter.innerHTML = '<option value="">All forms</option>';
       forms.forEach(f => {
         const opt = document.createElement('option');
         opt.value = f.form_id;
-        opt.textContent = f.form_name + ' (' + f.form_id + ')';
+        opt.textContent = f.form_name + ' (' + f.form_id + ')'
+                        + (f.lock ? ' 🔒' : '');
         formFilter.appendChild(opt);
       });
       formFilter.value = curForm;
 
-      // Editor role
+      // Editor role — locked roles are disabled (cannot be edited)
       editorRole.innerHTML = '';
       roles.forEach(r => {
         const opt = document.createElement('option');
         opt.value = r.role_id;
-        opt.textContent = r.role_name + ' (' + r.role_id + ')';
+        opt.textContent = r.role_name + ' (' + r.role_id + ')'
+                        + (r.lock ? ' 🔒' : '');
+        if (r.lock) opt.disabled = true;
         editorRole.appendChild(opt);
       });
 
-      // Editor form
+      // Editor form — locked forms are disabled (cannot be edited)
       editorFormSel.innerHTML = '';
       forms.forEach(f => {
         const opt = document.createElement('option');
         opt.value = f.form_id;
-        opt.textContent = f.form_name + ' (' + f.form_id + ')';
+        opt.textContent = f.form_name + ' (' + f.form_id + ')'
+                        + (f.lock ? ' 🔒' : '');
+        if (f.lock) opt.disabled = true;
         editorFormSel.appendChild(opt);
       });
     }

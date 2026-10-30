@@ -134,3 +134,33 @@ password. The check happens server-side via
 `reset-password` returns a one-time temporary password in the response.
 The client copies it to clipboard and shows it once; the server does
 not store it in plaintext.
+
+## Locks (v9.0)
+
+Two lock flags were added in schema v9.0:
+
+| Flag | Meaning | UI |
+|------|---------|-----|
+| `form.lock` | No grant may be created/updated/deleted for this form | Lock icon in Forms table + Lock column in Access table |
+| `role.lock` | No grant may be created/updated/deleted for this role | Lock icon in Roles table + Lock column in Access table |
+
+Important behavior:
+
+- **Locking does not affect enforcement.** Grants still control access
+  normally; `form_access.level` is still applied by `has_access`.
+- **Locking only blocks grant mutations** (create/update/delete) for
+  that entity. It does not block form edit/delete, and does not affect
+  users' ability to use the form.
+- **Roles have both `enabled` and `lock`.** `role.enabled = 0` disables
+  all users with that role (session ejected, login rejected). `role.lock = 1`
+  only prevents grant changes.
+- **No direct UI for toggling locks yet** — set via SQL:
+  ```sql
+  UPDATE form SET lock = 1 WHERE form_id = 'admin_panel.view';
+  UPDATE role SET lock = 1 WHERE role_id = 'limit-user';
+  ```
+  `_build_grant_actions` returns [] for grants whose role or form
+  is locked, so no Edit/Delete buttons appear.
+
+  Access editor dropdowns show locked roles/forms with a 🔒 suffix
+  and the option is disabled.
