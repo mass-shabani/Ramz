@@ -388,13 +388,21 @@ def register_routes(
     # ------------------------------------------------------------
     # POST /settings/admin/users/list — JSON endpoint for the users table
     # ------------------------------------------------------------
-    def _build_user_actions(u, current_rank):
-        """Build the actions column for one user row."""
+    def _build_user_actions(u, current_rank,
+                            can_change_role, can_toggle, can_reset):
+        """Build the actions column for one user row.
+
+        Returns [] when rank is insufficient, or when the caller has no
+        per-button grants. Includes only the buttons the current user
+        is authorized to trigger.
+        """
         if int(current_rank) <= int(u.role_rank or 0):
             return []
 
-        return [
-            {
+        actions = []
+
+        if can_change_role:
+            actions.append({
                 "action": "change-role",
                 "icon": (
                     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
@@ -405,8 +413,10 @@ def register_routes(
                 "title": "Change role",
                 "variant": "",
                 "data": {"user-id": str(u.user_id)},
-            },
-            {
+            })
+
+        if can_toggle:
+            actions.append({
                 "action": "toggle-user",
                 "icon": (
                     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
@@ -421,8 +431,10 @@ def register_routes(
                     "user-id": str(u.user_id),
                     "enabled": "1" if u.enabled else "0",
                 },
-            },
-            {
+            })
+
+        if can_reset:
+            actions.append({
                 "action": "reset-password",
                 "icon": (
                     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
@@ -433,8 +445,9 @@ def register_routes(
                 "title": "Reset password",
                 "variant": "",
                 "data": {"user-id": str(u.user_id)},
-            },
-        ]
+            })
+
+        return actions
 
     @http_api.post("/settings/admin/users/list",
                    response_class=http_api.JSONResponse)
@@ -476,6 +489,27 @@ def register_routes(
             )
         except Exception:
             can_view_all = False
+
+        try:
+            can_change_role = await db_service.has_access(
+                user_id, "admin_panel.users.action.change_role"
+            )
+        except Exception:
+            can_change_role = False
+
+        try:
+            can_toggle = await db_service.has_access(
+                user_id, "admin_panel.users.action.toggle"
+            )
+        except Exception:
+            can_toggle = False
+
+        try:
+            can_reset = await db_service.has_access(
+                user_id, "admin_panel.users.action.reset_password"
+            )
+        except Exception:
+            can_reset = False
 
         # Visibility rule:
         #   • if the user has "admin_panel.users.view_all" → see everyone
@@ -548,7 +582,10 @@ def register_routes(
                     "variant": status_variant,
                 },
                 "_joined": u.created_at.isoformat() if u.created_at else "",
-                "_actions": _build_user_actions(u, current_rank),
+                "_actions": _build_user_actions(
+                    u, current_rank,
+                    can_change_role, can_toggle, can_reset,
+                ),
             })
 
         return http_api.JSONResponse(
@@ -600,6 +637,19 @@ def register_routes(
         if not can_manage:
             return http_api.JSONResponse(
                 content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            can_change_role = await db_service.has_access(
+                user_id, "admin_panel.users.action.change_role"
+            )
+        except Exception:
+            can_change_role = False
+        if not can_change_role:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission",
+                         "message": "You do not have permission to change user roles."},
                 status_code=403,
             )
 
@@ -706,6 +756,19 @@ def register_routes(
             )
 
         try:
+            can_toggle = await db_service.has_access(
+                user_id, "admin_panel.users.action.toggle"
+            )
+        except Exception:
+            can_toggle = False
+        if not can_toggle:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission",
+                         "message": "You do not have permission to toggle user status."},
+                status_code=403,
+            )
+
+        try:
             body = await request.json()
         except Exception:
             body = {}
@@ -804,6 +867,19 @@ def register_routes(
         if not can_manage:
             return http_api.JSONResponse(
                 content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            can_reset = await db_service.has_access(
+                user_id, "admin_panel.users.action.reset_password"
+            )
+        except Exception:
+            can_reset = False
+        if not can_reset:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission",
+                         "message": "You do not have permission to reset user passwords."},
                 status_code=403,
             )
 
