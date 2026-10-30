@@ -93,6 +93,7 @@ class FormAccessRepository:
                 fa.level,
                 r.role_name,
                 r.enabled   AS role_enabled,
+                r.lock      AS role_locked,
                 f.form_name,
                 f.lock      AS form_locked
             FROM form_access fa

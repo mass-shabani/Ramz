@@ -252,7 +252,11 @@ class AdminPanelService:
         """
         Create a new grant with numeric level (0 = closed, ≥1 = open).
 
-        Authorization is rank-based: current.rank > role.rank.
+        Checks (in order):
+          • rank: current.rank > role.rank
+          • role.lock → role_locked
+          • form existence
+          • form.lock → form_locked
 
         Returns (ok: bool, code: Optional[str]).
         """
@@ -278,9 +282,15 @@ class AdminPanelService:
         if current_rank <= role_rank:
             return False, "insufficient_rank"
 
+        if bool(role.get("lock")):
+            return False, "role_locked"
+
         form = await self.db.admin_get_form(fid)
         if not form:
             return False, "form_not_found"
+
+        if bool(form.get("lock")):
+            return False, "form_locked"
 
         ok, code = await self.db.admin_create_grant(rid, fid, lvl)
         return ok, code
@@ -291,7 +301,11 @@ class AdminPanelService:
         """
         Update the level of an existing grant.
 
-        Authorization is rank-based: current.rank > role.rank.
+        Checks (in order):
+          • rank: current.rank > role.rank
+          • role.lock → role_locked
+          • grant existence
+          • form.lock → form_locked
 
         Returns (ok: bool, code: Optional[str]).
         """
@@ -317,9 +331,16 @@ class AdminPanelService:
         if current_rank <= role_rank:
             return False, "insufficient_rank"
 
+        if bool(role.get("lock")):
+            return False, "role_locked"
+
         existing = await self.db.admin_get_grant(rid, fid)
         if not existing:
             return False, "grant_not_found"
+
+        form = await self.db.admin_get_form(fid)
+        if form and bool(form.get("lock")):
+            return False, "form_locked"
 
         ok = await self.db.admin_update_grant_level(rid, fid, lvl)
         return (True, None) if ok else (False, "internal_error")
@@ -328,7 +349,11 @@ class AdminPanelService:
         """
         Delete a grant.
 
-        Authorization is rank-based: current.rank > role.rank.
+        Checks (in order):
+          • rank: current.rank > role.rank
+          • role.lock → role_locked
+          • grant existence
+          • form.lock → form_locked
 
         Returns (ok: bool, code: Optional[str]).
         """
@@ -346,9 +371,16 @@ class AdminPanelService:
         if current_rank <= role_rank:
             return False, "insufficient_rank"
 
+        if bool(role.get("lock")):
+            return False, "role_locked"
+
         existing = await self.db.admin_get_grant(rid, fid)
         if not existing:
             return False, "grant_not_found"
+
+        form = await self.db.admin_get_form(fid)
+        if form and bool(form.get("lock")):
+            return False, "form_locked"
 
         ok = await self.db.admin_delete_grant(rid, fid)
         return (True, None) if ok else (False, "internal_error")

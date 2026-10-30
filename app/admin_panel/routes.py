@@ -1270,7 +1270,14 @@ def register_routes(
         )
 
     def _build_grant_actions(row):
-        """Build the actions column for one grant row."""
+        """Build the actions column for one grant row.
+
+        Returns [] when either the role or the form is locked — locked
+        entities cannot be edited or have their grants removed.
+        """
+        if row.get("role_locked") or row.get("form_locked"):
+            return []
+
         return [
             {
                 "action": "edit-grant",
@@ -1309,11 +1316,13 @@ def register_routes(
     def _grant_row_payload(row):
         """Convert a repo row into the JSON shape used by the UI."""
         return {
-            "role_id":   row.get("role_id") or "",
-            "role_name": row.get("role_name") or row.get("role_id") or "",
-            "form_id":   row.get("form_id") or "",
-            "form_name": row.get("form_name") or row.get("form_id") or "",
-            "level":     int(row.get("level") or 0),
+            "role_id":     row.get("role_id") or "",
+            "role_name":   row.get("role_name") or row.get("role_id") or "",
+            "role_locked": bool(row.get("role_locked")),
+            "form_id":     row.get("form_id") or "",
+            "form_name":   row.get("form_name") or row.get("form_id") or "",
+            "form_locked": bool(row.get("form_locked")),
+            "level":       int(row.get("level") or 0),
         }
 
     # ------------------------------------------------------------
@@ -1575,6 +1584,8 @@ def register_routes(
                 "role_not_found":    "Role not found.",
                 "form_not_found":    "Form not found.",
                 "insufficient_rank": "You do not have sufficient rank to manage grants for this role.",
+                "role_locked":       "This role is locked and cannot have new grants.",
+                "form_locked":       "This form is locked and cannot have new grants.",
                 "internal_error":    "Something went wrong. Please try again.",
             }
             return http_api.JSONResponse(
@@ -1684,6 +1695,8 @@ def register_routes(
                 "grant_not_found":   "Grant not found.",
                 "role_not_found":    "Role not found.",
                 "insufficient_rank": "You do not have sufficient rank to manage grants for this role.",
+                "role_locked":       "This role is locked; its grants cannot be modified.",
+                "form_locked":       "This form is locked; its grants cannot be modified.",
                 "internal_error":    "Something went wrong. Please try again.",
             }
             return http_api.JSONResponse(
@@ -1785,6 +1798,8 @@ def register_routes(
                 "grant_not_found":   "Grant not found.",
                 "role_not_found":    "Role not found.",
                 "insufficient_rank": "You do not have sufficient rank to manage grants for this role.",
+                "role_locked":       "This role is locked; its grants cannot be modified.",
+                "form_locked":       "This form is locked; its grants cannot be modified.",
                 "internal_error":    "Something went wrong. Please try again.",
             }
             return http_api.JSONResponse(
