@@ -596,7 +596,6 @@
     const editorId       = document.getElementById('formEditorId');
     const editorName     = document.getElementById('formEditorName');
     const editorDesc     = document.getElementById('formEditorDesc');
-    const editorEnabled  = document.getElementById('formEditorEnabled');
     const editorSubmit   = document.getElementById('formEditorSubmit');
     const editorCancel   = document.getElementById('formEditorCancel');
     const createBtn      = document.getElementById('formsCreateBtn');
@@ -612,7 +611,6 @@
       editorId.placeholder = '(auto from name)';
       editorName.value = '';
       editorDesc.value = '';
-      editorEnabled.checked = true;
       editorSummary.textContent = 'Create Form';
       editorSubmit.textContent = 'Create Form';
     }
@@ -625,7 +623,6 @@
       editorId.placeholder = '';
       editorName.value = row.form_name || '';
       editorDesc.value = row.description || '';
-      editorEnabled.checked = (row._status && row._status.variant === 'active');
       editorSummary.textContent = 'Edit Form: ' + (row.form_id || '');
       editorSubmit.textContent = 'Update Form';
     }
@@ -709,7 +706,6 @@
         const body = {
           form_name:   name,
           description: (editorDesc.value || '').trim(),
-          enabled:     editorEnabled.checked,
           password:    password,
         };
         if (editorMode === 'create') {
@@ -893,8 +889,7 @@
       roles.forEach(r => {
         const opt = document.createElement('option');
         opt.value = r.role_id;
-        opt.textContent = r.role_name + ' (' + r.role_id + ')'
-                        + (r.lock ? ' 🔒' : '');
+        opt.textContent = r.role_name + ' (' + r.role_id + ')';
         roleFilter.appendChild(opt);
       });
       roleFilter.value = curRole;
@@ -905,8 +900,7 @@
       forms.forEach(f => {
         const opt = document.createElement('option');
         opt.value = f.form_id;
-        opt.textContent = f.form_name + ' (' + f.form_id + ')'
-                        + (f.lock ? ' 🔒' : '');
+        opt.textContent = f.form_name + ' (' + f.form_id + ')';
         formFilter.appendChild(opt);
       });
       formFilter.value = curForm;
@@ -963,8 +957,7 @@
           levelText = 'Level ' + level;
         }
 
-        const formCell = escapeHtml(r.form_name) +
-          (r.form_locked ? ' <span style="color:#fbbf24;font-size:11px;">🔒</span>' : '');
+        const formCell = escapeHtml(r.form_name);
 
         const lvlCell = hasGrant
           ? '<span class="status ' + badgeClass + '">' + escapeHtml(levelText) + '</span>'

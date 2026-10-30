@@ -132,7 +132,7 @@ class AdminPanelService:
     # Forms
     # ============================================================
     async def create_form(
-        self, form_id, form_name, description, enabled, current_user_id
+        self, form_id, form_name, description, current_user_id
     ):
         """
         Create a new form.
@@ -172,7 +172,6 @@ class AdminPanelService:
             form_id=final_id,
             form_name=name,
             description=(description or "").strip(),
-            enabled=bool(enabled),
         )
         if not ok:
             return False, None, "internal_error"
@@ -181,7 +180,7 @@ class AdminPanelService:
         return True, final_id, None
 
     async def update_form(
-        self, form_id, form_name, description, enabled, current_user_id
+        self, form_id, form_name, description, current_user_id
     ):
         """
         Update an existing form.
@@ -209,7 +208,6 @@ class AdminPanelService:
             form_id=fid,
             form_name=name,
             description=(description or "").strip(),
-            enabled=bool(enabled),
         )
         if not ok:
             return False, "internal_error"

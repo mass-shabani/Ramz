@@ -712,23 +712,21 @@ class DbManagerService:
             return 0
 
     async def admin_create_form(self, form_id, form_name,
-                                 description="", enabled=True):
+                                 description=""):
         """Insert a new form. Returns True on success."""
         return await self._form_repo.create(
             form_id=form_id,
             form_name=form_name,
             description=description,
-            enabled=enabled,
         )
 
     async def admin_update_form(self, form_id, form_name=None,
-                                 description=None, enabled=None):
+                                 description=None):
         """Update an existing form. Returns True on success."""
         return await self._form_repo.update(
             form_id=form_id,
             form_name=form_name,
             description=description,
-            enabled=enabled,
         )
 
     async def admin_delete_form(self, form_id):

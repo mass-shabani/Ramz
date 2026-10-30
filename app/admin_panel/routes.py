@@ -998,7 +998,6 @@ def register_routes(
         form_id      = str(body.get("form_id") or "").strip()
         form_name    = str(body.get("form_name") or "").strip()
         description  = str(body.get("description") or "")
-        enabled      = bool(body.get("enabled", True))
         password     = str(body.get("password") or "")
 
         if not form_name:
@@ -1027,7 +1026,6 @@ def register_routes(
                 form_id=form_id,
                 form_name=form_name,
                 description=description,
-                enabled=enabled,
                 current_user_id=user_id,
             )
         except Exception as exc:
@@ -1103,7 +1101,6 @@ def register_routes(
         form_id      = str(body.get("form_id") or "").strip()
         form_name    = str(body.get("form_name") or "").strip()
         description  = str(body.get("description") or "")
-        enabled      = bool(body.get("enabled", True))
         password     = str(body.get("password") or "")
 
         if not form_id or not form_name:
@@ -1132,7 +1129,6 @@ def register_routes(
                 form_id=form_id,
                 form_name=form_name,
                 description=description,
-                enabled=enabled,
                 current_user_id=user_id,
             )
         except Exception as exc:
