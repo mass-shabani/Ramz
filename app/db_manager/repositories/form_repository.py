@@ -59,8 +59,8 @@ class FormRepository:
 
     async def list_all_with_grant_counts(self) -> list[dict]:
         """
-        Return all forms (enabled + disabled), each enriched with
-        `grants_count` = number of rows in form_access referencing it.
+        Return all forms, each enriched with `grants_count` = number of
+        rows in form_access referencing it, and `lock` flag.
         Sorted by form_id ascending.
         """
         sql = """
@@ -68,11 +68,11 @@ class FormRepository:
                 f.form_id,
                 f.form_name,
                 f.description,
-                f.enabled,
+                f.lock,
                 COUNT(fa.role_id) AS grants_count
             FROM form f
             LEFT JOIN form_access fa ON fa.form_id = f.form_id
-            GROUP BY f.form_id, f.form_name, f.description, f.enabled
+            GROUP BY f.form_id, f.form_name, f.description, f.lock
             ORDER BY f.form_id ASC
         """
         return await self._conn().fetch_all(sql) or []
@@ -85,7 +85,6 @@ class FormRepository:
         form_id: str,
         form_name: str,
         description: str = "",
-        enabled: bool = True,
     ) -> bool:
         """Create a form row. Returns True on success."""
         if not form_id or not form_name:
@@ -94,7 +93,6 @@ class FormRepository:
             "form_id":     form_id,
             "form_name":   form_name,
             "description": description,
-            "enabled":     1 if enabled else 0,
         })
         return result_ok(result)
 
@@ -103,7 +101,6 @@ class FormRepository:
         form_id: str,
         form_name: Optional[str] = None,
         description: Optional[str] = None,
-        enabled: Optional[bool] = None,
     ) -> bool:
         """Update a form. Only whitelisted fields. Returns True on success."""
         if not form_id:
@@ -114,8 +111,6 @@ class FormRepository:
             values["form_name"] = form_name
         if description is not None:
             values["description"] = description
-        if enabled is not None:
-            values["enabled"] = 1 if enabled else 0
 
         if not values:
             return False

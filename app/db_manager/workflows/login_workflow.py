@@ -99,6 +99,14 @@ class LoginWorkflow:
             )
             raise LoginError("account_disabled")
 
+        # Role disabled → same treatment as disabled user
+        if not getattr(user, "role_enabled", True):
+            self._log(
+                f"Login failed: user '{username}' has a disabled role",
+                level="WARNING",
+            )
+            raise LoginError("account_disabled")
+
         # Wrong password → generic error (same as unknown user)
         if not user.password_hash or not verify_password(
             password, user.password_hash

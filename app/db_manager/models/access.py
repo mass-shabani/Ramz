@@ -17,6 +17,7 @@ class Role:
     description: str = ""
     enabled: bool = True
     rank: int = 0
+    lock: bool = False
 
     @classmethod
     def from_row(cls, row: dict) -> "Role":
@@ -26,6 +27,7 @@ class Role:
             description=row.get("description") or "",
             enabled=bool(row.get("enabled", 1)),
             rank=int(row.get("rank") or 0),
+            lock=bool(row.get("lock", 0)),
         )
 
 
@@ -34,7 +36,7 @@ class Form:
     form_id: str
     form_name: str
     description: str = ""
-    enabled: bool = True
+    lock: bool = False
 
     @classmethod
     def from_row(cls, row: dict) -> "Form":
@@ -42,7 +44,7 @@ class Form:
             form_id=row.get("form_id") or "",
             form_name=row.get("form_name") or "",
             description=row.get("description") or "",
-            enabled=bool(row.get("enabled", 1)),
+            lock=bool(row.get("lock", 0)),
         )
 
 

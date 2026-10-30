@@ -926,14 +926,14 @@ def register_routes(
             {"key": "form_name",   "label": "Name"},
             {"key": "description", "label": "Description"},
             {"key": "_grants",     "label": "Grants",      "type": "badge"},
-            {"key": "_status",     "label": "Status",      "type": "badge"},
+            {"key": "_lock",       "label": "Lock",        "type": "badge"},
             {"key": "_actions",    "label": "Actions",     "type": "actions"},
         ]
 
         row_data = []
         for row in rows:
             grants = int(row.get("grants_count") or 0)
-            enabled = bool(row.get("enabled"))
+            locked = bool(row.get("lock"))
             row_data.append({
                 "form_id":     row.get("form_id") or "",
                 "form_name":   row.get("form_name") or "",
@@ -942,9 +942,9 @@ def register_routes(
                     "text": str(grants),
                     "variant": "active" if grants > 0 else "idle",
                 },
-                "_status": {
-                    "text": "Enabled" if enabled else "Disabled",
-                    "variant": "active" if enabled else "pending",
+                "_lock": {
+                    "text":    "Locked" if locked else "Unlocked",
+                    "variant": "pending" if locked else "idle",
                 },
                 "_actions": _build_form_actions(row),
             })

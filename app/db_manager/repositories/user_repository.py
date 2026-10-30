@@ -53,6 +53,7 @@ class UserRepository:
                 p.national_code,
             r.role_name,
             r.rank AS role_rank,
+            r.enabled AS role_enabled,
             s.subscription_name,
             e.email_address,
             ph.phone_number
@@ -106,15 +107,31 @@ class UserRepository:
         )
 
     async def is_enabled(self, user_id: int) -> bool:
+        """
+        Return True only if BOTH the user and the user's role are enabled.
+        Users with a NULL role are treated as enabled (no role constraint).
+        """
         if not user_id:
             return False
         row = await self._conn().fetch_one(
-            "SELECT enabled FROM user WHERE user_id = ? LIMIT 1",
+            """
+            SELECT
+                u.enabled AS user_enabled,
+                COALESCE(r.enabled, 1) AS role_enabled
+            FROM user u
+            LEFT JOIN role r ON r.role_id = u.role_id
+            WHERE u.user_id = ?
+            LIMIT 1
+            """,
             (int(user_id),),
         )
         if not row:
             return False
-        return bool(row.get("enabled", 0))
+        if not bool(row.get("user_enabled", 0)):
+            return False
+        if not bool(row.get("role_enabled", 1)):
+            return False
+        return True
 
     # ----------------------------------------------------------
     # Admin: list/count users (search + pagination)

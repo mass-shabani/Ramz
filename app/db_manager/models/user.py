@@ -39,6 +39,7 @@ class User:
     # --- Optional fields (populated by specific queries) ---
     role_id: Optional[str] = None
     role_rank: int = 0
+    role_enabled: bool = True
     email_id: Optional[int] = None
     phone_id: Optional[int] = None
     email: Optional[str] = None
@@ -114,6 +115,7 @@ class User:
             phone=get("phone_number") or get("phone"),
             role_name=get("role_name"),
             role_rank=int(get("role_rank") or 0),
+            role_enabled=bool(get("role_enabled", 1)),
             subscription_id=get("subscription_id"),
             subscription_name=get("subscription_name"),
 
