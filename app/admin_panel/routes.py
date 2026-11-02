@@ -1496,16 +1496,29 @@ def register_routes(
     def _build_grant_actions(row, can_edit, can_delete):
         """Build the actions column for one grant row.
 
-        Returns [] when:
-          • either the role or the form is locked (grants are frozen), OR
-          • the current viewer has no per-button grants.
-
-        Otherwise, includes only the buttons the viewer is authorized
-        for (edit requires access.action.edit; delete requires
-        access.action.delete).
+        When either the role or the form is locked, grants are frozen
+        and a single non-interactive lock icon is returned. Otherwise,
+        the edit / delete buttons appear based on the viewer's
+        per-button grants.
         """
-        if row.get("role_locked") or row.get("form_locked"):
-            return []
+        role_id   = row.get("role_id") or ""
+        form_id   = row.get("form_id") or ""
+        is_locked = bool(row.get("role_locked") or row.get("form_locked"))
+
+        if is_locked:
+            return [{
+                "action": "",
+                "icon": (
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+                    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+                    '<rect x="4" y="10" width="16" height="11" rx="3"/>'
+                    '<path d="M8 10V7a4 4 0 0 1 8 0v3"/>'
+                    '</svg>'
+                ),
+                "title": "Locked — grants cannot be modified",
+                "variant": "warning",
+                "data": {},
+            }]
 
         actions = []
 
@@ -1521,8 +1534,8 @@ def register_routes(
                 ),
                 "title": "Change condition",
                 "data": {
-                    "role-id": row.get("role_id") or "",
-                    "form-id": row.get("form_id") or "",
+                    "role-id": role_id,
+                    "form-id": form_id,
                 },
             })
 
@@ -1540,8 +1553,8 @@ def register_routes(
                 "title": "Delete grant",
                 "variant": "danger",
                 "data": {
-                    "role-id": row.get("role_id") or "",
-                    "form-id": row.get("form_id") or "",
+                    "role-id": role_id,
+                    "form-id": form_id,
                 },
             })
 
@@ -1694,23 +1707,13 @@ def register_routes(
             {"key": "_role",  "label": "Role",    "type": "badge"},
             {"key": "_form",  "label": "Form"},
             {"key": "_level", "label": "Level",   "type": "badge"},
-            {"key": "_lock",  "label": "Lock",    "type": "html", "width": "60px"},
             {"key": "_actions", "label": "Actions", "type": "actions"},
         ]
 
-        LOCK_SVG = (
-            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
-            'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
-            'style="width:16px;height:16px;color:#fbbf24;vertical-align:middle;width:stretch">'
-            '<rect x="4" y="10" width="16" height="11" rx="3"/>'
-            '<path d="M8 10V7a4 4 0 0 1 8 0v3"/>'
-            '</svg>'
-        )
         row_data = []
         for row in grants:
             payload = _grant_row_payload(row)
             lvl = payload["level"]
-            is_locked = bool(payload["role_locked"] or payload["form_locked"])
             row_data.append({
                 "_role": {
                     "text":    payload["role_name"],
@@ -1723,7 +1726,6 @@ def register_routes(
                                "active" if lvl <= 2 else
                                "pending",
                 },
-                "_lock": LOCK_SVG if is_locked else "",
                 "_actions": _build_grant_actions(
                     payload, can_action_edit, can_action_delete,
                 ),

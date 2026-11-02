@@ -4269,6 +4269,13 @@ content-container {
   flex: 0 0 auto;
 }
 
+/* Non-interactive "warning" variant (e.g. lock icon in Access table) */
+.table-wrap .channel-action.warning {
+  cursor: default;
+  pointer-events: none;
+  color: #fbbf24;
+}
+
 /* ==========================================================================
    26. REDUCED MOTION
    ========================================================================== */
