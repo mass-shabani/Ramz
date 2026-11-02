@@ -4269,10 +4269,15 @@ content-container {
   flex: 0 0 auto;
 }
 
-/* Non-interactive "warning" variant (e.g. lock icon in Access table) */
-.table-wrap .channel-action.warning {
-  cursor: default;
+/* Non-interactive "plain" variant — rendered as <span>, no button chrome.
+   E.g. the lock icon in the Access Grants table. */
+.table-wrap .channel-action.plain {
   pointer-events: none;
+  cursor: default;
+}
+
+/* Amber color for warning-flavored icons (used with .plain) */
+.table-wrap .channel-action.warning {
   color: #fbbf24;
 }
 

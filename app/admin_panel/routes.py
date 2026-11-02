@@ -1517,6 +1517,7 @@ def register_routes(
                 ),
                 "title": "Locked — grants cannot be modified",
                 "variant": "warning",
+                "plain": True,
                 "data": {},
             }]
 

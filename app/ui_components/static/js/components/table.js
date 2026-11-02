@@ -378,6 +378,9 @@ class RamzTable extends HTMLElement {
       return `<a class="channel-action${variant}"
                  href="${escapeHtml(action.href)}"${titleAttr}${common}>${icon}${label}</a>`;
     }
+    if (action.plain) {
+      return `<span class="channel-action${variant} plain"${titleAttr}>${icon}${label}</span>`;
+    }
     return `<button type="button"
                     class="channel-action${variant}"${titleAttr}${common}>${icon}${label}</button>`;
   }
