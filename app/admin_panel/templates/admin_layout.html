@@ -172,7 +172,13 @@
      Users List — search + pagination (only when section=users)
      ============================================================ */
   const USERS_PAGE_SIZE = 20;
-  const usersState = { query: '', offset: 0, total: 0, initialized: false };
+  const usersState = {
+    query: '',
+    offset: 0,
+    total: 0,
+    initialized: false,
+    assignableRoles: [],
+  };
 
   function getCurrentSection() {
     const params = new URLSearchParams(window.location.search);
@@ -249,6 +255,7 @@
         table.setColumns(data.columns || COLUMNS);
         table.setData(data.rows || []);
         usersState.total = data.total || 0;
+        usersState.assignableRoles = data.assignable_roles || [];
         updatePagination();
       } catch (err) {
         console.error('[users] load failed:', err);
@@ -382,18 +389,34 @@
 
     const username = (row && row.username) || 'user';
 
+    // Dynamic role list — only roles with rank < current_rank,
+    // excluding super-admin. Populated by admin_users_list.
+    const roles = (usersState.assignableRoles || []).filter(
+      r => r.role_id !== 'super-admin'
+    );
+    if (roles.length === 0) {
+      await appDialog.alert({
+        title: 'No assignable roles',
+        message: 'There are no roles with a lower rank than yours.',
+        icon: 'warning',
+      });
+      return;
+    }
+
+    // Higher rank first; cancel last.
+    const sorted = roles.slice().sort((a, b) => (b.rank || 0) - (a.rank || 0));
+    const buttons = sorted.map(r => ({
+      value: r.role_id,
+      label: r.role_name || r.role_id,
+      variant: 'secondary',
+    }));
+    buttons.push({ value: 'cancel', label: 'Cancel', variant: 'ghost' });
+
     const choice = await appDialog.ask({
       title: 'Change role for @' + username,
       desc: 'Choose a new role. You will be asked for your password next.',
       icon: 'warning',
-      buttons: [
-        { value: 'admin',      label: 'Admin',      variant: 'primary'   },
-        { value: 'manager',    label: 'Manager',    variant: 'secondary' },
-        { value: 'up-user',    label: 'Up User',    variant: 'secondary' },
-        { value: 'user',       label: 'User',       variant: 'secondary' },
-        { value: 'limit-user', label: 'Limit User', variant: 'secondary' },
-        { value: 'cancel',     label: 'Cancel',     variant: 'ghost'     },
-      ],
+      buttons: buttons,
       cancelValue: 'cancel',
     });
     if (!choice || choice === 'cancel') return;

@@ -555,6 +555,24 @@ def register_routes(
         except Exception:
             can_reset = False
 
+        # Assignable roles for the "change role" dialog:
+        #   • strictly lower rank than the current user
+        #   • never super-admin (reserved for system_settings)
+        try:
+            all_roles = await db_service.admin_list_roles_with_counts()
+        except Exception:
+            all_roles = []
+        assignable_roles = [
+            {
+                "role_id":   r.get("role_id"),
+                "role_name": r.get("role_name") or r.get("role_id"),
+                "rank":      int(r.get("rank") or 0),
+            }
+            for r in all_roles
+            if int(r.get("rank") or 0) < int(current_rank)
+            and r.get("role_id") != "super-admin"
+        ]
+
         # Visibility rule:
         #   • if the user has "admin_panel.users.view_all" → see everyone
         #   • otherwise → see only users with role_rank < current_rank
@@ -639,6 +657,7 @@ def register_routes(
                 "total":   total,
                 "offset":  offset,
                 "limit":   limit,
+                "assignable_roles": assignable_roles,
             },
             status_code=200,
         )
