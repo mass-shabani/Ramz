@@ -301,6 +301,9 @@ def register_routes(
         if section == "access":
             permissions["access_action_create"] = await _has("admin_panel.access.action.create")
 
+        if section == "roles":
+            permissions["roles_action_create"] = await _has("admin_panel.roles.action.create")
+
         context = {
             "profile":     profile,
             "permissions": permissions,
@@ -2115,6 +2118,111 @@ def register_routes(
             status_code=200,
         )
 
+    def _build_role_actions(row, can_edit, can_delete, can_lock):
+        """Build the actions column for one role row.
+
+        Only the buttons the current viewer is authorized for are
+        included. Lock state affects grants only, NOT editing/deleting
+        the role itself.
+        """
+        role_id = row.get("role_id") or ""
+        grants  = int(row.get("grants_count") or 0)
+        locked  = bool(row.get("lock"))
+
+        actions = []
+
+        if can_edit:
+            actions.append({
+                "action": "edit-role",
+                "icon": (
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+                    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+                    '<path d="M12 20h9"/>'
+                    '<path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z"/>'
+                    '</svg>'
+                ),
+                "title": "Edit",
+                "data": {"role-id": role_id},
+            })
+
+        if can_delete:
+            if grants > 0:
+                actions.append({
+                    "action": "delete-role",
+                    "icon": (
+                        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+                        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+                        '<path d="M3 6h18"/>'
+                        '<path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>'
+                        '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>'
+                        '</svg>'
+                    ),
+                    "title": "Cannot delete (has grants)",
+                    "variant": "danger",
+                    "data": {"role-id": role_id},
+                })
+            else:
+                actions.append({
+                    "action": "delete-role",
+                    "icon": (
+                        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+                        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+                        '<path d="M3 6h18"/>'
+                        '<path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>'
+                        '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>'
+                        '</svg>'
+                    ),
+                    "title": "Delete",
+                    "variant": "danger",
+                    "data": {"role-id": role_id},
+                })
+
+        if can_lock:
+            if locked:
+                actions.append({
+                    "action": "toggle-role-lock",
+                    "icon": (
+                        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+                        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+                        '<rect x="4" y="10" width="16" height="11" rx="3"/>'
+                        '<path d="M8 10V7a4 4 0 0 1 8 0v3"/>'
+                        '</svg>'
+                    ),
+                    "title": "Unlock role",
+                    "variant": "warning",
+                    "data": {"role-id": role_id, "locked": "1"},
+                })
+            else:
+                actions.append({
+                    "action": "toggle-role-lock",
+                    "icon": (
+                        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+                        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+                        '<rect x="4" y="10" width="16" height="11" rx="3"/>'
+                        '<path d="M8 10V7a4 4 0 0 1 7.5-2"/>'
+                        '</svg>'
+                    ),
+                    "title": "Lock role",
+                    "variant": "",
+                    "data": {"role-id": role_id, "locked": "0"},
+                })
+
+        # Eye icon — always visible (view grants for this role)
+        actions.append({
+            "action": "view-grants",
+            "icon": (
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+                'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+                '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/>'
+                '<circle cx="12" cy="12" r="3"/>'
+                '</svg>'
+            ),
+            "title": "View grants",
+            "data": {"role-id": role_id},
+        })
+
+        return actions
+
     # ------------------------------------------------------------
     # POST /settings/admin/roles/list — read-only roles view
     # ------------------------------------------------------------
@@ -2150,6 +2258,27 @@ def register_routes(
             current_rank = await db_service.get_user_rank(user_id)
         except Exception:
             current_rank = 0
+
+        try:
+            can_action_edit = await db_service.has_access(
+                user_id, "admin_panel.roles.action.edit"
+            )
+        except Exception:
+            can_action_edit = False
+
+        try:
+            can_action_delete = await db_service.has_access(
+                user_id, "admin_panel.roles.action.delete"
+            )
+        except Exception:
+            can_action_delete = False
+
+        try:
+            can_action_lock = await db_service.has_access(
+                user_id, "admin_panel.roles.action.lock"
+            )
+        except Exception:
+            can_action_lock = False
 
         try:
             rows = await db_service.admin_list_roles_with_counts()
@@ -2199,19 +2328,6 @@ def register_routes(
             locked  = bool(row.get("lock"))
             rank    = int(row.get("rank") or 0)
 
-            actions = [{
-                "action": "view-grants",
-                "icon": (
-                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
-                    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
-                    '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/>'
-                    '<circle cx="12" cy="12" r="3"/>'
-                    '</svg>'
-                ),
-                "title": "View grants",
-                "data": {"role-id": role_id},
-            }]
-
             row_data.append({
                 "role_id":     role_id,
                 "role_name":   row.get("role_name") or "",
@@ -2229,7 +2345,9 @@ def register_routes(
                     "variant": "active" if enabled else "pending",
                 },
                 "_lock": LOCK_SVG if locked else "",
-                "_actions": actions,
+                "_actions": _build_role_actions(
+                    row, can_action_edit, can_action_delete, can_action_lock,
+                ),
             })
 
         return http_api.JSONResponse(

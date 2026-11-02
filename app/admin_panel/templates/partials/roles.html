@@ -1,5 +1,5 @@
 {# ==========================================================================
-   Roles View — read-only admin view of roles with grant counts
+   Roles — admin view (list + create/edit + lock)
    Loaded into <content-container> via POST /settings/admin/partials/roles
    ========================================================================== #}
 
@@ -19,15 +19,94 @@
   </ramz-card>
 {% else %}
 
-<ramz-card title="Roles" subtitle="All roles in the system (read-only)">
+<ramz-card title="Roles" subtitle="All roles in the system">
+  {% if permissions.roles_action_create %}
+  <button slot="header-actions" type="button" class="btn-primary" id="rolesCreateBtn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2.2" stroke-linecap="round">
+      <path d="M12 5v14M5 12h14"/>
+    </svg>
+    Create Role
+  </button>
+  {% endif %}
   <ramz-table id="rolesTable" empty-text="No roles found."></ramz-table>
 </ramz-card>
+
+<details class="add-account-block" id="roleEditorBlock" style="margin-top: 20px;">
+  <summary id="roleEditorSummary">Create Role</summary>
+  <form id="roleEditor" autocomplete="off">
+    <div class="settings-rows">
+      <div class="settings-row">
+        <div class="settings-row-label">
+          <div class="label">Role Name</div>
+          <div class="hint">Human-readable label. Must be unique.</div>
+        </div>
+        <div class="settings-row-control">
+          <div class="settings-field">
+            <input type="text" id="roleEditorName" required maxlength="100">
+          </div>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-label">
+          <div class="label">Role ID</div>
+          <div class="hint">Stable identifier (e.g. "support"). Cannot be changed later.</div>
+        </div>
+        <div class="settings-row-control">
+          <div class="settings-field">
+            <input type="text" id="roleEditorId" required maxlength="50">
+          </div>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-label">
+          <div class="label">Description</div>
+          <div class="hint">Optional notes for administrators.</div>
+        </div>
+        <div class="settings-row-control">
+          <div class="settings-field">
+            <textarea id="roleEditorDesc" rows="3" maxlength="500"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-label">
+          <div class="label">Rank</div>
+          <div class="hint">Numeric hierarchy (e.g. 10, 20, 30). Higher = more privileged. Must be strictly lower than your own rank.</div>
+        </div>
+        <div class="settings-row-control">
+          <div class="settings-field">
+            <input type="number" id="roleEditorRank" min="0" max="9999"
+                   value="0" required style="width: 100%;">
+          </div>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-label">
+          <div class="label">Status</div>
+          <div class="hint">Disabled roles eject assigned users and reject their logins.</div>
+        </div>
+        <div class="settings-row-control">
+          <label class="toggle">
+            <input type="checkbox" id="roleEditorEnabled" checked>
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            <span class="toggle-label">Enabled</span>
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="settings-actions">
+      <button type="button" class="btn-ghost" id="roleEditorCancel">Cancel</button>
+      <button type="submit" class="btn-primary" id="roleEditorSubmit">Create Role</button>
+    </div>
+  </form>
+</details>
 
 <p style="margin-top: 16px; font-size: 12.5px; color: var(--muted);
           line-height: 1.6;">
   Roles define <em>who</em> a user is; grants (in the
   <strong>Access Grants</strong> section) define <em>what</em> they can do.
-  Click the eye icon to see a role's grants.
+  Click the eye icon to see a role's grants, or the lock to freeze them.
 </p>
 
 {% endif %}

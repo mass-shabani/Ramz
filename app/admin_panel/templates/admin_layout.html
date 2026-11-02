@@ -1332,8 +1332,10 @@
   }
 
   /* ============================================================
-     Roles View — read-only, with "view grants" shortcut
+     Roles View — CRUD + lock + view-grants
      ============================================================ */
+  const rolesState = { initialized: false, cache: [], currentListener: null };
+
   function initRolesPage() {
     const table = document.getElementById('rolesTable');
     if (!table) return;
@@ -1346,11 +1348,65 @@
       { key: 'role_id',     label: 'Role ID',     className: 'mono' },
       { key: 'role_name',   label: 'Name' },
       { key: 'description', label: 'Description' },
+      { key: '_rank',       label: 'Rank',        type: 'badge' },
       { key: '_grants',     label: 'Grants',      type: 'badge' },
       { key: '_status',     label: 'Status',      type: 'badge' },
+      { key: '_lock',       label: 'Lock',        type: 'html', width: '60px' },
       { key: '_actions',    label: 'Actions',     type: 'actions' },
     ];
     table.setColumns(COLUMNS);
+
+    const editorBlock    = document.getElementById('roleEditorBlock');
+    const editorSummary  = document.getElementById('roleEditorSummary');
+    const editorForm     = document.getElementById('roleEditor');
+    const editorId       = document.getElementById('roleEditorId');
+    const editorName     = document.getElementById('roleEditorName');
+    const editorDesc     = document.getElementById('roleEditorDesc');
+    const editorRank     = document.getElementById('roleEditorRank');
+    const editorEnabled  = document.getElementById('roleEditorEnabled');
+    const editorSubmit   = document.getElementById('roleEditorSubmit');
+    const editorCancel   = document.getElementById('roleEditorCancel');
+    const createBtn      = document.getElementById('rolesCreateBtn');
+
+    let editorMode = 'create';
+    let editorRoleId = '';
+
+    function resetEditor() {
+      editorMode = 'create';
+      editorRoleId = '';
+      if (editorId) {
+        editorId.value = '';
+        editorId.disabled = false;
+        editorId.placeholder = '(e.g. support)';
+      }
+      if (editorName)    editorName.value = '';
+      if (editorDesc)    editorDesc.value = '';
+      if (editorRank)    editorRank.value = '0';
+      if (editorEnabled) editorEnabled.checked = true;
+      if (editorSummary) editorSummary.textContent = 'Create Role';
+      if (editorSubmit)  editorSubmit.textContent = 'Create Role';
+    }
+
+    function fillEditor(row) {
+      editorMode = 'update';
+      editorRoleId = row.role_id || '';
+      if (editorId) {
+        editorId.value = row.role_id || '';
+        editorId.disabled = true;
+        editorId.placeholder = '';
+      }
+      if (editorName) editorName.value = row.role_name || '';
+      if (editorDesc) editorDesc.value = row.description || '';
+      if (editorRank) {
+        const rankText = (row._rank && row._rank.text) ? String(row._rank.text) : '0';
+        editorRank.value = rankText;
+      }
+      if (editorEnabled) {
+        editorEnabled.checked = !!(row._status && row._status.variant === 'active');
+      }
+      if (editorSummary) editorSummary.textContent = 'Edit Role: ' + (row.role_id || '');
+      if (editorSubmit)  editorSubmit.textContent = 'Update Role';
+    }
 
     async function loadRoles() {
       table.setLoading(true);
@@ -1369,30 +1425,205 @@
         const data = await resp.json();
         table.setColumns(data.columns || COLUMNS);
         table.setData(data.rows || []);
+        rolesState.cache = data.rows || [];
       } catch (err) {
         console.error('[roles] load failed:', err);
         table.setData([]);
+        rolesState.cache = [];
       } finally {
         table.setLoading(false);
       }
     }
 
-    document.addEventListener('ramz:table-action', (e) => {
-      if (getCurrentSection() !== 'roles') return;
-      const detail = e.detail || {};
-      if (detail.action !== 'view-grants') return;
+    if (createBtn) {
+      createBtn.addEventListener('click', () => {
+        resetEditor();
+        editorBlock.open = true;
+        editorBlock.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setTimeout(() => editorName && editorName.focus(), 300);
+      });
+    }
 
-      const data = detail.data || {};
-      const roleId = data.roleId || '';
+    if (editorCancel) {
+      editorCancel.addEventListener('click', () => {
+        resetEditor();
+        editorBlock.open = false;
+      });
+    }
+
+    if (editorForm) {
+      editorForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const rid  = (editorId.value || '').trim();
+        const name = (editorName.value || '').trim();
+        if (!rid || !name) {
+          showAdminToast('error', 'Role ID and name are required.');
+          return;
+        }
+        const rankNum = parseInt(editorRank.value || '0', 10);
+        if (!Number.isFinite(rankNum) || rankNum < 0) {
+          showAdminToast('error', 'Rank must be a non-negative integer.');
+          return;
+        }
+
+        const appDialog = document.getElementById('appDialog');
+        const ok = await appDialog.confirm({
+          title: editorMode === 'create' ? 'Create this role?' : 'Save changes?',
+          message: 'You will be asked for your password next.',
+          confirmLabel: 'Continue',
+          cancelLabel: 'Cancel',
+          variant: 'primary',
+          icon: 'info',
+        });
+        if (!ok) return;
+
+        const password = await appDialog.passwordConfirm({
+          title: 'Confirm with password',
+          message: 'Enter your account password to confirm this action.',
+          confirmLabel: 'Confirm',
+          cancelLabel: 'Cancel',
+          icon: 'lock',
+        });
+        if (!password) return;
+
+        const url = editorMode === 'create'
+          ? '/settings/admin/roles/create'
+          : '/settings/admin/roles/update';
+
+        const body = {
+          role_name:   name,
+          description: (editorDesc.value || '').trim(),
+          rank:        rankNum,
+          enabled:     editorEnabled.checked,
+          password:    password,
+        };
+        if (editorMode === 'create') {
+          body.role_id = rid;
+        } else {
+          body.role_id = editorRoleId;
+        }
+
+        const { data } = await apiPost(url, body);
+
+        if (data.status === 'success') {
+          showAdminToast('success', data.message || 'Saved.');
+          resetEditor();
+          editorBlock.open = false;
+          loadRoles();
+        } else {
+          await appDialog.alert({
+            title: 'Action failed',
+            message: data.message || 'Could not save.',
+            icon: 'danger',
+          });
+        }
+      });
+    }
+
+    async function handleDeleteRole(roleId) {
+      const appDialog = document.getElementById('appDialog');
       if (!roleId) return;
 
-      // Switch to Access view with a role filter pre-applied
+      const cached = rolesState.cache.find(r => r.role_id === roleId);
+      const grantsText = cached && cached._grants ? cached._grants.text : '0';
+      const grants = parseInt(grantsText, 10) || 0;
+      if (grants > 0) {
+        await appDialog.alert({
+          title: 'Cannot delete role',
+          message: 'This role has ' + grants + ' active grant(s). ' +
+                   'Remove all grants (from the Access section) before deleting.',
+          icon: 'warning',
+        });
+        return;
+      }
+
+      const ok = await appDialog.confirm({
+        title: 'Delete role "' + roleId + '"?',
+        message: 'This action cannot be undone. Roles with assigned users cannot be deleted.',
+        confirmLabel: 'Delete',
+        cancelLabel: 'Cancel',
+        variant: 'danger',
+        icon: 'danger',
+      });
+      if (!ok) return;
+
+      const password = await appDialog.passwordConfirm({
+        title: 'Confirm with password',
+        message: 'Enter your account password to confirm this action.',
+        confirmLabel: 'Delete',
+        cancelLabel: 'Cancel',
+        icon: 'lock',
+      });
+      if (!password) return;
+
+      const { data } = await apiPost('/settings/admin/roles/delete', {
+        role_id: roleId,
+        password: password,
+      });
+
+      if (data.status === 'success') {
+        showAdminToast('success', data.message || 'Deleted.');
+        loadRoles();
+      } else {
+        await appDialog.alert({
+          title: 'Delete failed',
+          message: data.message || 'Could not delete.',
+          icon: 'danger',
+        });
+      }
+    }
+
+    async function handleToggleRoleLock(roleId, isLocked) {
+      const appDialog = document.getElementById('appDialog');
+      if (!roleId) return;
+      const actionTitle = isLocked ? 'Unlock' : 'Lock';
+
+      const ok = await appDialog.confirm({
+        title: actionTitle + ' role "' + roleId + '"?',
+        message: isLocked
+          ? 'This will allow grant changes for this role again.'
+          : 'While locked, no grant for this role can be created, edited, or deleted.',
+        confirmLabel: actionTitle,
+        cancelLabel: 'Cancel',
+        variant: isLocked ? 'primary' : 'warning',
+        icon: 'warning',
+      });
+      if (!ok) return;
+
+      const password = await appDialog.passwordConfirm({
+        title: 'Confirm with password',
+        message: 'Enter your account password to confirm this action.',
+        confirmLabel: 'Confirm',
+        cancelLabel: 'Cancel',
+        icon: 'lock',
+      });
+      if (!password) return;
+
+      const { data } = await apiPost('/settings/admin/roles/toggle-lock', {
+        role_id: roleId,
+        locked: !isLocked,
+        password: password,
+      });
+
+      if (data.status === 'success') {
+        showAdminToast('success', data.message || 'Lock updated.');
+        loadRoles();
+      } else {
+        await appDialog.alert({
+          title: 'Action failed',
+          message: data.message || 'Could not toggle lock.',
+          icon: 'danger',
+        });
+      }
+    }
+
+    function handleViewRoleGrants(roleId) {
+      if (!roleId) return;
       const nav = document.getElementById('adminNav');
       if (!nav) return;
       const accessItem = nav.querySelector('[data-section="access"]');
       if (!accessItem) return;
 
-      // Programmatically trigger the same behavior as clicking the nav item
       nav.querySelectorAll('.settings-nav-item').forEach(el => el.classList.remove('active'));
       accessItem.classList.add('active');
 
@@ -1404,9 +1635,42 @@
       window.dispatchEvent(new CustomEvent('ramz:load-content', {
         detail: { url: accessItem.dataset.endpoint, section: 'access' }
       }));
-    });
+    }
 
+    // Remove previous listener to avoid duplicates
+    if (rolesState.currentListener) {
+      document.removeEventListener('ramz:table-action', rolesState.currentListener);
+    }
+    rolesState.currentListener = async (e) => {
+      if (getCurrentSection() !== 'roles') return;
+      const detail = e.detail || {};
+      const action = detail.action;
+      const data   = detail.data || {};
+      const roleId = data.roleId || '';
+      if (!roleId) return;
+
+      if (action === 'view-grants') {
+        handleViewRoleGrants(roleId);
+      } else if (action === 'edit-role') {
+        const row = rolesState.cache.find(r => r.role_id === roleId);
+        if (row) {
+          fillEditor(row);
+          editorBlock.open = true;
+          editorBlock.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          setTimeout(() => editorName && editorName.focus(), 300);
+        }
+      } else if (action === 'delete-role') {
+        await handleDeleteRole(roleId);
+      } else if (action === 'toggle-role-lock') {
+        const isLocked = data.locked === '1';
+        await handleToggleRoleLock(roleId, isLocked);
+      }
+    };
+    document.addEventListener('ramz:table-action', rolesState.currentListener);
+
+    resetEditor();
     loadRoles();
+    rolesState.initialized = true;
   }
 
   window.addEventListener('ramz:content-loaded', () => {
