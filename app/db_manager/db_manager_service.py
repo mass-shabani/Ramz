@@ -743,6 +743,51 @@ class DbManagerService:
         return await self._form_repo.set_lock(form_id, bool(locked))
 
     # ============================================================
+    # Admin: Roles
+    # ============================================================
+    async def admin_get_role(self, role_id):
+        """Return a single role row by id, or None."""
+        return await self._role_repo.get_by_id(role_id)
+
+    async def admin_create_role(self, role_id, role_name,
+                                 description="", rank=0, enabled=True):
+        """Insert a new role. Returns True on success."""
+        return await self._role_repo.create(
+            role_id=role_id,
+            role_name=role_name,
+            description=description,
+            rank=rank,
+            enabled=enabled,
+        )
+
+    async def admin_update_role(self, role_id, role_name=None,
+                                 description=None, rank=None, enabled=None):
+        """Update whitelisted role fields. Returns True on success."""
+        return await self._role_repo.update(
+            role_id=role_id,
+            role_name=role_name,
+            description=description,
+            rank=rank,
+            enabled=enabled,
+        )
+
+    async def admin_delete_role(self, role_id):
+        """Delete a role. Returns True on success."""
+        return await self._role_repo.delete(role_id)
+
+    async def admin_set_role_lock(self, role_id, locked):
+        """Set the lock flag on a role. Returns True on success."""
+        return await self._role_repo.set_lock(role_id, bool(locked))
+
+    async def admin_set_role_enabled(self, role_id, enabled):
+        """Set the enabled flag on a role. Returns True on success."""
+        return await self._role_repo.set_enabled(role_id, bool(enabled))
+
+    async def admin_count_users_with_role(self, role_id):
+        """Return number of users currently assigned this role."""
+        return await self._role_repo.count_users_with_role(role_id)
+
+    # ============================================================
     # Admin: Access Grants
     # ============================================================
     async def admin_list_grants(self, role_filter="", form_filter="", query=""):

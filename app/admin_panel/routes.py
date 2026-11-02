@@ -2237,4 +2237,490 @@ def register_routes(
             status_code=200,
         )
 
+    # ------------------------------------------------------------
+    # POST /settings/admin/roles/create
+    # ------------------------------------------------------------
+    @http_api.post("/settings/admin/roles/create",
+                   response_class=http_api.JSONResponse)
+    async def admin_roles_create(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "session_expired"},
+                status_code=401,
+            )
+
+        if not await _has_admin_access(user_id):
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            can_view = await db_service.has_access(
+                user_id, "admin_panel.roles.view"
+            )
+        except Exception:
+            can_view = False
+        if not can_view:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            can_create = await db_service.has_access(
+                user_id, "admin_panel.roles.action.create"
+            )
+        except Exception:
+            can_create = False
+        if not can_create:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission",
+                         "message": "You do not have permission to create roles."},
+                status_code=403,
+            )
+
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        role_id     = str(body.get("role_id") or "").strip()
+        role_name   = str(body.get("role_name") or "").strip()
+        description = str(body.get("description") or "")
+        password    = str(body.get("password") or "")
+        try:
+            rank = int(body.get("rank", 0))
+        except (TypeError, ValueError):
+            rank = 0
+        enabled = bool(body.get("enabled", True))
+
+        if not role_id or not role_name:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "invalid_data",
+                         "message": "Role ID and name are required."},
+                status_code=200,
+            )
+
+        if not await _verify_admin_password(user_id, password):
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "invalid_password",
+                         "message": "The password you entered is incorrect."},
+                status_code=200,
+            )
+
+        if not admin_service:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "internal_error",
+                         "message": "Admin service not available."},
+                status_code=500,
+            )
+
+        try:
+            ok, code = await admin_service.create_role(
+                role_id=role_id,
+                role_name=role_name,
+                description=description,
+                rank=rank,
+                enabled=enabled,
+                current_user_id=user_id,
+            )
+        except Exception as exc:
+            if logger:
+                logger.log(
+                    f"create_role failed: {exc}",
+                    level="ERROR", tag="admin",
+                )
+            ok, code = False, "internal_error"
+
+        if not ok:
+            messages = {
+                "invalid_data":      "Role ID and name are required.",
+                "role_id_exists":    "A role with this ID already exists.",
+                "role_name_exists":  "A role with this name already exists.",
+                "insufficient_rank": "You do not have sufficient rank to create a role with this rank.",
+                "internal_error":    "Something went wrong. Please try again.",
+            }
+            return http_api.JSONResponse(
+                content={
+                    "status": "error",
+                    "code": code or "internal_error",
+                    "message": messages.get(code or "internal_error",
+                                            "Something went wrong."),
+                },
+                status_code=200,
+            )
+
+        return http_api.JSONResponse(
+            content={
+                "status": "success",
+                "message": f"Role '{role_id}' created.",
+                "role_id": role_id,
+            },
+            status_code=200,
+        )
+
+    # ------------------------------------------------------------
+    # POST /settings/admin/roles/update
+    # ------------------------------------------------------------
+    @http_api.post("/settings/admin/roles/update",
+                   response_class=http_api.JSONResponse)
+    async def admin_roles_update(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "session_expired"},
+                status_code=401,
+            )
+
+        if not await _has_admin_access(user_id):
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            can_view = await db_service.has_access(
+                user_id, "admin_panel.roles.view"
+            )
+        except Exception:
+            can_view = False
+        if not can_view:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            can_edit = await db_service.has_access(
+                user_id, "admin_panel.roles.action.edit"
+            )
+        except Exception:
+            can_edit = False
+        if not can_edit:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission",
+                         "message": "You do not have permission to edit roles."},
+                status_code=403,
+            )
+
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        role_id     = str(body.get("role_id") or "").strip()
+        role_name   = str(body.get("role_name") or "").strip()
+        description = str(body.get("description") or "")
+        password    = str(body.get("password") or "")
+        try:
+            rank = int(body.get("rank", 0))
+        except (TypeError, ValueError):
+            rank = 0
+        enabled = bool(body.get("enabled", True))
+
+        if not role_id or not role_name:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "invalid_data",
+                         "message": "Role ID and name are required."},
+                status_code=200,
+            )
+
+        if not await _verify_admin_password(user_id, password):
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "invalid_password",
+                         "message": "The password you entered is incorrect."},
+                status_code=200,
+            )
+
+        if not admin_service:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "internal_error",
+                         "message": "Admin service not available."},
+                status_code=500,
+            )
+
+        try:
+            ok, code = await admin_service.update_role(
+                role_id=role_id,
+                role_name=role_name,
+                description=description,
+                rank=rank,
+                enabled=enabled,
+                current_user_id=user_id,
+            )
+        except Exception as exc:
+            if logger:
+                logger.log(
+                    f"update_role failed: {exc}",
+                    level="ERROR", tag="admin",
+                )
+            ok, code = False, "internal_error"
+
+        if not ok:
+            messages = {
+                "invalid_data":      "Role ID and name are required.",
+                "role_not_found":    "Role not found.",
+                "role_name_exists":  "Another role already uses this name.",
+                "insufficient_rank": "You do not have sufficient rank to modify this role.",
+                "internal_error":    "Something went wrong. Please try again.",
+            }
+            return http_api.JSONResponse(
+                content={
+                    "status": "error",
+                    "code": code or "internal_error",
+                    "message": messages.get(code or "internal_error",
+                                            "Something went wrong."),
+                },
+                status_code=200,
+            )
+
+        return http_api.JSONResponse(
+            content={
+                "status": "success",
+                "message": f"Role '{role_id}' updated.",
+                "role_id": role_id,
+            },
+            status_code=200,
+        )
+
+    # ------------------------------------------------------------
+    # POST /settings/admin/roles/delete
+    # ------------------------------------------------------------
+    @http_api.post("/settings/admin/roles/delete",
+                   response_class=http_api.JSONResponse)
+    async def admin_roles_delete(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "session_expired"},
+                status_code=401,
+            )
+
+        if not await _has_admin_access(user_id):
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            can_view = await db_service.has_access(
+                user_id, "admin_panel.roles.view"
+            )
+        except Exception:
+            can_view = False
+        if not can_view:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            can_delete = await db_service.has_access(
+                user_id, "admin_panel.roles.action.delete"
+            )
+        except Exception:
+            can_delete = False
+        if not can_delete:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission",
+                         "message": "You do not have permission to delete roles."},
+                status_code=403,
+            )
+
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        role_id  = str(body.get("role_id") or "").strip()
+        password = str(body.get("password") or "")
+
+        if not role_id:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "invalid_data",
+                         "message": "Role ID is required."},
+                status_code=200,
+            )
+
+        if not await _verify_admin_password(user_id, password):
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "invalid_password",
+                         "message": "The password you entered is incorrect."},
+                status_code=200,
+            )
+
+        if not admin_service:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "internal_error",
+                         "message": "Admin service not available."},
+                status_code=500,
+            )
+
+        try:
+            ok, code, grants, users = await admin_service.delete_role(
+                role_id=role_id,
+                current_user_id=user_id,
+            )
+        except Exception as exc:
+            if logger:
+                logger.log(
+                    f"delete_role failed: {exc}",
+                    level="ERROR", tag="admin",
+                )
+            ok, code, grants, users = False, "internal_error", 0, 0
+
+        if not ok:
+            messages = {
+                "invalid_data":      "Role ID is required.",
+                "role_not_found":    "Role not found.",
+                "insufficient_rank": "You do not have sufficient rank to delete this role.",
+                "internal_error":    "Something went wrong. Please try again.",
+            }
+            if code == "role_has_grants":
+                message = (
+                    f"This role has {grants} active grant(s). "
+                    "Remove all grants before deleting the role."
+                )
+            elif code == "role_has_users":
+                message = (
+                    f"This role has {users} assigned user(s). "
+                    "Reassign those users to another role first."
+                )
+            else:
+                message = messages.get(code or "internal_error",
+                                       "Something went wrong.")
+            return http_api.JSONResponse(
+                content={
+                    "status": "error",
+                    "code": code or "internal_error",
+                    "message": message,
+                    "grants": grants,
+                    "users": users,
+                },
+                status_code=200,
+            )
+
+        return http_api.JSONResponse(
+            content={
+                "status": "success",
+                "message": f"Role '{role_id}' deleted.",
+            },
+            status_code=200,
+        )
+
+    # ------------------------------------------------------------
+    # POST /settings/admin/roles/toggle-lock
+    # ------------------------------------------------------------
+    @http_api.post("/settings/admin/roles/toggle-lock",
+                   response_class=http_api.JSONResponse)
+    async def admin_roles_toggle_lock(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "session_expired"},
+                status_code=401,
+            )
+
+        if not await _has_admin_access(user_id):
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            can_view = await db_service.has_access(
+                user_id, "admin_panel.roles.view"
+            )
+        except Exception:
+            can_view = False
+        if not can_view:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            can_lock = await db_service.has_access(
+                user_id, "admin_panel.roles.action.lock"
+            )
+        except Exception:
+            can_lock = False
+        if not can_lock:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission",
+                         "message": "You do not have permission to lock roles."},
+                status_code=403,
+            )
+
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        role_id  = str(body.get("role_id") or "").strip()
+        locked   = bool(body.get("locked", False))
+        password = str(body.get("password") or "")
+
+        if not role_id:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "invalid_data",
+                         "message": "Role ID is required."},
+                status_code=200,
+            )
+
+        if not await _verify_admin_password(user_id, password):
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "invalid_password",
+                         "message": "The password you entered is incorrect."},
+                status_code=200,
+            )
+
+        role = await db_service.admin_get_role(role_id)
+        if not role:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "role_not_found",
+                         "message": "Role not found."},
+                status_code=200,
+            )
+
+        try:
+            current_rank = await db_service.get_user_rank(user_id)
+        except Exception:
+            current_rank = 0
+        if int(current_rank) <= int(role.get("rank") or 0):
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "insufficient_rank",
+                         "message": "You do not have sufficient rank to modify this role."},
+                status_code=200,
+            )
+
+        try:
+            ok = await db_service.admin_set_role_lock(role_id, locked)
+        except Exception as exc:
+            if logger:
+                logger.log(
+                    f"toggle-role-lock failed: {exc}",
+                    level="ERROR", tag="admin",
+                )
+            ok = False
+
+        if not ok:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "internal_error",
+                         "message": "Something went wrong. Please try again."},
+                status_code=200,
+            )
+
+        state = "locked" if locked else "unlocked"
+        return http_api.JSONResponse(
+            content={
+                "status": "success",
+                "message": f"Role {state}.",
+                "role_id": role_id,
+                "lock": bool(locked),
+            },
+            status_code=200,
+        )
 
