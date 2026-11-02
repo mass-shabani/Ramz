@@ -787,6 +787,61 @@
       }
     }
 
+    async function handleToggleFormLock(formId, isLocked) {
+      const appDialog = document.getElementById('appDialog');
+      if (!appDialog) return;
+      if (!formId) return;
+      const actionTitle = isLocked ? 'Unlock' : 'Lock';
+      const ok = await appDialog.confirm({
+        title: actionTitle + ' form ' + formId + '?',
+        message: 'You will be asked for your password next.',
+        confirmLabel: actionTitle,
+        cancelLabel: 'Cancel',
+        variant: isLocked ? 'primary' : 'danger',
+        icon: 'info',
+      });
+      if (!ok) return;
+      const password = await appDialog.passwordConfirm({
+        title: 'Confirm with password',
+        message: 'Enter your account password to confirm this action.',
+        confirmLabel: 'Confirm',
+        cancelLabel: 'Cancel',
+        icon: 'lock',
+      });
+      if (!password) return;
+      const { data } = await apiPost('/settings/admin/forms/toggle-lock', {
+        form_id: formId,
+        locked: !isLocked,
+        password: password,
+      });
+      if (data.status === 'success') {
+        showAdminToast('success', data.message || 'Form lock updated.');
+        loadForms();
+      } else {
+        await appDialog.alert({
+          title: 'Action failed',
+          message: data.message || 'Could not toggle lock.',
+          icon: 'danger',
+        });
+      }
+    }
+
+    function handleViewFormGrants(formId) {
+      if (!formId) return;
+      const nav = document.getElementById('adminNav');
+      const accessItem = nav && nav.querySelector('[data-section="access"]');
+      if (!accessItem) return;
+      nav.querySelectorAll('.settings-nav-item').forEach(el => el.classList.remove('active'));
+      accessItem.classList.add('active');
+      try {
+        window.history.replaceState({ section: 'access' }, '',
+          `?section=access&form_filter=${encodeURIComponent(formId)}`);
+      } catch (_) {}
+      window.dispatchEvent(new CustomEvent('ramz:load-content', {
+        detail: { url: accessItem.dataset.endpoint, section: 'access' }
+      }));
+    }
+
     // Remove previous listener to avoid duplicates (bug: dialog is already open)
     if (formsState.currentListener) {
       document.removeEventListener('ramz:table-action', formsState.currentListener);
@@ -807,6 +862,11 @@
         }
       } else if (action === 'delete-form') {
         await handleDeleteForm(formId);
+      } else if (action === 'toggle-form-lock') {
+        const isLocked = data.locked === '1';
+        await handleToggleFormLock(formId, isLocked);
+      } else if (action === 'view-form-grants') {
+        handleViewFormGrants(formId);
       }
     };
     document.addEventListener('ramz:table-action', formsState.currentListener);
@@ -1242,6 +1302,22 @@
         }
       };
       setTimeout(tryApply, 60);
+    }
+
+    // Pre-apply form filter if the URL contains one (from Forms view)
+    const urlFormFilter = (new URLSearchParams(window.location.search)).get('form_filter') || '';
+    if (urlFormFilter) {
+      const tryApplyForm = () => {
+        if (formFilter.options.length > 1) {
+          formFilter.value = urlFormFilter;
+          if (formFilter.value === urlFormFilter) {
+            applyFilters();
+          }
+        } else {
+          setTimeout(tryApplyForm, 50);
+        }
+      };
+      setTimeout(tryApplyForm, 60);
     }
   }
 

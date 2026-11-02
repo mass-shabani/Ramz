@@ -733,6 +733,15 @@ class DbManagerService:
         """Delete a form. Returns True on success."""
         return await self._form_repo.delete(form_id)
 
+    async def admin_set_form_lock(self, form_id, locked):
+        """
+        Set the lock flag on a form. A locked form cannot have its
+        grants created/updated/deleted. Returns True on success.
+
+        Note: form.lock does NOT affect has_access or form editing.
+        """
+        return await self._form_repo.set_lock(form_id, bool(locked))
+
     # ============================================================
     # Admin: Access Grants
     # ============================================================

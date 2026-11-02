@@ -133,3 +133,15 @@ class FormRepository:
             where={"form_id": form_id},
         )
         return result_ok(result)
+
+    async def set_lock(self, form_id: str, locked: bool) -> bool:
+        """Set the `lock` flag on a form. Returns True on success."""
+        if not form_id:
+            return False
+        result = await db_update(
+            self._conn(),
+            self.TABLE,
+            where={"form_id": form_id},
+            values={"lock": 1 if locked else 0},
+        )
+        return result_ok(result)

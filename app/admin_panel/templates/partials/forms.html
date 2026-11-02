@@ -21,6 +21,7 @@
 
 <!-- ============ TABLE ============ -->
 <ramz-card title="Forms" subtitle="Manage application forms (access control points)">
+  {% if permissions.forms_action_create %}
   <button slot="header-actions" type="button" class="btn-primary" id="formsCreateBtn">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
          stroke-width="2.2" stroke-linecap="round">
@@ -28,6 +29,7 @@
     </svg>
     Create Form
   </button>
+  {% endif %}
   <ramz-table id="formsTable" empty-text="No forms found."></ramz-table>
 </ramz-card>
 

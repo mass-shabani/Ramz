@@ -293,6 +293,10 @@ def register_routes(
             "roles":  await _has("admin_panel.roles.view"),
         }
 
+        # Per-button permission needed by the forms partial (for conditional Create button rendering)
+        if section == "forms":
+            permissions["forms_action_create"] = await _has("admin_panel.forms.action.create")
+
         context = {
             "profile":     profile,
             "permissions": permissions,
@@ -329,16 +333,23 @@ def register_routes(
                 status_code=500,
             )
 
-    # ------------------------------------------------------------
+
     # POST /settings/admin/users/list — JSON endpoint for the users table
     # ------------------------------------------------------------
-    def _build_form_actions(row):
-        """Build the actions column for one form row."""
-        form_id = row.get("form_id") or ""
-        grants = int(row.get("grants_count") or 0)
+    def _build_form_actions(row, can_edit, can_delete, can_lock):
+        """Build the actions column for one form row.
 
-        actions = [
-            {
+        Only the buttons the current user is authorized for are included.
+        Lock state affects grants only, NOT editing/deleting the form.
+        """
+        form_id = row.get("form_id") or ""
+        grants  = int(row.get("grants_count") or 0)
+        locked  = bool(row.get("lock"))
+
+        actions = []
+
+        if can_edit:
+            actions.append({
                 "action": "edit-form",
                 "icon": (
                     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
@@ -349,39 +360,65 @@ def register_routes(
                 ),
                 "title": "Edit",
                 "data": {"form-id": form_id},
-            },
-        ]
+            })
 
-        if grants > 0:
-            actions.append({
-                "action": "delete-form",
-                "icon": (
-                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
-                    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
-                    '<path d="M3 6h18"/>'
-                    '<path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>'
-                    '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>'
-                    '</svg>'
-                ),
-                "title": "Cannot delete (has grants)",
-                "variant": "danger",
-                "data": {"form-id": form_id},
-            })
-        else:
-            actions.append({
-                "action": "delete-form",
-                "icon": (
-                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
-                    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
-                    '<path d="M3 6h18"/>'
-                    '<path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>'
-                    '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>'
-                    '</svg>'
-                ),
-                "title": "Delete",
-                "variant": "danger",
-                "data": {"form-id": form_id},
-            })
+        if can_delete:
+            if grants > 0:
+                actions.append({
+                    "action": "delete-form",
+                    "icon": (
+                        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+                        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+                        '<path d="M3 6h18"/>'
+                        '<path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>'
+                        '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>'
+                        '</svg>'
+                    ),
+                    "title": "Cannot delete (has grants)",
+                    "variant": "danger",
+                    "data": {"form-id": form_id},
+                })
+            else:
+                actions.append({
+                    "action": "delete-form",
+                    "icon": (
+                        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+                        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+                        '<path d="M3 6h18"/>'
+                        '<path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>'
+                        '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>'
+                        '</svg>'
+                    ),
+                    "title": "Delete",
+                    "variant": "danger",
+                    "data": {"form-id": form_id},
+                })
+
+        if can_lock:
+            if locked:
+                actions.append({
+                    "action": "toggle-form-lock",
+                    "icon": ('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>'),
+                    "title": "Unlock form",
+                    "variant": "warning",
+                    "data": {"form-id": form_id, "locked": "1"},
+                })
+            else:
+                actions.append({
+                    "action": "toggle-form-lock",
+                    "icon": ('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 7.5-2"/></svg>'),
+                    "title": "Lock form",
+                    "variant": "",
+                    "data": {"form-id": form_id, "locked": "0"},
+                })
+
+        # Eye icon — always visible
+        actions.append({
+            "action": "view-form-grants",
+            "icon": ('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>'),
+            "title": "View grants",
+            "data": {"form-id": form_id},
+        })
 
         return actions
 
@@ -985,6 +1022,22 @@ def register_routes(
             )
 
         try:
+            can_edit = await db_service.has_access(user_id, "admin_panel.forms.action.edit")
+        except Exception:
+            can_edit = False
+
+        try:
+            can_delete = await db_service.has_access(user_id, "admin_panel.forms.action.delete")
+        except Exception:
+            can_delete = False
+
+        try:
+            can_lock = await db_service.has_access(user_id, "admin_panel.forms.action.lock")
+        except Exception:
+            can_lock = False
+
+
+        try:
             rows = await db_service.admin_list_forms()
         except Exception as exc:
             if logger:
@@ -1027,7 +1080,7 @@ def register_routes(
                     "variant": "active" if grants > 0 else "idle",
                 },
                 "_lock": LOCK_SVG if locked else "",
-                "_actions": _build_form_actions(row),
+                "_actions": _build_form_actions(row, can_edit, can_delete, can_lock),
             })
 
         return http_api.JSONResponse(
@@ -1065,6 +1118,18 @@ def register_routes(
                 content={"status": "error", "code": "no_permission"},
                 status_code=403,
             )
+
+        try:
+            can_create = await db_service.has_access(user_id, "admin_panel.forms.action.create")
+        except Exception:
+            can_create = False
+        if not can_create:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission",
+                         "message": "You do not have permission to create forms."},
+                status_code=403,
+            )
+
 
         try:
             body = await request.json()
@@ -1169,6 +1234,19 @@ def register_routes(
                 status_code=403,
             )
 
+        
+        try:
+            can_edit = await db_service.has_access(user_id, "admin_panel.forms.action.edit")
+        except Exception:
+            can_edit = False
+        if not can_edit:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission",
+                         "message": "You do not have permission to edit forms."},
+                status_code=403,
+            )
+
+
         try:
             body = await request.json()
         except Exception:
@@ -1272,6 +1350,19 @@ def register_routes(
                 status_code=403,
             )
 
+        
+        try:
+            can_delete = await db_service.has_access(user_id, "admin_panel.forms.action.delete")
+        except Exception:
+            can_delete = False
+        if not can_delete:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission",
+                         "message": "You do not have permission to delete forms."},
+                status_code=403,
+            )
+
+
         try:
             body = await request.json()
         except Exception:
@@ -1345,6 +1436,55 @@ def register_routes(
             },
             status_code=200,
         )
+
+
+    # ------------------------------------------------------------
+    # POST /settings/admin/forms/toggle-lock
+    # ------------------------------------------------------------
+    @http_api.post("/settings/admin/forms/toggle-lock", response_class=http_api.JSONResponse)
+    async def admin_forms_toggle_lock(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return http_api.JSONResponse(content={"status":"error","code":"session_expired"}, status_code=401)
+        if not await _has_admin_access(user_id):
+            return http_api.JSONResponse(content={"status":"error","code":"no_permission"}, status_code=403)
+        try:
+            can_manage = await db_service.has_access(user_id, "admin_panel.forms.manage")
+        except Exception:
+            can_manage = False
+        if not can_manage:
+            return http_api.JSONResponse(content={"status":"error","code":"no_permission"}, status_code=403)
+        try:
+            can_lock = await db_service.has_access(user_id, "admin_panel.forms.action.lock")
+        except Exception:
+            can_lock = False
+        if not can_lock:
+            return http_api.JSONResponse(content={"status":"error","code":"no_permission","message":"You do not have permission to lock forms."}, status_code=403)
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        form_id = str(body.get("form_id") or "").strip()
+        locked = bool(body.get("locked", False))
+        password = str(body.get("password") or "")
+        if not form_id:
+            return http_api.JSONResponse(content={"status":"error","code":"invalid_data","message":"Form ID is required."}, status_code=200)
+        if not await _verify_admin_password(user_id, password):
+            return http_api.JSONResponse(content={"status":"error","code":"invalid_password","message":"The password you entered is incorrect."}, status_code=200)
+        existing = await db_service.admin_get_form(form_id)
+        if not existing:
+            return http_api.JSONResponse(content={"status":"error","code":"form_not_found","message":"Form not found."}, status_code=200)
+        try:
+            ok = await db_service.admin_set_form_lock(form_id, locked)
+        except Exception as exc:
+            if logger:
+                logger.log(f"toggle-form-lock failed: {exc}", level="ERROR", tag="admin")
+            ok = False
+        if not ok:
+            return http_api.JSONResponse(content={"status":"error","code":"internal_error","message":"Something went wrong. Please try again."}, status_code=200)
+        state = "locked" if locked else "unlocked"
+        return http_api.JSONResponse(content={"status":"success","message":f"Form {state}.","form_id":form_id,"lock":bool(locked)}, status_code=200)
+
 
     def _build_grant_actions(row):
         """Build the actions column for one grant row.
@@ -1618,6 +1758,17 @@ def register_routes(
             )
 
         try:
+            can_create = await db_service.has_access(user_id, "admin_panel.access.action.create")
+        except Exception:
+            can_create = False
+        if not can_create:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission",
+                         "message": "You do not have permission to create grants."},
+                status_code=403,
+            )
+
+        try:
             body = await request.json()
         except Exception:
             body = {}
@@ -1730,6 +1881,17 @@ def register_routes(
             )
 
         try:
+            can_edit = await db_service.has_access(user_id, "admin_panel.access.action.edit")
+        except Exception:
+            can_edit = False
+        if not can_edit:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission",
+                         "message": "You do not have permission to edit grants."},
+                status_code=403,
+            )
+
+        try:
             body = await request.json()
         except Exception:
             body = {}
@@ -1837,6 +1999,17 @@ def register_routes(
         if not can_manage:
             return http_api.JSONResponse(
                 content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            can_delete = await db_service.has_access(user_id, "admin_panel.access.action.delete")
+        except Exception:
+            can_delete = False
+        if not can_delete:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission",
+                         "message": "You do not have permission to delete grants."},
                 status_code=403,
             )
 
