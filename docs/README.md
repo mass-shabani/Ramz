@@ -31,11 +31,12 @@ no React).
 
 | Component | Status |
 |-----------|--------|
-| Database schema | v8.0 (rank-based hierarchy, level-based access) |
+| Database schema | v10.0 (rank + locks + per-button admin forms) |
 | Massir framework | 0.2.0 Alpha |
 | Python | 3.13 |
 | Frontend | Native Web Components (17 components) |
 | Modules | 14 (8 service/infrastructure, 6 pages) |
+| Gen 2 (admin_panel) | ✅ Complete |
 
 ## Recent capabilities
 
@@ -45,11 +46,29 @@ no React).
 - **Access model** — `condition_of` removed. `form_access.level`
   is the single source of truth (0 = Closed, ≥1 = Open).
 - **Rank system** — `role.rank` enforces hierarchical authorization
-  for Users actions, Access Grants, and Roles view.
-- **Admin panel** — 5 functional sections (Overview, Users, Forms,
-  Access Grants, Roles).
-- **Level-based grants UI** — numeric `level` in the Access Grants
-  editor replaces the old textual `condition` dropdown.
+  for Users actions, Access Grants, and Roles CRUD.
+- **Lock system** — `form.lock` and `role.lock` freeze grant
+  mutations on specific entities without affecting access enforcement.
+- **Per-button permission model** — 14 granular `*.action.*` forms
+  gate individual admin_panel operations (change_role, toggle,
+  reset_password, forms create/edit/delete/lock, access create/edit/delete,
+  roles create/edit/delete/lock).
+- **Admin panel (Gen 2 complete)** — 5 sections (Overview, Users,
+  Forms, Access Grants, Roles), all CRUD-complete with lock/enable
+  support and rank enforcement.
+- **Overview stats** — real-time counts (users, forms, grants, roles)
+  and recent registrations, scoped by viewer's grants and rank.
+
+## Gen 2 milestones (admin_panel)
+
+- Users list (search, pagination, dynamic role list)
+- Users actions (change role, toggle, reset password)
+- Forms CRUD (create/edit/delete, lock toggle)
+- Access Grants CRUD (flat view, mini-matrix, level-based, lock-aware)
+- Roles CRUD (create/edit/delete, lock toggle, enable toggle)
+- Per-button enforcement on every mutation
+- Rank-based visibility + editing across all sections
+- Lock-based grant freezing
 
 ## Conventions
 

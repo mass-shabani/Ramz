@@ -1,12 +1,15 @@
 # Access Control
 
-Ramz has **two independent authorization dimensions**:
+Ramz has **three independent authorization dimensions**:
 
 1. **Level** — per (role, form) permission (row in `form_access`).
-2. **Rank** — per role numeric hierarchy (`role.rank`), used only for
+2. **Rank** — per role numeric hierarchy (`role.rank`), used for
    "who can modify whom" in the admin panel.
+3. **Lock** — per-form / per-role freeze flag (`form.lock`, `role.lock`),
+   blocks grant mutations only.
 
-Both must pass. They are enforced separately.
+They are enforced separately. All three must pass for the operation
+to proceed (where applicable).
 
 ## Level
 
@@ -23,138 +26,166 @@ The caller decides what level to require:
 ```python
 await db_service.has_access(user_id, "admin_panel.view")            # min_level=1
 await db_service.has_access(user_id, "admin_panel.view", min_level=2)
+required_condition is deprecated and ignored (kept for backward
+compatibility with older routes).
 ```
 
-`required_condition` is deprecated and ignored (kept for backward
-compatibility with older routes).
+Tables
+Table	Purpose
+role	Roles (super-admin, admin, manager, ...)
+form	Access points (form_id is any string like admin_panel.view)
+form_access	(role_id, form_id) → level
+condition_of was removed in v7.0. Its role is now form_access.level.
 
-### Tables
-
-| Table | Purpose |
-|-------|---------|
-| `role` | Roles (super-admin, admin, manager, ...) |
-| `form` | Access points (form_id is any string like admin_panel.view) |
-| `form_access` | (role_id, form_id) → level |
-
-`condition_of` was removed in v7.0. Its role is now `form_access.level`.
-
-### Helpers (on db_service)
-
-| Method | Returns |
-|--------|---------|
-| `has_access(user_id, form_id, min_level=1)` | bool |
-| `has_public_access(form_id, min_level=1)` | bool (checks guest) |
-| `get_form_level(user_id, form_id)` | int (0 if no grant) |
-| `get_form_level_by_role(role_id, form_id)` | int |
-| `get_public_level(form_id)` | int or None |
-| `get_accessible_forms(user_id)` | list[str] |
-
-### Cache
-
+Helpers (on db_service)
+Method	Returns
+has_access(user_id, form_id, min_level=1)	bool
+has_public_access(form_id, min_level=1)	bool (checks guest)
+get_form_level(user_id, form_id)	int (0 if no grant)
+get_form_level_by_role(role_id, form_id)	int
+get_public_level(form_id)	int or None
+get_accessible_forms(user_id)	list[str]
+Cache
 AccessChecker caches three things with TTLs:
 
-| Key | TTL |
-|-----|-----|
-| user_id → enabled | 15s |
-| user_id → role_id | 60s |
-| (role_id, form_id) → level | 60s |
+Key	TTL
+user_id → enabled	15s
+user_id → role_id	60s
+(role_id, form_id) → level	60s
+Cache invalidation
+Any change to form_access must call:
 
-### Cache invalidation
-
-Any change to `form_access` must call:
-
-```python
 db_service.invalidate_role_cache(role_id)
+
 db_service.invalidate_form_cache(form_id)
-```
 
 Any change to a user's role or enabled flag must call:
 
-```python
 db_service.invalidate_access_cache(user_id)
-```
 
-## Rank
-
-`role.rank` is an integer hierarchy. Higher = more privileged.
+Rank
+role.rank is an integer hierarchy. Higher = more privileged.
 
 Current ranks:
 
-| Role | Rank |
-|------|------|
-| super-admin | 80 |
-| system-admin (reserved) | 70 |
-| manager | 60 |
-| admin | 50 |
-| up-user | 40 |
-| user | 30 |
-| limit-user | 20 |
-| guest | 10 |
+Role	Rank
+super-admin	80
+system-admin (reserved)	70
+manager	60
+admin	50
+up-user	40
+user	30
+limit-user	20
+guest	10
+Rules:
 
-### Rules
+A viewer can only modify users with
+target.role_rank < current_rank.
 
-- A viewer can only modify users with `target.role_rank < current_rank`.
-- A viewer can only grant/revoke access for roles with `role.rank < current_rank`.
-- A viewer can only see roles with `role.rank < current_rank`.
+A viewer can only grant/revoke access for roles with
+role.rank < current_rank.
 
-Users-list visibility depends on `admin_panel.users.view_all`:
+A viewer can only see roles with role.rank < current_rank.
 
-- Without it → only users with `role_rank < current_rank` visible.
-- With it → everyone visible (editing still rank-restricted).
+Users-list visibility depends on admin_panel.users.view_all:
 
-Rank is not applied by `has_access` — it is enforced separately at
-the service layer in `AdminPanelService.set_user_role`,
-`toggle_user`, `reset_password`, `create_grant`,
-`update_grant_level`, `delete_grant`.
+Without it → only users with role_rank < current_rank visible.
 
-### Helpers (on db_service)
+With it → everyone visible (editing still rank-restricted).
 
-| Method | Returns |
-|--------|---------|
-| `get_user_rank(user_id)` | int (0 if no role) |
+A viewer can only create/update roles with
+new_rank < current_rank.
 
-### Common error codes
+Rank is not applied by has_access — it is enforced separately at
+the service layer in AdminPanelService.set_user_role, toggle_user,
+reset_password, create_grant, update_grant_level, delete_grant,
+create_role, update_role, delete_role.
 
-| Code | Meaning |
-|------|---------|
-| `no_permission` | `has_access` returned False |
-| `insufficient_rank` | Rank rule failed |
-| `invalid_password` | Wrong password for a sensitive action |
-| `session_expired` | Session no longer valid |
-| `not_found` | Target resource does not exist |
+Helpers (on db_service)
+Method	Returns
+get_user_rank(user_id)	int (0 if no role)
+Lock
+Two flags added in schema v9.0:
 
-## Extending
+Flag	Meaning
+form.lock = 1	Grants for this form cannot be created/updated/deleted
+role.lock = 1	Grants for this role cannot be created/updated/deleted
+Lock is enforced only in:
 
+AdminPanelService.create_grant → returns form_locked / role_locked
+
+AdminPanelService.update_grant_level → same
+
+AdminPanelService.delete_grant → same
+
+Lock does not affect:
+
+has_access — grants still apply.
+
+Form edit/delete.
+
+Role edit/delete/enable.
+
+User behavior.
+
+Locks vs. Level vs. Rank
+Axis	Field	Enforcement	Blocks
+Level	form_access.level	has_access(user_id, form_id, min_level)	Any unauthorized read/write
+Rank	role.rank	service layer, current.rank > target.rank	Admin modifications of equal/higher-ranked entities
+Lock	form.lock, role.lock	service layer (grant CRUD only)	Grant mutations on the locked entity
+Role enabled vs Lock
+role.enabled is a user-impacting flag. When enabled = 0:
+
+All users with that role are treated as disabled.
+
+is_enabled(user_id) returns False (JOINs role).
+
+Session validation fails → ejected on next request (within 15s).
+
+Login is rejected with account_disabled.
+
+role.lock is an admin-impacting flag. When lock = 1:
+
+Grants cannot be created/updated/deleted for this role.
+
+Users still work normally (logins accepted, sessions valid).
+
+Role can still be edited, enabled/disabled, deleted (if no grants/users).
+
+These are orthogonal — a role can be enabled and locked, disabled and
+unlocked, or anything in between.
+
+Common error codes
+Code	Meaning
+no_permission	has_access returned False (or per-button check failed)
+insufficient_rank	Rank rule failed
+form_locked	Grants for a locked form cannot be modified
+role_locked	Grants for a locked role cannot be modified
+invalid_password	Wrong password for a sensitive action
+session_expired	Session no longer valid
+not_found	Target resource does not exist
+Extending
 To add a new permission:
 
-1. Add a row in `form` (migration or seed).
-2. Add grants in `form_access` for the relevant roles.
-3. In the route handler, call `has_access(user_id, "<form_id>")`.
-4. In the template, hide UI if `has_access` returned False.
+Add a row in form (migration or seed).
 
-Do not add `if user.role == ...` checks in routes. Access is always
-driven by `form_access` grants.
+Add grants in form_access for the relevant roles.
 
-## Locks vs. Level vs. Rank
+In the route handler, call has_access(user_id, "<form_id>").
 
-Three independent axes:
+In the template, hide UI if has_access returned False.
 
-| Axis | Field | Enforcement |
-|------|-------|-------------|
-| **Level** | `form_access.level` | `has_access(user_id, form_id, min_level)` |
-| **Rank** | `role.rank` | service layer, `current.rank > target.rank` |
-| **Lock** | `form.lock`, `role.lock` | service layer, blocks grant CRUD only |
+Do not add if user.role == ... checks in routes. Access is always
+driven by form_access grants. Rank checks are separate and always use
+get_user_rank.
 
-Notes:
+Per-button model (admin_panel)
+The admin panel uses a two-tier model (see admin-panel.md):
 
-- **Lock does not change `has_access`.** A locked form still respects
-  its grants. Locking a form does not revoke anyone's access; it only
-  freezes the grants themselves.
-- **Lock does not affect user sessions.** Only `role.enabled = 0` does
-  (via `is_enabled` JOIN, ejected within 15s).
-- **Lock is enforced in `AdminPanelService.create_grant`,
-  `update_grant_level`, `delete_grant`.** Error codes:
-  `form_locked`, `role_locked`.
-- **A super-admin may still need to bypass lock.** Currently there is
-  no bypass — locking is absolute from the admin panel. If a lock must
-  be broken, do it via SQL and re-lock after.
+Section access (*.manage / *.view) — gates visibility.
+
+Per-button access (*.action.*) — gates individual operations.
+
+This lets an admin see, e.g., the Users table without being able to
+change roles — by granting users.manage but not
+users.action.change_role.
