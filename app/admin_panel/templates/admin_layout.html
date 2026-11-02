@@ -1355,6 +1355,98 @@
   }
 
   /* ============================================================
+     Overview — stats + recent users
+     ============================================================ */
+  const overviewState = { initialized: false };
+
+  function initOverviewPage() {
+    const recentTable = document.getElementById('overviewRecentUsers');
+    const hasStats = document.querySelector('[data-overview-stat]') !== null;
+
+    if (!hasStats && !recentTable) return;
+
+    if (recentTable && typeof recentTable.setColumns === 'function') {
+      recentTable.setColumns([
+        { key: '_user',    label: 'User',     type: 'avatar' },
+        { key: 'username', label: 'Username' },
+        { key: '_role',    label: 'Role',     type: 'badge' },
+        { key: '_status',  label: 'Status',   type: 'badge' },
+        { key: '_joined',  label: 'Joined',   type: 'date' },
+      ]);
+    }
+
+    fetch('/settings/admin/overview/stats', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({}),
+    })
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(data => {
+      const stats = data.stats || {};
+      Object.keys(stats).forEach(key => {
+        const el = document.querySelector('[data-overview-stat="' + key + '"]');
+        if (!el) return;
+        const v = stats[key];
+        if (v === null || v === undefined) {
+          el.textContent = '—';
+          el.style.color = 'var(--muted)';
+        } else {
+          el.textContent = String(v);
+          el.style.color = '';
+        }
+      });
+
+      if (recentTable && typeof recentTable.setData === 'function') {
+        const rows = (data.recent_users || []).map(u => ({
+          _user: {
+            initials:    u.initials || 'U',
+            name:        u.full_name || u.username || '',
+            email:       u.email || '',
+            avatarClass: 'avatar--indigo',
+          },
+          username: u.username || '',
+          _role: {
+            text:    u.role_name || '—',
+            variant: 'idle',
+          },
+          _status: {
+            text:    u.enabled ? 'Active' : 'Disabled',
+            variant: u.enabled ? 'active' : 'pending',
+          },
+          _joined: u.created_at || '',
+        }));
+        recentTable.setData(rows);
+      }
+
+      overviewState.initialized = true;
+    })
+    .catch(err => {
+      console.error('[overview] load failed:', err);
+      if (recentTable && typeof recentTable.setData === 'function') {
+        recentTable.setData([]);
+      }
+    });
+  }
+
+  window.addEventListener('ramz:content-loaded', () => {
+    if (getCurrentSection() === 'overview') {
+      initOverviewPage();
+    }
+  });
+
+  if (getCurrentSection() === 'overview') {
+    setTimeout(initOverviewPage, 100);
+  }
+
+  /* ============================================================
      Roles View — CRUD + lock + view-grants
      ============================================================ */
   const rolesState = { initialized: false, cache: [], currentListener: null };

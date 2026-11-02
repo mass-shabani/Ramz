@@ -340,9 +340,115 @@ def register_routes(
                 status_code=500,
             )
 
-
-    # POST /settings/admin/users/list — JSON endpoint for the users table
     # ------------------------------------------------------------
+    # POST /settings/admin/overview/stats — JSON stats for Overview
+    # ------------------------------------------------------------
+    @http_api.post("/settings/admin/overview/stats",
+                   response_class=http_api.JSONResponse)
+    async def admin_overview_stats(request: http_api.Request):
+        user_id, redirect = await _ensure_authenticated(request)
+        if redirect:
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "session_expired"},
+                status_code=401,
+            )
+
+        if not await _has_admin_access(user_id):
+            return http_api.JSONResponse(
+                content={"status": "error", "code": "no_permission"},
+                status_code=403,
+            )
+
+        try:
+            current_rank = await db_service.get_user_rank(user_id)
+        except Exception:
+            current_rank = 0
+
+        async def _can(form_id):
+            try:
+                return await db_service.has_access(user_id, form_id)
+            except Exception:
+                return False
+
+        can_users  = await _can("admin_panel.users.manage")
+        can_forms  = await _can("admin_panel.forms.manage")
+        can_access = await _can("admin_panel.access.manage")
+        can_roles  = await _can("admin_panel.roles.view")
+
+        stats = {"users": None, "forms": None, "grants": None, "roles": None}
+        recent_users = []
+
+        if can_users:
+            try:
+                can_view_all = await _can("admin_panel.users.view_all")
+                max_rank = None if can_view_all else int(current_rank)
+                stats["users"] = await db_service.admin_count_users(
+                    query="", max_role_rank=max_rank,
+                )
+                rows = await db_service.admin_list_users(
+                    query="", offset=0, limit=5, max_role_rank=max_rank,
+                )
+                recent_users = [
+                    {
+                        "user_id":    u.user_id,
+                        "username":   u.username or "",
+                        "full_name":  u.full_name or u.username or "",
+                        "initials":   u.initials or "U",
+                        "email":      u.email or "",
+                        "role_name":  u.role_name or "",
+                        "enabled":    bool(u.enabled),
+                        "created_at": u.created_at.isoformat() if u.created_at else "",
+                    }
+                    for u in rows
+                ]
+            except Exception as exc:
+                if logger:
+                    logger.log(
+                        f"overview users stats failed: {exc}",
+                        level="WARNING", tag="admin",
+                    )
+
+        if can_forms:
+            try:
+                forms = await db_service.admin_list_forms()
+                stats["forms"] = len(forms)
+            except Exception:
+                stats["forms"] = None
+
+        if can_access:
+            try:
+                all_roles = await db_service.admin_list_roles()
+                visible_roles = [
+                    r for r in all_roles
+                    if int(r.get("rank") or 0) < int(current_rank)
+                ]
+                visible_ids = {r.get("role_id") for r in visible_roles}
+                grants = await db_service.admin_list_grants()
+                stats["grants"] = len([
+                    g for g in grants
+                    if (g.get("role_id") or "") in visible_ids
+                ])
+            except Exception:
+                stats["grants"] = None
+
+        if can_roles:
+            try:
+                roles = await db_service.admin_list_roles_with_counts()
+                stats["roles"] = len([
+                    r for r in roles
+                    if int(r.get("rank") or 0) < int(current_rank)
+                ])
+            except Exception:
+                stats["roles"] = None
+
+        return http_api.JSONResponse(
+            content={
+                "stats":        stats,
+                "recent_users": recent_users,
+            },
+            status_code=200,
+        )
+
     def _build_form_actions(row, can_edit, can_delete, can_lock):
         """Build the actions column for one form row.
 
