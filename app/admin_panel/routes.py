@@ -293,9 +293,13 @@ def register_routes(
             "roles":  await _has("admin_panel.roles.view"),
         }
 
-        # Per-button permission needed by the forms partial (for conditional Create button rendering)
+        # Per-button permissions needed by partials
+        # (for conditional Create button rendering)
         if section == "forms":
             permissions["forms_action_create"] = await _has("admin_panel.forms.action.create")
+
+        if section == "access":
+            permissions["access_action_create"] = await _has("admin_panel.access.action.create")
 
         context = {
             "profile":     profile,
@@ -1486,17 +1490,24 @@ def register_routes(
         return http_api.JSONResponse(content={"status":"success","message":f"Form {state}.","form_id":form_id,"lock":bool(locked)}, status_code=200)
 
 
-    def _build_grant_actions(row):
+    def _build_grant_actions(row, can_edit, can_delete):
         """Build the actions column for one grant row.
 
-        Returns [] when either the role or the form is locked — locked
-        entities cannot be edited or have their grants removed.
+        Returns [] when:
+          • either the role or the form is locked (grants are frozen), OR
+          • the current viewer has no per-button grants.
+
+        Otherwise, includes only the buttons the viewer is authorized
+        for (edit requires access.action.edit; delete requires
+        access.action.delete).
         """
         if row.get("role_locked") or row.get("form_locked"):
             return []
 
-        return [
-            {
+        actions = []
+
+        if can_edit:
+            actions.append({
                 "action": "edit-grant",
                 "icon": (
                     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
@@ -1510,8 +1521,10 @@ def register_routes(
                     "role-id": row.get("role_id") or "",
                     "form-id": row.get("form_id") or "",
                 },
-            },
-            {
+            })
+
+        if can_delete:
+            actions.append({
                 "action": "delete-grant",
                 "icon": (
                     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
@@ -1527,8 +1540,9 @@ def register_routes(
                     "role-id": row.get("role_id") or "",
                     "form-id": row.get("form_id") or "",
                 },
-            },
-        ]
+            })
+
+        return actions
 
     def _grant_row_payload(row):
         """Convert a repo row into the JSON shape used by the UI."""
@@ -1586,6 +1600,20 @@ def register_routes(
             current_rank = await db_service.get_user_rank(user_id)
         except Exception:
             current_rank = 0
+
+        try:
+            can_action_edit = await db_service.has_access(
+                user_id, "admin_panel.access.action.edit"
+            )
+        except Exception:
+            can_action_edit = False
+
+        try:
+            can_action_delete = await db_service.has_access(
+                user_id, "admin_panel.access.action.delete"
+            )
+        except Exception:
+            can_action_delete = False
 
         try:
             grants = await db_service.admin_list_grants(
@@ -1693,7 +1721,9 @@ def register_routes(
                                "pending",
                 },
                 "_lock": LOCK_SVG if is_locked else "",
-                "_actions": _build_grant_actions(payload),
+                "_actions": _build_grant_actions(
+                    payload, can_action_edit, can_action_delete,
+                ),
                 "_raw": payload,
             })
 

@@ -97,6 +97,7 @@
 
 <!-- ============ GRANTS TABLE ============ -->
 <ramz-card title="Access Grants" subtitle="Grants connect roles to forms with a condition">
+  {% if permissions.access_action_create %}
   <button slot="header-actions" type="button" class="btn-primary" id="accessCreateBtn">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
          stroke-width="2.2" stroke-linecap="round">
@@ -104,6 +105,7 @@
     </svg>
     Add Grant
   </button>
+  {% endif %}
   <ramz-table id="accessTable" empty-text="No grants match the current filters."></ramz-table>
 </ramz-card>
 
