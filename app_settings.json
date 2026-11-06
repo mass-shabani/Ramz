@@ -20,6 +20,7 @@
         "message_view",
         "route_manager",
         "ui_components",
+        "crypto_market",
         "user_panel",
         "user_profile",
         "account_setting",
