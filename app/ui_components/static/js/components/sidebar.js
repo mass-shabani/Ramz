@@ -35,6 +35,9 @@ class RamzSidebar extends HTMLElement {
     this.addEventListener('ramz:sidebar-toggle', this._onToggleRequest);
     this.addEventListener('ramz:load-content',    this._onLoadContent);
     window.addEventListener('resize',             this._onResize);
+
+    // Append extension-provided items into the sidebar nav.
+    this._renderExtensions();
   }
 
   disconnectedCallback() {
@@ -113,6 +116,84 @@ class RamzSidebar extends HTMLElement {
       if (this.#collapsed) btn.setAttribute('collapsed', '');
       else                 btn.removeAttribute('collapsed');
     }
+  }
+
+  /* --------------------------------------------------------------
+     Extensions
+     -------------------------------------------------------------- */
+
+  /**
+   * Read `window.__ramz.extensions['ui.sidebar.items']` and append
+   * each entry to the sidebar <nav>. Entries with a `group` label
+   * are placed inside a <ramz-menu-group> (existing group with the
+   * same label is reused, otherwise a new one is created at the end
+   * of the nav). Entries without a group are appended directly to
+   * the nav.
+   *
+   * The list is already sorted by `order` server-side, so this method
+   * preserves the incoming order.
+   */
+  _renderExtensions() {
+    const extensions = (window.__ramz && window.__ramz.extensions)
+      ? window.__ramz.extensions['ui.sidebar.items']
+      : null;
+    if (!Array.isArray(extensions) || extensions.length === 0) return;
+
+    const nav = this.querySelector('nav.nav');
+    if (!nav) return;
+
+    // Track newly-created groups so subsequent items in the same
+    // group land in the same element without duplicating wrappers.
+    const newGroups = new Map();
+
+    for (const item of extensions) {
+      const menuItem = this._buildExtensionMenuItem(item);
+      if (!menuItem) continue;
+
+      const groupLabel = item.group;
+
+      if (groupLabel) {
+        let groupEl = null;
+        for (const g of nav.querySelectorAll('ramz-menu-group')) {
+          if (g.getAttribute('label') === groupLabel) {
+            groupEl = g;
+            break;
+          }
+        }
+        if (!groupEl && newGroups.has(groupLabel)) {
+          groupEl = newGroups.get(groupLabel);
+        }
+        if (!groupEl) {
+          groupEl = document.createElement('ramz-menu-group');
+          groupEl.setAttribute('label', groupLabel);
+          nav.appendChild(groupEl);
+          newGroups.set(groupLabel, groupEl);
+        }
+        groupEl.appendChild(menuItem);
+      } else {
+        nav.appendChild(menuItem);
+      }
+    }
+  }
+
+  /**
+   * Build a <ramz-menu-item> from an extension entry.
+   * Returns null when the entry is missing a `label`.
+   */
+  _buildExtensionMenuItem(item) {
+    if (!item || !item.label) return null;
+
+    const el = document.createElement('ramz-menu-item');
+    el.setAttribute('label', item.label);
+    if (item.endpoint) el.setAttribute('endpoint', item.endpoint);
+    if (item.href)     el.setAttribute('href',     item.href);
+    if (item.icon) {
+      const iconSlot = document.createElement('span');
+      iconSlot.setAttribute('slot', 'icon');
+      iconSlot.innerHTML = item.icon;
+      el.appendChild(iconSlot);
+    }
+    return el;
   }
 
   /* --------------------------------------------------------------

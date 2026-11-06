@@ -207,6 +207,19 @@
             Sessions
           </a>
 
+          {% if ui_extensions and ui_extensions['ui.account_setting.sections'] %}
+          <div class="settings-nav-title" style="margin-top: 6px;">Connected Services</div>
+          {% for item in ui_extensions['ui.account_setting.sections'] %}
+          <a class="settings-nav-item"
+             href="?section={{ item.id }}"
+             data-section="{{ item.id }}"
+             data-endpoint="{{ item.endpoint }}">
+            {% if item.icon %}<span class="settings-nav-icon">{{ item.icon | safe }}</span>{% endif %}
+            {{ item.label }}
+          </a>
+          {% endfor %}
+          {% endif %}
+
           <div class="settings-nav-title" style="margin-top: 6px;">Danger Zone</div>
 
           <a class="settings-nav-item danger {% if section == 'danger' %}active{% endif %}"
