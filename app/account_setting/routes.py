@@ -223,7 +223,7 @@ def register_routes(
             try:
                 await component_service.prepare_context(
                     template_context=context,
-                    points=["ui.user_menu.items", "ui.topbar.actions"],
+                    points=["ui.user_menu.items", "ui.topbar.actions", "ui.account_setting.sections"],
                     user_id=user_id,
                     db_service=db_service,
                     app=app,

@@ -40,6 +40,8 @@ class ComponentExtensionRegistry:
         "ui.sidebar.items",
         "ui.notifications.items",
         "ui.search.items",
+        "ui.dashboard.widgets",
+        "ui.account_setting.sections",
     }
 
     def __init__(self, logger=None):

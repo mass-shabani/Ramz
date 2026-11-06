@@ -44,7 +44,6 @@ class ComponentService:
         "search":             "/static/ui_components/js/components/search.js",
         "sidebar":            "/static/ui_components/js/components/sidebar.js",
         "content-container":  "/static/ui_components/js/components/content-container.js",
-        "coin-watchlist":     "/static/ui_components/js/components/coin-watchlist.js",
         "progress-bar":       "/static/ui_components/js/components/progress-bar.js",
         "topbar":             "/static/ui_components/js/components/topbar.js",
         "dialog":             "/static/ui_components/js/components/dialog.js",
