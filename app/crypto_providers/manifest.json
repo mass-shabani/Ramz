@@ -1,0 +1,21 @@
+{
+  "name": "crypto_providers",
+  "version": "0.1.0",
+  "enabled": true,
+  "entrypoint": "CryptoProvidersModule",
+  "description": "Crypto market data providers (Nobitex, CoinGecko, FX). Implements the BaseCryptoProvider interface from crypto_market, holds encrypted per-user credentials, and registers a settings section in account_setting.",
+  "requires": [
+    "core_logger",
+    "core_config",
+    "database_service",
+    "encryption_api",
+    "crypto_market",
+    "http_api",
+    "template_service",
+    "component_service",
+    "app_db_service"
+  ],
+  "provides": [
+    "crypto_credentials_service"
+  ]
+}
