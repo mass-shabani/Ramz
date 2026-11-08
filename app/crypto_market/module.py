@@ -61,6 +61,7 @@ from .market_data.aggregator import Aggregator
 from .market_data.poller import MarketPoller
 from .market_service.api import CryptoMarketService
 from .repositories.symbol_map_repository import SymbolMapRepository
+from .routes import register_routes
 
 
 class CryptoMarketModule(IModule):
@@ -145,6 +146,37 @@ class CryptoMarketModule(IModule):
         )
         context.services.set("crypto_market_service", self._service)
 
+        # --- Register routes (JSON API) --------------------
+        http_api = context.services.get("http_api")
+        if http_api:
+            try:
+                register_routes(
+                    http_api=http_api,
+                    service=self._service,
+                    db_service=db_service,
+                    logger=logger,
+                )
+                if logger:
+                    logger.log(
+                        "crypto_market routes registered "
+                        "(presence heartbeat + leave)",
+                        tag="crypto_market",
+                    )
+            except Exception as exc:
+                if logger:
+                    logger.log(
+                        f"crypto_market route registration failed: {exc}",
+                        level="ERROR", tag="crypto_market",
+                    )
+        else:
+            if logger:
+                logger.log(
+                    "http_api not available — crypto_market routes "
+                    "NOT registered. Service is still usable by "
+                    "direct consumers.",
+                    level="WARNING", tag="crypto_market",
+                )
+
         # --- Defer discovery + poller start ----------------
         async def on_all_modules_started() -> None:
             if self._shutting_down:
@@ -183,10 +215,11 @@ class CryptoMarketModule(IModule):
         )
 
         if logger:
+            route_status = "routes registered" if http_api else "no routes"
             logger.log(
-                "crypto_market module started "
-                "(services registered; discovery deferred to "
-                "ON_ALL_MODULES_STARTED)",
+                f"crypto_market module started "
+                f"({route_status}; discovery deferred to "
+                f"ON_ALL_MODULES_STARTED)",
                 tag="crypto_market",
             )
 

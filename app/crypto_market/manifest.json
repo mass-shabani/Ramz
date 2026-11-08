@@ -1,15 +1,17 @@
 {
   "name": "crypto_market",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "enabled": true,
   "entrypoint": "CryptoMarketModule",
-  "description": "Crypto market data layer. Provides provider interface, aggregation, presence tracking, background poller, and a public API for consuming modules. No UI.",
+  "description": "Crypto market data layer. Provides provider interface, aggregation, presence tracking, background poller, JSON API routes, and a public service for consuming modules. No UI pages.",
   "requires": [
     "core_logger",
     "core_config",
-    "database_service"
+    "database_service",
+    "http_api"
   ],
   "provides": [
-    "crypto_market_service"
+    "crypto_market_service",
+    "crypto_symbol_map_repository"
   ]
 }
