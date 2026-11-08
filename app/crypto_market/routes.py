@@ -133,6 +133,74 @@ async def _ensure_authenticated(request, db_service, logger):
     return session_id, None
 
 
+async def _check_coins_access(
+    request, db_service, logger
+) -> tuple[Optional[int], Optional[dict]]:
+    """
+    Check whether the current session's user has `crypto.coins.view`.
+
+    Returns:
+        (user_id, None)       if the user has access.
+        (None, error_dict)    otherwise (401 not_authenticated /
+                                       403 no_permission).
+
+    Note: this is separate from `_ensure_authenticated` because that
+    helper is used by presence endpoints (which only need auth, not a
+    specific grant). Grant checks are route-specific.
+
+    Fail-open on transient DB errors (mirrors _ensure_authenticated):
+    a DB hiccup must not lock users out of read-only market data.
+    """
+    user_data = {}
+    try:
+        user_data = request.session.get("user") or {}
+    except Exception:
+        user_data = {}
+
+    user_id = (
+        user_data.get("user_id")
+        if isinstance(user_data, dict) else None
+    )
+    if not user_id:
+        return None, {
+            "status_code": 401,
+            "body": {
+                "status": "error",
+                "code": "not_authenticated",
+                "message": "Not signed in.",
+            },
+        }
+
+    if db_service is None:
+        # No DB access means we cannot verify grants. Fail-open
+        # matches the rest of the codebase's resilience posture.
+        return int(user_id), None
+
+    try:
+        allowed = await db_service.has_access(
+            user_id, "crypto.coins.view"
+        )
+    except Exception as exc:
+        if logger:
+            logger.log(
+                f"Grant check failed ({exc}); allowing request",
+                level="WARNING", tag="crypto_market",
+            )
+        return int(user_id), None
+
+    if not allowed:
+        return None, {
+            "status_code": 403,
+            "body": {
+                "status": "error",
+                "code": "no_permission",
+                "message": "You do not have access to crypto coins.",
+            },
+        }
+
+    return int(user_id), None
+
+
 # --------------------------------------------------------------
 # Response helpers
 # --------------------------------------------------------------
@@ -226,6 +294,106 @@ def _sanitize_kinds(raw: Optional[Any]) -> Optional[list[str]]:
         if len(result) >= _MAX_KINDS_PER_REQUEST:
             break
     return result or None
+
+
+# --------------------------------------------------------------
+# Serialization
+# --------------------------------------------------------------
+def _serialize_decimal(value) -> Optional[str]:
+    """
+    Serialize a Decimal to a JSON-safe string.
+
+    Returns None on invalid input (defensive — provider data should
+    always be valid Decimal, but bad data must not crash the endpoint).
+    Using `str(value)` instead of `float(value)` preserves precision:
+    a price like Decimal("67000.123456789") round-trips exactly.
+
+    Clients that need arithmetic can parseFloat() at the display
+    layer; the raw string is the authoritative representation.
+    """
+    if value is None:
+        return None
+    try:
+        return str(value)
+    except Exception:
+        return None
+
+
+def _serialize_provider_price(pp) -> dict:
+    """Serialize a ProviderPrice to a JSON-safe dict."""
+    return {
+        "provider":   pp.provider,
+        "quote":      pp.quote,
+        "price":      _serialize_decimal(pp.price),
+        "change_24h": float(pp.change_24h) if pp.change_24h is not None else None,
+        "volume_24h": _serialize_decimal(pp.volume_24h),
+        "updated_at": (
+            pp.updated_at.isoformat() if pp.updated_at else None
+        ),
+    }
+
+
+def _serialize_coin(coin) -> dict:
+    """
+    Serialize a CoinData to a JSON-safe dict.
+
+    Shape:
+        {
+            "canonical":  "BTC",
+            "name":       "Bitcoin" | null,
+            "symbol_display": "BTC",
+            "icon_url":   "https://..." | null,
+            "provider_prices": {
+                "nobitex": [
+                    {"provider": "nobitex", "quote": "USDT",
+                     "price": "67000.5", "change_24h": 2.4,
+                     "volume_24h": "1234.5", "updated_at": "..."},
+                    {"provider": "nobitex", "quote": "RLS", ...}
+                ],
+                "coingecko": [
+                    {"provider": "coingecko", "quote": "USD", ...}
+                ]
+            },
+            "reference_prices": {
+                "USDT": "67000.5",
+                "RLS":  "6065292250",
+                "USD":  "67000.5"
+            },
+            "price_dispersion_pct": {
+                "USDT": 0.35,
+                "USD":  null
+            },
+            "available_quotes": ["RLS", "USD", "USDT"],
+            "sources": ["coingecko", "nobitex"],
+            "updated_at": "2026-11-08T10:49:00Z" | null
+        }
+    """
+    return {
+        "canonical":      coin.canonical,
+        "name":           coin.name,
+        "symbol_display": coin.symbol_display,
+        "icon_url":       coin.icon_url,
+        "provider_prices": {
+            provider: [
+                _serialize_provider_price(pp)
+                for pp in price_list
+            ]
+            for provider, price_list in coin.provider_prices.items()
+        },
+        "reference_prices": {
+            quote: _serialize_decimal(price)
+            for quote, price in coin.reference_prices.items()
+        },
+        "price_dispersion_pct": {
+            quote: (float(pct) if pct is not None else None)
+            for quote, pct in coin.price_dispersion_pct.items()
+        },
+        "available_quotes": list(coin.available_quotes),
+        "sources":          list(coin.sources),
+        "updated_at": (
+            coin.updated_at.isoformat() if coin.updated_at else None
+        ),
+    }
 
 
 # --------------------------------------------------------------
@@ -339,6 +507,134 @@ def register_routes(
             )
 
         return _json_success(http_api)
+
+    # ----------------------------------------------------------
+    # POST /crypto/market/api/coins
+    # ----------------------------------------------------------
+    @http_api.post(
+        "/crypto/market/api/coins",
+        response_class=http_api.JSONResponse,
+    )
+    async def market_coins(request: http_api.Request):
+        """
+        Return the current aggregated coin snapshot as JSON.
+
+        Access: requires `crypto.coins.view` grant.
+
+        Body (all optional):
+            {
+                "canonicals": ["BTC", "ETH"],  // filter by canonical
+                "refresh":    true | "force"   // true → debounced,
+                                               // "force" → immediate
+            }
+
+        Response:
+            {
+                "status":    "success",
+                "coins":     [ <serialized CoinData>, ... ],
+                "count":     <int>,
+                "has_data":  <bool>,   // true if any poll cycle ran
+            }
+
+        Note on empty data:
+            If the poller has not completed a cycle yet (e.g. no
+            provider registered, or no UI active), `coins` is []. The
+            caller may pass `refresh: "force"` to trigger a fresh
+            cycle and retry. Consumers (crypto_coins UI) should
+            display a "loading" state on empty + has_data=false, and
+            an "empty" state on empty + has_data=true.
+
+        Refresh semantics:
+            • missing     → read snapshot (fast, no provider call)
+            • true        → refresh_now(force=False) (3s debounce)
+            • "force"     → refresh_now(force=True)  (bypass debounce)
+        """
+        # --- 1. Auth + grant -----------------------------------
+        user_id, access_err = await _check_coins_access(
+            request, db_service, logger
+        )
+        if access_err is not None:
+            return http_api.JSONResponse(
+                content=access_err["body"],
+                status_code=access_err["status_code"],
+            )
+
+        # --- 2. Parse body -------------------------------------
+        body, err = await _parse_body(request)
+        if err is not None:
+            return http_api.JSONResponse(
+                content=err["body"], status_code=err["status_code"]
+            )
+
+        # --- 3. Optional refresh -------------------------------
+        refresh = body.get("refresh")
+        if refresh is True:
+            try:
+                await service.refresh_now(force=False)
+            except Exception as exc:
+                if logger:
+                    logger.log(
+                        f"refresh_now(force=False) failed: {exc}",
+                        level="WARNING", tag="crypto_market",
+                    )
+        elif isinstance(refresh, str) and refresh.strip().lower() == "force":
+            try:
+                await service.refresh_now(force=True)
+            except Exception as exc:
+                if logger:
+                    logger.log(
+                        f"refresh_now(force=True) failed: {exc}",
+                        level="WARNING", tag="crypto_market",
+                    )
+
+        # --- 4. Sanitize canonicals ----------------------------
+        raw_canonicals = body.get("canonicals")
+        canonicals: Optional[list[str]] = None
+        if isinstance(raw_canonicals, list):
+            cleaned = []
+            seen = set()
+            for c in raw_canonicals:
+                if not isinstance(c, str):
+                    continue
+                c = c.strip().upper()
+                if not c or c in seen:
+                    continue
+                seen.add(c)
+                cleaned.append(c)
+                if len(cleaned) >= 500:
+                    break
+            canonicals = cleaned or None
+
+        # --- 5. Read snapshot ----------------------------------
+        try:
+            coins = await service.get_coins(canonicals=canonicals)
+        except Exception as exc:
+            if logger:
+                logger.log(
+                    f"get_coins failed: {exc}",
+                    level="ERROR", tag="crypto_market",
+                )
+            return http_api.JSONResponse(
+                content={
+                    "status":  "error",
+                    "code":    "internal_error",
+                    "message": "Failed to read coin snapshot.",
+                },
+                status_code=500,
+            )
+
+        # --- 6. Serialize and return ---------------------------
+        serialized = [_serialize_coin(c) for c in coins]
+
+        return http_api.JSONResponse(
+            content={
+                "status":   "success",
+                "coins":    serialized,
+                "count":    len(serialized),
+                "has_data": service.has_data(),
+            },
+            status_code=200,
+        )
 
 
 __all__ = ["register_routes"]
