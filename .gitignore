@@ -97,6 +97,11 @@ Data
 data/
 Data/
 
+# Keys private folder
+keys/
+Keys/
+KEYS/
+
 # Spyder project settings
 .spyproject
 
