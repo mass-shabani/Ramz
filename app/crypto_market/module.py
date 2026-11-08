@@ -159,7 +159,7 @@ class CryptoMarketModule(IModule):
                 if logger:
                     logger.log(
                         "crypto_market routes registered "
-                        "(presence heartbeat + leave)",
+                        "(presence, coins, klines)",
                         tag="crypto_market",
                     )
             except Exception as exc:

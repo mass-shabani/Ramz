@@ -201,6 +201,70 @@ async def _check_coins_access(
     return int(user_id), None
 
 
+async def _check_charts_access(
+    request, db_service, logger
+) -> tuple[Optional[int], Optional[dict]]:
+    """
+    Check whether the current session's user has `crypto.charts.view`.
+
+    Parallel to `_check_coins_access`. Kept as a separate function
+    (rather than a generic `_check_grant`) deliberately: the two
+    checks differ only in the form_id and the user-facing message,
+    and keeping them independent means changes to one do not risk
+    breaking the other. A future refactor could collapse them — it
+    is out of scope for this task.
+
+    Fail-open on transient DB errors, matching `_ensure_authenticated`
+    and `_check_coins_access`.
+    """
+    user_data = {}
+    try:
+        user_data = request.session.get("user") or {}
+    except Exception:
+        user_data = {}
+
+    user_id = (
+        user_data.get("user_id")
+        if isinstance(user_data, dict) else None
+    )
+    if not user_id:
+        return None, {
+            "status_code": 401,
+            "body": {
+                "status": "error",
+                "code": "not_authenticated",
+                "message": "Not signed in.",
+            },
+        }
+
+    if db_service is None:
+        return int(user_id), None
+
+    try:
+        allowed = await db_service.has_access(
+            user_id, "crypto.charts.view"
+        )
+    except Exception as exc:
+        if logger:
+            logger.log(
+                f"Grant check failed ({exc}); allowing request",
+                level="WARNING", tag="crypto_market",
+            )
+        return int(user_id), None
+
+    if not allowed:
+        return None, {
+            "status_code": 403,
+            "body": {
+                "status": "error",
+                "code": "no_permission",
+                "message": "You do not have access to crypto charts.",
+            },
+        }
+
+    return int(user_id), None
+
+
 # --------------------------------------------------------------
 # Response helpers
 # --------------------------------------------------------------
@@ -393,6 +457,34 @@ def _serialize_coin(coin) -> dict:
         "updated_at": (
             coin.updated_at.isoformat() if coin.updated_at else None
         ),
+    }
+
+
+def _serialize_kline(k) -> dict:
+    """
+    Serialize a Kline to a JSON-safe dict.
+
+    Shape:
+        {
+            "timestamp": 1234567890000,  (UNIX epoch milliseconds, int)
+            "open":   "67000.5",
+            "high":   "67500.0",
+            "low":    "66800.0",
+            "close":  "67200.0",
+            "volume": "123.45"
+        }
+
+    Prices and volume are strings (Decimal → str) to preserve precision.
+    Timestamp is an int (not str) because consumers use it as a number
+    for chart x-axis positioning.
+    """
+    return {
+        "timestamp": int(k.timestamp),
+        "open":      _serialize_decimal(k.open),
+        "high":      _serialize_decimal(k.high),
+        "low":       _serialize_decimal(k.low),
+        "close":     _serialize_decimal(k.close),
+        "volume":    _serialize_decimal(k.volume),
     }
 
 
@@ -635,6 +727,249 @@ def register_routes(
             },
             status_code=200,
         )
+
+    # ----------------------------------------------------------
+    # POST /crypto/market/api/klines/{symbol}
+    # ----------------------------------------------------------
+    @http_api.post(
+        "/crypto/market/api/klines/{symbol}",
+        response_class=http_api.JSONResponse,
+    )
+    async def market_klines(request: http_api.Request, symbol: str):
+        """
+        Return OHLCV candles for one canonical coin from the first
+        capable provider.
+
+        Access: requires `crypto.charts.view` grant.
+
+        Path:
+            symbol  — uppercase canonical, e.g. "BTC"
+
+        Body (all optional):
+            {
+                "quote":    "USDT",   // default "USDT"
+                "interval": "1h",     // default "1h"  (5m|15m|1h|4h|1d|...)
+                "limit":    100       // default 100, max 1000
+            }
+
+        Response:
+            {
+                "status":   "success",
+                "symbol":   "BTC",
+                "quote":    "USDT",
+                "interval": "1h",
+                "count":    <int>,
+                "klines":   [ <serialized Kline>, ... ]   // oldest-first
+            }
+
+        Empty result:
+            If no provider supports the requested (canonical, quote,
+            interval) combination, or the provider returns no data for
+            that range, `klines` is [] and `count` is 0. This is a
+            valid success response, not an error.
+
+        Provider selection:
+            The service iterates providers that advertise CAP_KLINES
+            and support the requested quote, in registration order.
+            First non-empty result wins. Failures from one provider
+            are logged at WARNING and the next is tried.
+
+        Validation:
+            symbol    — non-empty after strip/upper
+            quote     — 1..10 chars, alphanumeric (via _sanitize_quote)
+            interval  — 1..10 chars, alphanumeric
+                        (matches 5m|15m|1h|4h|1d|1M|60m|..., rejects
+                        anything that could be used to inject into a
+                        provider URL)
+            limit     — int, 1..1000
+        """
+        # --- 1. Auth + chart grant -----------------------------
+        user_id, access_err = await _check_charts_access(
+            request, db_service, logger
+        )
+        if access_err is not None:
+            return http_api.JSONResponse(
+                content=access_err["body"],
+                status_code=access_err["status_code"],
+            )
+
+        # --- 2. Parse path -------------------------------------
+        canonical = (symbol or "").strip().upper()
+        if not canonical:
+            return http_api.JSONResponse(
+                content={
+                    "status":  "error",
+                    "code":    "invalid_data",
+                    "message": "Symbol is required.",
+                },
+                status_code=400,
+            )
+
+        # --- 3. Parse body -------------------------------------
+        body, err = await _parse_body(request)
+        if err is not None:
+            return http_api.JSONResponse(
+                content=err["body"], status_code=err["status_code"]
+            )
+
+        # --- 4. Validate quote ---------------------------------
+        raw_quote = body.get("quote", "USDT")
+        quote = _sanitize_quote(raw_quote)
+        if quote is None:
+            return http_api.JSONResponse(
+                content={
+                    "status":  "error",
+                    "code":    "invalid_data",
+                    "message": (
+                        "Quote must be 1–10 alphanumeric characters."
+                    ),
+                },
+                status_code=400,
+            )
+
+        # --- 5. Validate interval ------------------------------
+        raw_interval = body.get("interval", "1h")
+        interval = _sanitize_interval(raw_interval)
+        if interval is None:
+            return http_api.JSONResponse(
+                content={
+                    "status":  "error",
+                    "code":    "invalid_data",
+                    "message": (
+                        "Interval must be 1–10 alphanumeric characters "
+                        "(e.g. 5m, 15m, 1h, 4h, 1d)."
+                    ),
+                },
+                status_code=400,
+            )
+
+        # --- 6. Validate limit ---------------------------------
+        raw_limit = body.get("limit", 100)
+        limit = _sanitize_limit(raw_limit)
+        if limit is None:
+            return http_api.JSONResponse(
+                content={
+                    "status":  "error",
+                    "code":    "invalid_data",
+                    "message": "Limit must be an integer between 1 and 1000.",
+                },
+                status_code=400,
+            )
+
+        # --- 7. Fetch from provider ----------------------------
+        try:
+            klines = await service.get_klines(
+                canonical=canonical,
+                quote=quote,
+                interval=interval,
+                limit=limit,
+            )
+        except Exception as exc:
+            if logger:
+                logger.log(
+                    f"get_klines({canonical}/{quote}, {interval}) "
+                    f"failed: {exc}",
+                    level="ERROR", tag="crypto_market",
+                )
+            return http_api.JSONResponse(
+                content={
+                    "status":  "error",
+                    "code":    "internal_error",
+                    "message": "Failed to fetch klines.",
+                },
+                status_code=500,
+            )
+
+        # --- 8. Serialize and return ---------------------------
+        serialized = [_serialize_kline(k) for k in klines]
+
+        return http_api.JSONResponse(
+            content={
+                "status":   "success",
+                "symbol":   canonical,
+                "quote":    quote,
+                "interval": interval,
+                "count":    len(serialized),
+                "klines":   serialized,
+            },
+            status_code=200,
+        )
+
+
+# --------------------------------------------------------------
+# Field sanitizers (interval, quote, limit)
+# --------------------------------------------------------------
+_QUOTE_PATTERN = None  # initialized lazily in _sanitize_quote
+_INTERVAL_PATTERN = None  # initialized lazily in _sanitize_interval
+_LIMIT_MIN = 1
+_LIMIT_MAX = 1000
+_QUOTE_MAX_LEN = 10
+_INTERVAL_MAX_LEN = 10
+
+
+def _sanitize_quote(raw) -> Optional[str]:
+    """
+    Normalize and validate a quote currency string.
+
+    Accepts 1..10 alphanumeric characters, uppercased.
+    Rejects anything with punctuation (prevents provider URL injection).
+    """
+    global _QUOTE_PATTERN
+    if not isinstance(raw, str):
+        return None
+    s = raw.strip().upper()
+    if not s or len(s) > _QUOTE_MAX_LEN:
+        return None
+    if _QUOTE_PATTERN is None:
+        import re
+        _QUOTE_PATTERN = re.compile(r"^[A-Z0-9]{1,10}$")
+    if not _QUOTE_PATTERN.match(s):
+        return None
+    return s
+
+
+def _sanitize_interval(raw) -> Optional[str]:
+    """
+    Normalize and validate an interval string.
+
+    Accepts 1..10 alphanumeric characters, preserving case
+    (some providers distinguish 1M (month) from 1m (minute)).
+    Rejects anything with punctuation.
+    """
+    global _INTERVAL_PATTERN
+    if not isinstance(raw, str):
+        return None
+    s = raw.strip()
+    if not s or len(s) > _INTERVAL_MAX_LEN:
+        return None
+    if _INTERVAL_PATTERN is None:
+        import re
+        _INTERVAL_PATTERN = re.compile(r"^[A-Za-z0-9]{1,10}$")
+    if not _INTERVAL_PATTERN.match(s):
+        return None
+    return s
+
+
+def _sanitize_limit(raw) -> Optional[int]:
+    """
+    Normalize and validate a limit integer.
+
+    Accepts int or numeric string, clamps 1.._LIMIT_MAX.
+    Returns None on non-numeric input or out-of-range (after clamp,
+    still within int bounds — clamping is done explicitly so callers
+    can distinguish "invalid" from "adjusted").
+    """
+    if raw is None:
+        return 100
+    try:
+        n = int(raw)
+    except (TypeError, ValueError):
+        return None
+    if n < _LIMIT_MIN:
+        return None
+    if n > _LIMIT_MAX:
+        return None
+    return n
 
 
 __all__ = ["register_routes"]
