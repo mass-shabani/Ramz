@@ -58,6 +58,8 @@ crypto_symbol_map_repository, provided by crypto_market). Enabling
 crypto_market without crypto_providers is valid — discovery finds
 zero providers, as observed in phase 1 logs.
 """
+from pathlib import Path
+
 from massir.core.interfaces import IModule, ModuleContext
 
 from .key_manager import MasterKeyManager
@@ -386,10 +388,118 @@ class CryptoProvidersModule(IModule):
                     )
                 self._fx_provider = None
 
+        # --- 7. Settings UI (routes + templates + extension) ---
+        template_service = context.services.get("template_service")
+        component_service = context.services.get("component_service")
+        http_api = context.services.get("http_api")
+
+        # 7a. Register templates directory
+        if template_service:
+            try:
+                templates_dir = str(
+                    Path(__file__).parent / "templates"
+                )
+                template_service.register_template_directory(
+                    templates_dir, "crypto_providers"
+                )
+            except Exception as exc:
+                if logger:
+                    logger.log(
+                        f"templates directory registration failed: "
+                        f"{exc}",
+                        level="WARNING", tag="crypto_providers",
+                    )
+
+        # 7b. Register settings routes
+        if http_api:
+            try:
+                from .routes import register_routes
+                register_routes(
+                    http_api=http_api,
+                    credentials_service=self._credential_service,
+                    db_service=db_service,
+                    template_service=template_service,
+                    logger=logger,
+                )
+                if logger:
+                    logger.log(
+                        "crypto_providers settings routes registered",
+                        tag="crypto_providers",
+                    )
+            except Exception as exc:
+                if logger:
+                    logger.log(
+                        f"settings routes registration failed: {exc}",
+                        level="ERROR", tag="crypto_providers",
+                    )
+        else:
+            if logger:
+                logger.log(
+                    "http_api not available — settings routes NOT "
+                    "registered",
+                    level="WARNING", tag="crypto_providers",
+                )
+
+        # 7c. Register extension in account_setting sidebar
+        if component_service:
+            try:
+                registered = component_service.register_extension(
+                    point="ui.account_setting.sections",
+                    data={
+                        "id":       "crypto-providers",
+                        "label":    "Crypto Connections",
+                        "endpoint": (
+                            "/settings/crypto/providers/partials/"
+                            "overview"
+                        ),
+                        "icon": (
+                            '<svg viewBox="0 0 24 24" fill="none" '
+                            'stroke="currentColor" stroke-width="1.9" '
+                            'stroke-linecap="round" '
+                            'stroke-linejoin="round">'
+                            '<circle cx="12" cy="12" r="3"/>'
+                            '<path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1'
+                            'a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 '
+                            '1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7.9 '
+                            '19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 '
+                            '0 0 0 4 13.9H4a2 2 0 1 1 0-4h.1A1.6 1.6 0 '
+                            '0 0 5.3 7.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1'
+                            'A1.6 1.6 0 0 0 10.9 4V4a2 2 0 1 1 4 0v.1'
+                            'a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 '
+                            '2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21'
+                            'a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1.3z"/>'
+                            '</svg>'
+                        ),
+                        "order": 50,
+                    },
+                    form_id="crypto.credentials.manage",
+                    module_name="crypto_providers",
+                )
+                if logger:
+                    if registered:
+                        logger.log(
+                            "Crypto Connections extension registered "
+                            "in account_setting sidebar",
+                            tag="crypto_providers",
+                        )
+                    else:
+                        logger.log(
+                            "Crypto Connections extension NOT "
+                            "registered (unknown extension point)",
+                            level="WARNING", tag="crypto_providers",
+                        )
+            except Exception as exc:
+                if logger:
+                    logger.log(
+                        f"account_setting extension registration "
+                        f"failed: {exc}",
+                        level="ERROR", tag="crypto_providers",
+                    )
+
         if logger:
             logger.log(
                 "crypto_providers module started "
-                "(credentials + nobitex + coingecko + fx providers)",
+                "(credentials + nobitex + coingecko + fx + settings)",
                 tag="crypto_providers",
             )
 
