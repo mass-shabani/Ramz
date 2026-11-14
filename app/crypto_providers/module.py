@@ -73,6 +73,7 @@ class CryptoProvidersModule(IModule):
         crypto_credentials_service (CredentialService)
         crypto_provider_nobitex (NobitexProvider)
         crypto_provider_coingecko (CoinGeckoProvider)
+        crypto_provider_fx (FxProvider)
     """
 
     def __init__(self):
@@ -80,6 +81,7 @@ class CryptoProvidersModule(IModule):
         self._credential_service = None
         self._nobitex_client = None
         self._coingecko_client = None
+        self._fx_provider = None
 
     async def start(self, context: ModuleContext) -> None:
         logger = context.services.get("core_logger")
@@ -289,10 +291,105 @@ class CryptoProvidersModule(IModule):
                         pass
                     self._coingecko_client = None
 
+        # --- 6. FX provider -----------------------------------
+        try:
+            from .providers.fx.provider import FxProvider
+            from .providers.fx.sources.mock import MockFxSource
+            from .providers.fx.sources.navasan import NavasanFxSource
+        except ImportError as exc:
+            if logger:
+                logger.log(
+                    f"FX provider import failed: {exc} — "
+                    f"provider NOT registered",
+                    level="ERROR", tag="crypto_providers",
+                )
+        else:
+            try:
+                source_name = "mock"
+                cache_ttl = 60.0
+                if config:
+                    source_name = str(
+                        config.get(
+                            "crypto_providers.fx.source", "mock"
+                        ) or "mock"
+                    ).strip().lower()
+                    try:
+                        cache_ttl = float(config.get(
+                            "crypto_providers.fx.cache_ttl", 60.0
+                        ))
+                    except (TypeError, ValueError):
+                        cache_ttl = 60.0
+
+                if source_name == "navasan":
+                    api_key = ""
+                    nav_timeout = 7.0
+                    if config:
+                        api_key = str(config.get(
+                            "crypto_providers.fx.sources.navasan.api_key",
+                            "",
+                        ) or "")
+                        try:
+                            nav_timeout = float(config.get(
+                                "crypto_providers.fx.sources.navasan.timeout",
+                                7.0,
+                            ))
+                        except (TypeError, ValueError):
+                            nav_timeout = 7.0
+                    fx_source = NavasanFxSource(
+                        api_key=api_key,
+                        timeout=nav_timeout,
+                        logger=logger,
+                    )
+                else:
+                    # Default: mock
+                    mock_rates: dict = {}
+                    if config:
+                        for ccy, conf_key in (
+                            ("USD", "crypto_providers.fx.sources.mock.usd_rls"),
+                            ("EUR", "crypto_providers.fx.sources.mock.eur_rls"),
+                        ):
+                            value = config.get(conf_key, None)
+                            if value is not None:
+                                mock_rates[ccy] = value
+                    fx_source = MockFxSource(
+                        rates=mock_rates or None,
+                        logger=logger,
+                    )
+
+                fx_provider = FxProvider(
+                    source=fx_source,
+                    logger=logger,
+                    cache_ttl=cache_ttl,
+                )
+                await fx_provider.start()
+                self._fx_provider = fx_provider
+
+                context.services.set(
+                    "crypto_provider_fx", fx_provider
+                )
+
+                if logger:
+                    logger.log(
+                        f"FX provider registered "
+                        f"(source={source_name!r}, "
+                        f"cache_ttl={cache_ttl}s, "
+                        f"quotes="
+                        f"{sorted(fx_provider.supported_quotes)})",
+                        tag="crypto_providers",
+                    )
+            except Exception as exc:
+                if logger:
+                    logger.log(
+                        f"FX provider init failed: {exc} — "
+                        f"provider NOT registered",
+                        level="ERROR", tag="crypto_providers",
+                    )
+                self._fx_provider = None
+
         if logger:
             logger.log(
                 "crypto_providers module started "
-                "(credentials + nobitex + coingecko providers)",
+                "(credentials + nobitex + coingecko + fx providers)",
                 tag="crypto_providers",
             )
 
@@ -325,6 +422,19 @@ class CryptoProvidersModule(IModule):
                         level="WARNING", tag="crypto_providers",
                     )
             self._coingecko_client = None
+
+        # FX provider: stop its source (no-op for mock; future
+        # navasan will close its httpx client here).
+        if self._fx_provider is not None:
+            try:
+                await self._fx_provider.stop()
+            except Exception as exc:
+                if logger:
+                    logger.log(
+                        f"FX provider stop failed: {exc}",
+                        level="WARNING", tag="crypto_providers",
+                    )
+            self._fx_provider = None
 
         # CredentialService holds no I/O resources; MasterKeyManager
         # caches the key in memory only. Nothing else to close.
