@@ -72,12 +72,14 @@ class CryptoProvidersModule(IModule):
     Provides:
         crypto_credentials_service (CredentialService)
         crypto_provider_nobitex (NobitexProvider)
+        crypto_provider_coingecko (CoinGeckoProvider)
     """
 
     def __init__(self):
         self._key_manager = None
         self._credential_service = None
         self._nobitex_client = None
+        self._coingecko_client = None
 
     async def start(self, context: ModuleContext) -> None:
         logger = context.services.get("core_logger")
@@ -227,18 +229,78 @@ class CryptoProvidersModule(IModule):
                         pass
                     self._nobitex_client = None
 
+        # --- 5. CoinGecko provider ----------------------------
+        try:
+            from .providers.coingecko.client import CoinGeckoClient
+            from .providers.coingecko.provider import CoinGeckoProvider
+            from .providers.coingecko.rate_limiter import (
+                RateLimiter as CGRateLimiter,
+            )
+        except ImportError as exc:
+            if logger:
+                logger.log(
+                    f"CoinGecko provider import failed (httpx "
+                    f"installed?): {exc} — provider NOT registered",
+                    level="ERROR", tag="crypto_providers",
+                )
+        else:
+            try:
+                cg_rate_limiter = CGRateLimiter(
+                    max_requests=30,
+                    window_seconds=60.0,
+                    logger=logger,
+                    name="coingecko_markets",
+                )
+                coingecko_client = CoinGeckoClient(
+                    rate_limiter=cg_rate_limiter,
+                    logger=logger,
+                )
+                await coingecko_client.start()
+                self._coingecko_client = coingecko_client
+
+                coingecko_provider = CoinGeckoProvider(
+                    client=coingecko_client,
+                    logger=logger,
+                )
+                context.services.set(
+                    "crypto_provider_coingecko", coingecko_provider
+                )
+
+                if logger:
+                    logger.log(
+                        f"CoinGecko provider registered "
+                        f"(capabilities="
+                        f"{sorted(coingecko_provider.capabilities)}, "
+                        f"quotes="
+                        f"{sorted(coingecko_provider.supported_quotes)})",
+                        tag="crypto_providers",
+                    )
+            except Exception as exc:
+                if logger:
+                    logger.log(
+                        f"CoinGecko provider init failed: {exc} — "
+                        f"provider NOT registered",
+                        level="ERROR", tag="crypto_providers",
+                    )
+                if self._coingecko_client is not None:
+                    try:
+                        await self._coingecko_client.stop()
+                    except Exception:
+                        pass
+                    self._coingecko_client = None
+
         if logger:
             logger.log(
                 "crypto_providers module started "
-                "(credentials + nobitex provider)",
+                "(credentials + nobitex + coingecko providers)",
                 tag="crypto_providers",
             )
 
     async def stop(self, context: ModuleContext) -> None:
         logger = context.services.get("core_logger")
 
-        # Close the Nobitex HTTP client. The poller may still be
-        # trying to fetch through it for a brief window (Massir
+        # Close both provider HTTP clients. The poller may still be
+        # trying to fetch through them for a brief window (Massir
         # stops crypto_providers before crypto_market); any resulting
         # exception is caught by the poller and treated as a failed
         # cycle — harmless at shutdown.
@@ -252,6 +314,17 @@ class CryptoProvidersModule(IModule):
                         level="WARNING", tag="crypto_providers",
                     )
             self._nobitex_client = None
+
+        if self._coingecko_client is not None:
+            try:
+                await self._coingecko_client.stop()
+            except Exception as exc:
+                if logger:
+                    logger.log(
+                        f"CoinGecko client stop failed: {exc}",
+                        level="WARNING", tag="crypto_providers",
+                    )
+            self._coingecko_client = None
 
         # CredentialService holds no I/O resources; MasterKeyManager
         # caches the key in memory only. Nothing else to close.
