@@ -139,18 +139,30 @@ async def _check_coins_access(
     """
     Check whether the current session's user has `crypto.coins.view`.
 
+    Full check chain (mirrors account_setting's settings_view):
+        1. Session cookie must contain a valid user (via
+           `_ensure_authenticated`).
+        2. The user must be enabled and the session must not be
+           revoked (also via `_ensure_authenticated`).
+        3. The user must have the `crypto.coins.view` grant.
+
     Returns:
-        (user_id, None)       if the user has access.
-        (None, error_dict)    otherwise (401 not_authenticated /
-                                       403 no_permission).
+        (user_id, None)    on success.
+        (None, error_dict) on failure — 401 for auth issues,
+                           403 for missing grant.
 
-    Note: this is separate from `_ensure_authenticated` because that
-    helper is used by presence endpoints (which only need auth, not a
-    specific grant). Grant checks are route-specific.
-
-    Fail-open on transient DB errors (mirrors _ensure_authenticated):
-    a DB hiccup must not lock users out of read-only market data.
+    Fail-open note: `_ensure_authenticated` itself is fail-open on
+    transient DB errors (session validation), but the grant check
+    below is the only place that can reject access. A `None`
+    `db_service` implies Massir misconfiguration and is treated as
+    "no access" (fail-closed) — this is safer than silently granting.
     """
+    # --- 1. Session + enabled + revoked ----------------------
+    _, err = await _ensure_authenticated(request, db_service, logger)
+    if err is not None:
+        return None, err
+
+    # --- 2. Extract user_id (session guaranteed non-empty) ---
     user_data = {}
     try:
         user_data = request.session.get("user") or {}
@@ -162,6 +174,7 @@ async def _check_coins_access(
         if isinstance(user_data, dict) else None
     )
     if not user_id:
+        # Defensive — _ensure_authenticated should have rejected this.
         return None, {
             "status_code": 401,
             "body": {
@@ -171,22 +184,48 @@ async def _check_coins_access(
             },
         }
 
+    # --- 3. db_service must be available for grant check -----
     if db_service is None:
-        # No DB access means we cannot verify grants. Fail-open
-        # matches the rest of the codebase's resilience posture.
-        return int(user_id), None
+        # Massir misconfiguration — fail closed (safer than
+        # granting access by default).
+        if logger:
+            logger.log(
+                "db_service is None — cannot verify grant; "
+                "denying access (fail-closed)",
+                level="ERROR", tag="crypto_market",
+            )
+        return None, {
+            "status_code": 503,
+            "body": {
+                "status": "error",
+                "code": "service_unavailable",
+                "message": "Access control unavailable; try later.",
+            },
+        }
 
+    # --- 4. Grant check --------------------------------------
     try:
         allowed = await db_service.has_access(
             user_id, "crypto.coins.view"
         )
     except Exception as exc:
+        # Grant check is the authorization gate — treat any failure
+        # as "deny" (fail-closed). An AttributeError here means the
+        # wrong db_service was wired; the ERROR log makes that loud.
         if logger:
             logger.log(
-                f"Grant check failed ({exc}); allowing request",
-                level="WARNING", tag="crypto_market",
+                f"Grant check raised ({exc}); denying access "
+                f"(fail-closed)",
+                level="ERROR", tag="crypto_market",
             )
-        return int(user_id), None
+        return None, {
+            "status_code": 503,
+            "body": {
+                "status": "error",
+                "code": "service_unavailable",
+                "message": "Access control unavailable; try later.",
+            },
+        }
 
     if not allowed:
         return None, {
@@ -207,16 +246,17 @@ async def _check_charts_access(
     """
     Check whether the current session's user has `crypto.charts.view`.
 
-    Parallel to `_check_coins_access`. Kept as a separate function
-    (rather than a generic `_check_grant`) deliberately: the two
-    checks differ only in the form_id and the user-facing message,
-    and keeping them independent means changes to one do not risk
-    breaking the other. A future refactor could collapse them — it
-    is out of scope for this task.
-
-    Fail-open on transient DB errors, matching `_ensure_authenticated`
-    and `_check_coins_access`.
+    Parallel to `_check_coins_access` (see its docstring for the
+    full check chain and fail-closed rationale). Kept as a separate
+    function — no shared abstraction — so each route's access policy
+    can evolve independently if needed.
     """
+    # --- 1. Session + enabled + revoked ----------------------
+    _, err = await _ensure_authenticated(request, db_service, logger)
+    if err is not None:
+        return None, err
+
+    # --- 2. Extract user_id ----------------------------------
     user_data = {}
     try:
         user_data = request.session.get("user") or {}
@@ -237,9 +277,24 @@ async def _check_charts_access(
             },
         }
 
+    # --- 3. db_service must be available ---------------------
     if db_service is None:
-        return int(user_id), None
+        if logger:
+            logger.log(
+                "db_service is None — cannot verify grant; "
+                "denying access (fail-closed)",
+                level="ERROR", tag="crypto_market",
+            )
+        return None, {
+            "status_code": 503,
+            "body": {
+                "status": "error",
+                "code": "service_unavailable",
+                "message": "Access control unavailable; try later.",
+            },
+        }
 
+    # --- 4. Grant check --------------------------------------
     try:
         allowed = await db_service.has_access(
             user_id, "crypto.charts.view"
@@ -247,10 +302,18 @@ async def _check_charts_access(
     except Exception as exc:
         if logger:
             logger.log(
-                f"Grant check failed ({exc}); allowing request",
-                level="WARNING", tag="crypto_market",
+                f"Grant check raised ({exc}); denying access "
+                f"(fail-closed)",
+                level="ERROR", tag="crypto_market",
             )
-        return int(user_id), None
+        return None, {
+            "status_code": 503,
+            "body": {
+                "status": "error",
+                "code": "service_unavailable",
+                "message": "Access control unavailable; try later.",
+            },
+        }
 
     if not allowed:
         return None, {

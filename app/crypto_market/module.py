@@ -90,19 +90,19 @@ class CryptoMarketModule(IModule):
     # Lifecycle
     # ----------------------------------------------------------
     async def start(self, context: ModuleContext) -> None:
-        logger     = context.services.get("core_logger")
-        db_service = context.services.get("database_service")
-        app        = context.get_app()
+        logger         = context.services.get("core_logger")
+        app_db_service = context.services.get("app_db_service")
+        app            = context.get_app()
 
         if logger:
             logger.log(
                 "crypto_market module starting…", tag="crypto_market"
             )
 
-        if not db_service:
+        if not app_db_service:
             if logger:
                 logger.log(
-                    "database_service not available — "
+                    "app_db_service not available — "
                     "crypto_market cannot start",
                     level="ERROR", tag="crypto_market",
                 )
@@ -121,7 +121,9 @@ class CryptoMarketModule(IModule):
         self._registry   = ProviderRegistry(logger=logger)
         self._presence   = PresenceRegistry(logger=logger)
         self._aggregator = Aggregator(logger=logger)
-        self._symbol_repo = SymbolMapRepository(db_service, logger=logger)
+        self._symbol_repo = SymbolMapRepository(
+            app_db_service, logger=logger
+        )
 
         # --- Register symbol repo (for crypto_providers) ----
         context.services.set(
@@ -153,7 +155,7 @@ class CryptoMarketModule(IModule):
                 register_routes(
                     http_api=http_api,
                     service=self._service,
-                    db_service=db_service,
+                    db_service=app_db_service,
                     logger=logger,
                 )
                 if logger:
