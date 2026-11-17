@@ -1,0 +1,79 @@
+{# ==========================================================================
+   Crypto Providers — Overview
+   Loaded into <content-container> from account_setting sidebar.
+   Endpoint: POST /settings/crypto/providers/partials/overview
+   ========================================================================== #}
+
+<div style="display: flex; flex-direction: column; gap: 20px;">
+
+  <ramz-card
+    title="Crypto Connections"
+    subtitle="Manage API keys for crypto data providers">
+
+    <div slot="icon" class="card-icon icon-soft--indigo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7.9 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 4 13.9H4a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 5.3 7.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 10.9 4V4a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1.3z"/>
+      </svg>
+    </div>
+
+    <p style="color: var(--text-dim); font-size: 13.5px;
+              line-height: 1.7; margin: 0 0 18px;">
+      Provider API keys are stored <strong>encrypted on the server</strong>
+      (AES-256-GCM) and are used only for authenticated operations.
+      Public market data (prices, charts) does not require credentials.
+    </p>
+
+    <div class="channel-list">
+      {% for provider in providers %}
+      <div class="channel-item {% if provider.configured %}is-primary{% endif %}">
+
+        <div class="channel-icon">
+          {% if provider.configured %}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2.4" stroke-linecap="round"
+               stroke-linejoin="round">
+            <path d="M20 6 9 17l-5-5"/>
+          </svg>
+          {% else %}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.9" stroke-linecap="round"
+               stroke-linejoin="round">
+            <path d="M12 2 4 6v6c0 5 3.4 9.4 8 10 4.6-.6 8-5 8-10V6z"/>
+          </svg>
+          {% endif %}
+        </div>
+
+        <div class="channel-body">
+          <div class="channel-value">{{ provider.name }}</div>
+          <div class="channel-meta">{{ provider.description }}</div>
+        </div>
+
+        {% if provider.configured %}
+        <span class="status-badge active">Configured</span>
+        {% else %}
+        <span class="status-badge inactive">Not configured</span>
+        {% endif %}
+
+        <div class="channel-actions">
+          <button type="button"
+                  class="channel-action"
+                  data-action="open-provider"
+                  data-provider="{{ provider.id }}"
+                  onclick="document.querySelector('content-container').load('{{ provider.endpoint }}');">
+            {% if provider.configured %}Update{% else %}Configure{% endif %}
+          </button>
+        </div>
+      </div>
+      {% endfor %}
+
+      {% if not providers %}
+      <p style="color: var(--muted); font-size: 13px; margin: 0;">
+        No configurable providers in this build.
+      </p>
+      {% endif %}
+    </div>
+  </ramz-card>
+
+</div>

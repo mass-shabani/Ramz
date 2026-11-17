@@ -1,0 +1,160 @@
+{# ==========================================================================
+   Nobitex — Credentials form
+   Loaded into <content-container> from overview.html "Configure" button.
+   Endpoint: POST /settings/crypto/providers/partials/nobitex
+   ========================================================================== #}
+
+<div style="display: flex; flex-direction: column; gap: 20px;">
+
+  <!-- ============ BACK NAVIGATION ============ -->
+  <div>
+    <button type="button"
+            class="btn-ghost"
+            onclick="document.querySelector('content-container').load('/settings/crypto/providers/partials/overview');">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+           style="width: 16px; height: 16px;">
+        <path d="M19 12H5"/>
+        <path d="m11 18-6-6 6-6"/>
+      </svg>
+      Back to providers
+    </button>
+  </div>
+
+  <!-- ============ SAVE CREDENTIALS ============ -->
+  <ramz-card
+    title="{{ provider_name }} Credentials"
+    subtitle="API key and secret for authenticated operations">
+
+    <div slot="icon" class="card-icon icon-soft--violet">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="10" width="16" height="11" rx="3"/>
+        <path d="M8 10V7a4 4 0 0 1 8 0v3"/>
+      </svg>
+    </div>
+
+    {% if all_configured %}
+    <div style="padding: 10px 14px; margin-bottom: 18px;
+                border-radius: 10px;
+                background: rgba(16,185,129,0.10);
+                border: 1px solid rgba(16,185,129,0.28);
+                color: #a7f3d0; font-size: 12.5px; line-height: 1.6;">
+      <strong style="color: #fff;">All fields configured.</strong>
+      Leaving a field empty will <em>keep its current value</em>.
+    </div>
+    {% endif %}
+
+    <form method="post"
+          action="/settings/crypto/providers/save"
+          data-ajax="true"
+          data-require-password="true">
+
+      <input type="hidden" name="provider" value="{{ provider_id }}" />
+
+      <div class="settings-rows">
+
+        <!-- API Key -->
+        <div class="settings-row">
+          <div class="settings-row-label">
+            <div class="label">API Key</div>
+            <div class="hint">
+              {% if configured_fields.api_key %}
+                Currently configured — leave empty to keep.
+              {% else %}
+                Provided by {{ provider_name }}.
+              {% endif %}
+            </div>
+          </div>
+          <div class="settings-row-control">
+            <div class="settings-field">
+              <input type="password"
+                     name="api_key"
+                     placeholder="{% if configured_fields.api_key %}Leave empty to keep current{% else %}Enter API key{% endif %}"
+                     autocomplete="new-password"
+                     spellcheck="false" />
+            </div>
+          </div>
+        </div>
+
+        <!-- API Secret -->
+        <div class="settings-row">
+          <div class="settings-row-label">
+            <div class="label">API Secret</div>
+            <div class="hint">
+              {% if configured_fields.api_secret %}
+                Currently configured — leave empty to keep.
+              {% else %}
+                Keep this secret; it is stored encrypted.
+              {% endif %}
+            </div>
+          </div>
+          <div class="settings-row-control">
+            <div class="settings-field">
+              <input type="password"
+                     name="api_secret"
+                     placeholder="{% if configured_fields.api_secret %}Leave empty to keep current{% else %}Enter API secret{% endif %}"
+                     autocomplete="new-password"
+                     spellcheck="false" />
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="settings-actions">
+        <button type="submit" class="btn-primary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2.4" stroke-linecap="round"
+               stroke-linejoin="round">
+            <path d="M20 6 9 17l-5-5"/>
+          </svg>
+          Save Credentials
+        </button>
+      </div>
+    </form>
+  </ramz-card>
+
+  <!-- ============ TEST CONNECTION ============ -->
+  <ramz-card
+    title="Test Connection"
+    subtitle="Verify stored credentials can be read">
+
+    <div slot="icon" class="card-icon icon-soft--sky">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+        <path d="m9 11 3 3L22 4"/>
+      </svg>
+    </div>
+
+    <p style="color: var(--text-dim); font-size: 13px;
+              line-height: 1.65; margin: 0 0 18px;">
+      This confirms that the server can decrypt your stored
+      credentials. It does not yet contact {{ provider_name }}'s
+      servers — that arrives with the trading module.
+    </p>
+
+    <form method="post"
+          action="/settings/crypto/providers/test"
+          data-ajax="true"
+          data-require-password="true">
+
+      <input type="hidden" name="provider" value="{{ provider_id }}" />
+
+      <div class="settings-actions"
+           style="border-top: none; margin-top: 0; padding-top: 0;">
+        <button type="submit" class="btn-ghost">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+               style="width: 16px; height: 16px;">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <path d="m9 11 3 3L22 4"/>
+          </svg>
+          Test Connection
+        </button>
+      </div>
+    </form>
+  </ramz-card>
+
+</div>
