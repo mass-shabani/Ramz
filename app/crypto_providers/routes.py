@@ -223,34 +223,82 @@ async def _check_access(request, db_service, logger):
 # --------------------------------------------------------------
 async def _parse_body(request):
     """
-    Parse JSON body with tolerance.
+    Parse request body, accepting BOTH JSON and form-encoded input.
 
-    Returns (dict, None) on success or (None, error_dict) on error.
-    Mirrors the crypto_market/routes.py helper.
+    Two kinds of callers hit the save/test endpoints:
+
+        • The settings UI form (see nobitex.html + settings.html JS).
+          The JS builds a `FormData` and calls fetch(); the browser
+          sends `Content-Type: multipart/form-data`.
+
+        • API clients (curl, mobile apps, future integrations) that
+          send `Content-Type: application/json`.
+
+    Handling both is required so the same endpoint works for both
+    callers. The dispatch is based on the Content-Type header —
+    never on trying one parser and falling back to the other, which
+    would hide real JSON errors.
+
+    Returns (dict, None) on success, (None, error_dict) on failure.
+    In all cases the returned dict is a plain dict of str→str/any.
     """
-    try:
-        body = await request.json()
-    except Exception:
-        return None, {
-            "status_code": 400,
-            "body": {
-                "status": "error",
-                "code": "invalid_body",
-                "message": "Request body must be valid JSON.",
-            },
-        }
-    if body is None:
-        return {}, None
-    if not isinstance(body, dict):
-        return None, {
-            "status_code": 400,
-            "body": {
-                "status": "error",
-                "code": "invalid_body",
-                "message": "Request body must be a JSON object.",
-            },
-        }
-    return body, None
+
+    content_type = (
+        request.headers.get("content-type") or ""
+    ).lower()
+
+    # ---- JSON path (API clients, curl, future tests) -----------
+    if "application/json" in content_type:
+        try:
+            body = await request.json()
+        except Exception:
+            return None, {
+                "status_code": 400,
+                "body": {
+                    "status": "error",
+                    "code": "invalid_body",
+                    "message": "Request body must be valid JSON.",
+                },
+            }
+        if body is None:
+            return {}, None
+        if not isinstance(body, dict):
+            return None, {
+                "status_code": 400,
+                "body": {
+                    "status": "error",
+                    "code": "invalid_body",
+                    "message": "Request body must be a JSON object.",
+                },
+            }
+        return body, None
+
+    # ---- Form-encoded path (browser form submit) --------------
+    if (
+        "multipart/form-data" in content_type
+        or "application/x-www-form-urlencoded" in content_type
+    ):
+        try:
+            form = await request.form()
+        except Exception:
+            return None, {
+                "status_code": 400,
+                "body": {
+                    "status": "error",
+                    "code": "invalid_body",
+                    "message": "Malformed form data.",
+                },
+            }
+        # `dict(form)` produces a dict[str, str | UploadFile].
+        # Our forms never upload files, so values are strings.
+        # Coerce to plain dict so callers can use `.get(...)`
+        # uniformly regardless of the request kind.
+        return dict(form), None
+
+    # ---- No body or unknown content-type ----------------------
+    # Treat as empty body. Endpoints that require fields will
+    # reject with a specific "field_required" error.
+    return {}, None
 
 
 def _json_error(http_api, status_code: int, code: str, message: str):
