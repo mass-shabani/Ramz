@@ -199,15 +199,7 @@ def register_routes(
         flash_section = qp.get("section")
         flash_code    = qp.get("code")
 
-        # Which section is active — used as initial partial endpoint
-        VALID_SECTIONS = {
-            "personal", "contact", "password", "twofa",
-            "subscription", "banking", "sessions", "danger",
-        }
-        requested_section = qp.get("section") or "personal"
-        if requested_section not in VALID_SECTIONS:
-            requested_section = "personal"
-
+        # Build base context (WITHOUT section yet — extensions come first)
         context = {
             "profile":       profile,
             "current_user":  current_user,
@@ -215,10 +207,14 @@ def register_routes(
             "flash_status":  flash_status,
             "flash_section": flash_section,
             "flash_code":    flash_code,
-            "section":       requested_section,
             "module_name":   "account_setting",
         }
 
+        # Resolve extensions FIRST, so `ui.account_setting.sections`
+        # is populated and can be included in section validation below.
+        # Extensions register their own section id + endpoint; before
+        # this change, any extension section passed via ?section=...
+        # silently fell back to "personal".
         if component_service:
             try:
                 await component_service.prepare_context(
@@ -234,6 +230,43 @@ def register_routes(
                         f"prepare_context failed: {exc}",
                         level="WARNING", tag="settings",
                     )
+
+        # Built-in sections
+        VALID_SECTIONS = {
+            "personal", "contact", "password", "twofa",
+            "subscription", "banking", "sessions", "danger",
+        }
+
+        # Extension-provided sections: collect (id → endpoint)
+        extension_endpoints: dict = {}
+        ui_extensions = context.get("ui_extensions") or {}
+        for item in (ui_extensions.get("ui.account_setting.sections") or []):
+            if not isinstance(item, dict):
+                continue
+            sid = item.get("id")
+            ep  = item.get("endpoint")
+            if isinstance(sid, str) and sid and isinstance(ep, str) and ep:
+                extension_endpoints[sid] = ep
+
+        # Valid sections = built-in ∪ extension
+        valid_sections = set(VALID_SECTIONS) | set(extension_endpoints.keys())
+
+        requested_section = qp.get("section") or "personal"
+        if requested_section not in valid_sections:
+            requested_section = "personal"
+
+        # Compute the initial content endpoint:
+        #   extension section → its declared endpoint
+        #   built-in section  → internal partial endpoint
+        if requested_section in extension_endpoints:
+            initial_endpoint = extension_endpoints[requested_section]
+        else:
+            initial_endpoint = (
+                f"/settings/account/partials/{requested_section}"
+            )
+
+        context["section"] = requested_section
+        context["initial_endpoint"] = initial_endpoint
 
         try:
             html = await template_service.render(

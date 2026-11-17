@@ -210,7 +210,7 @@
           {% if ui_extensions and ui_extensions['ui.account_setting.sections'] %}
           <div class="settings-nav-title" style="margin-top: 6px;">Connected Services</div>
           {% for item in ui_extensions['ui.account_setting.sections'] %}
-          <a class="settings-nav-item"
+          <a class="settings-nav-item {% if section == item.id %}active{% endif %}"
              href="?section={{ item.id }}"
              data-section="{{ item.id }}"
              data-endpoint="{{ item.endpoint }}">
@@ -241,7 +241,7 @@
         <!-- ============ AJAX CONTENT ============ -->
         <div class="settings-content">
           <content-container
-            initial-endpoint="/settings/account/partials/{{ section }}"
+            initial-endpoint="{{ initial_endpoint }}"
           ></content-container>
         </div>
 
@@ -349,15 +349,22 @@
   }
 
   function updateFormButtons(form) {
-    const dirty   = isDirty(form);
+    // A form may have zero dirty-trackable fields — e.g., a "Test
+    // Connection" button with only hidden inputs. Such forms cannot
+    // ever become "dirty", so the disable-when-not-dirty logic would
+    // permanently disable their submit button. Skip that logic for
+    // forms with no trackable fields.
+    const snapshotKeys = Object.keys(form._snapshot || {});
+    const hasTrackableFields = snapshotKeys.length > 0;
+    const dirty = hasTrackableFields ? isDirty(form) : false;
     const cancel  = form.querySelector('[data-action="cancel"]');
     const submit  = form.querySelector('button[type="submit"]');
 
-    if (cancel) cancel.disabled = !dirty;
+    if (cancel) cancel.disabled = hasTrackableFields && !dirty;
 
     // Skip disabling submit while it's in loading state
     if (submit && !submit.classList.contains('is-loading')) {
-      submit.disabled = !dirty;
+      submit.disabled = hasTrackableFields && !dirty;
     }
   }
 
@@ -470,7 +477,30 @@
           }));
         }
 
-        if (data.reload_section) {
+        // Clear secret fields if the form opted in. Prevents plaintext
+        // API keys / passwords from remaining in the DOM after a save.
+        // Runs before reload_endpoint so the UI is clean even if the
+        // subsequent reload fails.
+        if (form.dataset.clearOnSuccess === 'true') {
+          form.querySelectorAll(
+            'input[type="text"], input[type="password"], ' +
+            'input[type="email"], input[type="tel"], ' +
+            'input[type="url"], input[type="number"], textarea'
+          ).forEach(el => {
+            if (el.type !== 'hidden' && !el.disabled) el.value = '';
+          });
+        }
+
+        if (
+          data.reload_endpoint &&
+          typeof data.reload_endpoint === 'string'
+        ) {
+          // Reload a specific partial endpoint (e.g., the current
+          // extension partial) to refresh badges and status pills.
+          window.dispatchEvent(new CustomEvent('ramz:load-content', {
+            detail: { url: data.reload_endpoint },
+          }));
+        } else if (data.reload_section) {
           const activeItem = nav ? nav.querySelector('.settings-nav-item.active') : null;
           const endpoint = activeItem ? activeItem.dataset.endpoint : null;
           if (endpoint) {

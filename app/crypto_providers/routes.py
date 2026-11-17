@@ -632,6 +632,14 @@ def register_routes(
                 "status":       "success",
                 "message":      f"Credentials saved for {provider_id}.",
                 "saved_fields": sorted(keys.keys()),
+                # Trigger a reload of the current partial so the UI
+                # picks up updated `configured_fields` (green "Saved"
+                # badges) and the freshly-cleared input fields. The
+                # reload endpoint is provider-specific, so the client
+                # cannot infer it from the active nav item.
+                "reload_endpoint": (
+                    f"/settings/crypto/providers/partials/{provider_id}"
+                ),
             },
             status_code=200,
         )
