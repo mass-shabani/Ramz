@@ -1,8 +1,8 @@
 {
   "name": "ui_components",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "entrypoint": "UIComponentsModule",
-  "description": "Shared web components library for the Ramz application.",
+  "description": "Shared web components library for the Ramz application. Includes content-container with script re-execution support for partials that need client-side JS.",
   "requires": [
     "core_logger",
     "http_api",

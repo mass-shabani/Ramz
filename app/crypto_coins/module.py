@@ -142,6 +142,37 @@ class CryptoCoinsModule(IModule):
                         level="WARNING", tag="crypto_coins",
                     )
 
+        # --- 3b. Register static directory -------------------
+        # Serves /static/crypto_coins/* from app/crypto_coins/static/*.
+        # Required for coins_settings.js (external <script src> that
+        # executes when injected via innerHTML; inline scripts do not).
+        if (
+            template_service
+            and hasattr(
+                template_service, "register_module_static_directory"
+            )
+        ):
+            try:
+                static_dir = str(
+                    Path(__file__).parent / "static"
+                )
+                template_service.register_module_static_directory(
+                    "crypto_coins", static_dir
+                )
+                if logger:
+                    logger.log(
+                        "static directory registered at "
+                        "/static/crypto_coins",
+                        tag="crypto_coins",
+                    )
+            except Exception as exc:
+                if logger:
+                    logger.log(
+                        f"static directory registration failed: "
+                        f"{exc}",
+                        level="WARNING", tag="crypto_coins",
+                    )
+
         # --- 4. Register routes -------------------------------
         if http_api:
             try:

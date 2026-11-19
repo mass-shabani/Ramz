@@ -95,6 +95,15 @@ class ContentContainer extends HTMLElement {
       if (this.#abortCtrl !== ctrl) return;
 
       this.#refs.content.innerHTML = html;
+
+      // Per HTML5 spec, <script> elements inserted via innerHTML are
+      // marked "already started" and NEVER execute — not inline, not
+      // external (the browser does not even fetch the src URL). To
+      // support partials that need client-side JS, we re-inject each
+      // <script> as a fresh element, which triggers normal fetch +
+      // execution. Partials with no <script> are unaffected.
+      this._executeScripts(this.#refs.content);
+
       this._setState('ready');
       emit(this, 'ramz:content-loaded', { url });
 
@@ -201,6 +210,68 @@ class ContentContainer extends HTMLElement {
   _onRetry = () => {
     this.reload();
   };
+
+  /* --------------------------------------------------------------
+     Script re-execution (HTML5 innerHTML workaround)
+     -------------------------------------------------------------- */
+
+  /**
+   * Re-inject every <script> element inside `container` as a fresh
+   * element.
+   *
+   * Why: per the HTML5 spec, <script> tags inserted via innerHTML
+   * are marked "already started" and never execute — even external
+   * ones (the browser does not even fetch their src). Replacing each
+   * element with a brand-new <script> triggers normal processing,
+   * which fetches external src and executes the code.
+   *
+   * Details:
+   *   • External scripts (with `src`): `async = false` is set so
+   *     multiple scripts execute in insertion order, regardless of
+   *     network race conditions.
+   *   • Inline scripts: `textContent` is copied verbatim.
+   *   • Module scripts (`type="module"`): handled the same way —
+   *     the fresh module element executes normally.
+   *   • All attributes are preserved (src, type, defer, crossorigin,
+   *     nonce, integrity, ...).
+   *
+   * Partials containing zero scripts are a no-op — this keeps the
+   * fix fully backward-compatible for every existing partial in the
+   * project (admin_panel, account_setting, etc.).
+   *
+   * The scripts execute asynchronously (external src fetch is
+   * network-bound), so the partial must place the <script> tag AFTER
+   * the DOM elements it wires up. Our partials satisfy this
+   * convention.
+   */
+  _executeScripts(container) {
+    if (!container) return;
+
+    const scripts = container.querySelectorAll('script');
+    if (scripts.length === 0) return;
+
+    scripts.forEach(oldScript => {
+      const newScript = document.createElement('script');
+
+      // Copy every attribute verbatim (src, type, crossorigin, ...)
+      for (const attr of Array.from(oldScript.attributes)) {
+        newScript.setAttribute(attr.name, attr.value);
+      }
+
+      // Preserve inline content (empty for external scripts).
+      if (oldScript.textContent) {
+        newScript.textContent = oldScript.textContent;
+      }
+
+      // External scripts: force in-order execution.
+      if (newScript.hasAttribute('src')) {
+        newScript.async = false;
+      }
+
+      // Replace in DOM — triggers fetch + execution.
+      oldScript.parentNode.replaceChild(newScript, oldScript);
+    });
+  }
 }
 
 defineComponent('content-container', ContentContainer);
