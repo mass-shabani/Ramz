@@ -765,5 +765,150 @@ def register_routes(
             status_code=200,
         )
 
+    # ----------------------------------------------------------
+    # POST /settings/crypto/providers/delete
+    # ----------------------------------------------------------
+    @http_api.post(
+        "/settings/crypto/providers/delete",
+        response_class=http_api.JSONResponse,
+    )
+    async def delete_credentials(request: http_api.Request):
+        """
+        Delete ALL stored credentials for a provider.
+
+        Requires auth + `crypto.credentials.manage` grant + the
+        user's current password (same confirmation model as save).
+
+        Body:
+            {"provider": "nobitex", "password": "..."}
+
+        Response (success):
+            {
+                "status": "success",
+                "message": "Credentials for nobitex have been deleted.",
+                "reload_endpoint":
+                    "/settings/crypto/providers/partials/nobitex"
+            }
+
+        Idempotent: returns success even if no credentials were
+        stored (matches REST DELETE semantics — the caller does not
+        care whether something was deleted or was already absent).
+
+        Why `reload_endpoint`? After deletion, the UI needs to
+        refresh the current partial so that:
+            • the green "Saved" badges disappear,
+            • both credential fields show "Not configured",
+            • the "Delete Credentials" card itself is removed
+              (because `configured_fields` is now all False).
+
+        Unlike save (which is called from a form that also needs
+        `data-clear-on-success`), delete does not need field
+        clearing — the partial will be fully replaced by the reload.
+        """
+        # --- 1. Auth + grant -----------------------------------
+        session_id, user_id, err = await _check_access(
+            request, db_service, logger
+        )
+        if err is not None:
+            return _json_error(
+                http_api, err["status_code"],
+                err["body"]["code"], err["body"]["message"],
+            )
+
+        # --- 2. Parse body -------------------------------------
+        body, err = await _parse_body(request)
+        if err is not None:
+            return _json_error(
+                http_api, err["status_code"],
+                err["body"]["code"], err["body"]["message"],
+            )
+
+        provider_id = str(body.get("provider") or "").strip().lower()
+        provider_entry = _get_provider_entry(provider_id)
+        if provider_entry is None:
+            return _json_error(
+                http_api, 400, "invalid_provider",
+                f"Unknown provider: {provider_id!r}",
+            )
+
+        # --- 3. Password verification --------------------------
+        password = body.get("password")
+        if not isinstance(password, str) or not password:
+            return _json_error(
+                http_api, 400, "password_required",
+                "Please enter your password to confirm.",
+            )
+
+        if db_service is None:
+            return _json_error(
+                http_api, 503, "service_unavailable",
+                "Password verification unavailable.",
+            )
+
+        try:
+            pw_ok = await db_service.verify_current_user_password(
+                user_id, password
+            )
+        except Exception as exc:
+            if logger:
+                logger.log(
+                    f"password verification raised: {exc}",
+                    level="ERROR", tag="crypto_providers",
+                )
+            pw_ok = False
+
+        if not pw_ok:
+            return _json_error(
+                http_api, 200, "invalid_password",
+                "The password you entered is incorrect.",
+            )
+
+        # --- 4. Delete (idempotent) ----------------------------
+        if credentials_service is None:
+            return _json_error(
+                http_api, 503, "service_unavailable",
+                "Credentials service unavailable.",
+            )
+
+        try:
+            ok = await credentials_service.delete_credentials(
+                user_id, provider_id
+            )
+        except Exception as exc:
+            if logger:
+                logger.log(
+                    f"delete_credentials raised: {exc}",
+                    level="ERROR", tag="crypto_providers",
+                )
+            ok = False
+
+        if not ok:
+            return _json_error(
+                http_api, 200, "delete_failed",
+                "Failed to delete credentials. Please try again.",
+            )
+
+        if logger:
+            logger.log(
+                f"Credentials deleted for user_id={user_id}, "
+                f"provider={provider_id!r}",
+                tag="crypto_providers",
+            )
+
+        return http_api.JSONResponse(
+            content={
+                "status":  "success",
+                "message": (
+                    f"Credentials for {provider_id} have been "
+                    f"deleted."
+                ),
+                "reload_endpoint": (
+                    f"/settings/crypto/providers/partials/"
+                    f"{provider_id}"
+                ),
+            },
+            status_code=200,
+        )
+
 
 __all__ = ["register_routes", "CONFIGURABLE_PROVIDERS"]

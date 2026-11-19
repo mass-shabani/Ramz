@@ -423,6 +423,35 @@
     }
 
     // -----------------------------------------------------------------
+    // Step 1b — Extra danger warning (opt-in via data-extra-warning)
+    // -----------------------------------------------------------------
+    // Some operations (e.g. deleting stored credentials) are
+    // irreversible and warrant a second, more explicit confirmation
+    // in addition to the standard one above. The form opts in by
+    // setting `data-extra-warning="<message>"`. Forms without this
+    // attribute behave exactly as before — the flag is
+    // backward-compatible.
+    const extraWarning = (form.dataset.extraWarning || '').trim();
+    if (extraWarning) {
+      const stillSure = await appDialog.confirm({
+        title: 'Are you absolutely sure?',
+        message: extraWarning,
+        confirmLabel: 'Yes, continue',
+        cancelLabel: 'Cancel',
+        variant: 'danger',
+        icon: 'danger',
+      });
+      if (!stillSure) {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.classList.remove('is-loading');
+          submitBtn.innerHTML = originalText;
+        }
+        return;
+      }
+    }
+
+    // -----------------------------------------------------------------
     // Step 2 — Password prompt (only if required)
     // -----------------------------------------------------------------
     let password = null;

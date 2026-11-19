@@ -62,7 +62,7 @@
                   data-action="open-provider"
                   data-provider="{{ provider.id }}"
                   onclick="document.querySelector('content-container').load('{{ provider.endpoint }}');">
-            {% if provider.configured %}Update{% else %}Configure{% endif %}
+            {% if provider.configured %}Edit{% else %}Add Configure{% endif %}
           </button>
         </div>
       </div>
