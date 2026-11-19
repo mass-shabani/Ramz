@@ -97,12 +97,24 @@ class ContentContainer extends HTMLElement {
       this.#refs.content.innerHTML = html;
 
       // Per HTML5 spec, <script> elements inserted via innerHTML are
-      // marked "already started" and NEVER execute — not inline, not
-      // external (the browser does not even fetch the src URL). To
-      // support partials that need client-side JS, we re-inject each
-      // <script> as a fresh element, which triggers normal fetch +
-      // execution. Partials with no <script> are unaffected.
-      this._executeScripts(this.#refs.content);
+      // marked "already started" and never execute. To support
+      // partials with client-side JS, we fetch each script's source
+      // and execute it explicitly (see _executeScripts for details).
+      //
+      // Awaiting here means `ramz:content-loaded` fires only AFTER
+      // all scripts have finished running — so any listener can rely
+      // on the partial being fully wired. Partials with no <script>
+      // resolve immediately (early return in _executeScripts).
+      try {
+        await this._executeScripts(this.#refs.content);
+      } catch (err) {
+        // _executeScripts catches per-script errors itself; this
+        // catch is a last-resort safety net so a single failure
+        // never blocks the container from reaching the ready state.
+        console.error(
+          '[content-container] _executeScripts crashed:', err
+        );
+      }
 
       this._setState('ready');
       emit(this, 'ramz:content-loaded', { url });
@@ -212,65 +224,115 @@ class ContentContainer extends HTMLElement {
   };
 
   /* --------------------------------------------------------------
-     Script re-execution (HTML5 innerHTML workaround)
+     Script execution (explicit fetch + eval)
      -------------------------------------------------------------- */
 
   /**
-   * Re-inject every <script> element inside `container` as a fresh
-   * element.
+   * Execute every <script> element inside `container`.
    *
-   * Why: per the HTML5 spec, <script> tags inserted via innerHTML
-   * are marked "already started" and never execute — even external
-   * ones (the browser does not even fetch their src). Replacing each
-   * element with a brand-new <script> triggers normal processing,
-   * which fetches external src and executes the code.
+   * Why explicit fetch + eval instead of re-injection?
+   *   Per HTML5 spec, <script> elements inserted via innerHTML are
+   *   marked "already started" and never execute. Replacing them
+   *   with a fresh <script> via replaceChild works in some browsers
+   *   but is NOT reliable across Chrome and other engines (verified
+   *   empirically in this project). The only reliable cross-browser
+   *   approach is to fetch the source text ourselves and execute it
+   *   explicitly.
    *
-   * Details:
-   *   • External scripts (with `src`): `async = false` is set so
-   *     multiple scripts execute in insertion order, regardless of
-   *     network race conditions.
-   *   • Inline scripts: `textContent` is copied verbatim.
-   *   • Module scripts (`type="module"`): handled the same way —
-   *     the fresh module element executes normally.
-   *   • All attributes are preserved (src, type, defer, crossorigin,
-   *     nonce, integrity, ...).
+   * Execution model:
+   *   • External classic scripts: fetch text, then `(0, eval)(text)`.
+   *     Indirect eval runs the code in the global scope, exactly
+   *     like a real <script> tag would (access to window, document,
+   *     fetch, ...).
+   *   • External module scripts (`type="module"`): fetch text,
+   *     create a Blob URL, and `await import(blobUrl)`. This is the
+   *     standard way to run ES module source at runtime.
+   *   • Inline scripts (classic or module): same as above, using
+   *     the inline textContent instead of a network fetch.
    *
-   * Partials containing zero scripts are a no-op — this keeps the
-   * fix fully backward-compatible for every existing partial in the
-   * project (admin_panel, account_setting, etc.).
+   * Ordering:
+   *   Scripts execute strictly in document order. For external
+   *   scripts, each fetch is awaited before the next script runs.
    *
-   * The scripts execute asynchronously (external src fetch is
-   * network-bound), so the partial must place the <script> tag AFTER
-   * the DOM elements it wires up. Our partials satisfy this
-   * convention.
+   * Errors:
+   *   Any fetch/parse/runtime error is caught per-script and logged
+   *   via console.error with the script's src (or "<inline>") so it
+   *   is easy to attribute. Execution continues to the next script.
+   *
+   * Backward compatibility:
+   *   Partials with zero <script> tags are a no-op (early return).
+   *   The whole method is async; callers await it so that
+   *   `ramz:content-loaded` fires only AFTER all scripts have run.
+   *
+   * Security note:
+   *   `(0, eval)` requires no CSP `'unsafe-eval'` for this project
+   *   because the FastAPI app does not set a Content-Security-Policy
+   *   header. The scripts being eval'd are served from the same
+   *   origin (/static/crypto_coins/...). If a CSP is ever added,
+   *   switch the classic branch to Blob + Function or Blob + import
+   *   with `script-src blob:` (see git history for the rationale).
    */
-  _executeScripts(container) {
+  async _executeScripts(container) {
     if (!container) return;
 
-    const scripts = container.querySelectorAll('script');
+    const scripts = Array.from(container.querySelectorAll('script'));
     if (scripts.length === 0) return;
 
-    scripts.forEach(oldScript => {
-      const newScript = document.createElement('script');
+    console.debug(
+      `[content-container] executing ${scripts.length} script(s)`
+    );
 
-      // Copy every attribute verbatim (src, type, crossorigin, ...)
-      for (const attr of Array.from(oldScript.attributes)) {
-        newScript.setAttribute(attr.name, attr.value);
+    for (const oldScript of scripts) {
+      const src = oldScript.getAttribute('src');
+      const textContent = oldScript.textContent || '';
+      const isModule = oldScript.getAttribute('type') === 'module';
+      const label = src || '<inline>';
+
+      // Remove from DOM — we execute manually. Keeping it would also
+      // be harmless, but removing avoids the (non-functional)
+      // "already started" script from confusing DevTools' Elements
+      // panel.
+      oldScript.remove();
+
+      try {
+        let code;
+        if (src) {
+          const r = await fetch(src, { credentials: 'same-origin' });
+          if (!r.ok) {
+            throw new Error(`HTTP ${r.status} for ${src}`);
+          }
+          code = await r.text();
+        } else {
+          code = textContent;
+        }
+
+        if (isModule) {
+          // ES module source must go through import(). Blob URL is
+          // the standard mechanism at runtime.
+          const blob = new Blob(
+            [code], { type: 'application/javascript' }
+          );
+          const url = URL.createObjectURL(blob);
+          try {
+            await import(url);
+          } finally {
+            URL.revokeObjectURL(url);
+          }
+        } else {
+          // Classic script — indirect eval runs it in the global
+          // scope (equivalent to a real <script> tag).
+          (0, eval)(code);
+        }
+
+        console.debug(
+          `[content-container] executed: ${label}`
+        );
+      } catch (err) {
+        console.error(
+          `[content-container] script failed: ${label}`, err
+        );
       }
-
-      // Preserve inline content (empty for external scripts).
-      if (oldScript.textContent) {
-        newScript.textContent = oldScript.textContent;
-      }
-
-      // External scripts: force in-order execution.
-      if (newScript.hasAttribute('src')) {
-        newScript.async = false;
-      }
-
-      // Replace in DOM — triggers fetch + execution.
-      oldScript.parentNode.replaceChild(newScript, oldScript);
-    });
+    }
   }
 }
 

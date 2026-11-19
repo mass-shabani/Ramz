@@ -96,9 +96,11 @@
 {# External script. Per HTML5 spec, <script> tags inserted via
    innerHTML (inline OR external) are marked "already started" and
    never execute — the browser does not even fetch external src.
-   content-container re-injects each <script> after setting
-   innerHTML, which triggers normal fetch + execution. See
-   coins_settings.js for the full rationale.
+   content-container therefore fetches each <script>'s source and
+   runs it explicitly (fetch + (0, eval) for classic scripts,
+   fetch + Blob + import() for type="module"). This is a deliberate,
+   explicit mechanism — see _executeScripts in content-container.js
+   for the full rationale.
    Served from /static/crypto_coins/js/coins_settings.js
    (registered in module.py). #}
 <script src="/static/crypto_coins/js/coins_settings.js"></script>

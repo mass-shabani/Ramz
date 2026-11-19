@@ -1,6 +1,6 @@
 {
   "name": "crypto_coins",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "enabled": true,
   "entrypoint": "CryptoCoinsModule",
   "description": "Crypto coins page module. Provides a coin list UI (partial injected into user_panel sidebar), a dashboard widget (top-coins summary), per-user coin settings (favorites, display currency), and a CoinsService wrapping crypto_market_service for JSON APIs.",

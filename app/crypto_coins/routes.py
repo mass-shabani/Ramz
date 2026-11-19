@@ -534,6 +534,48 @@ def register_routes(
         # Serialize
         rows = [_serialize_coin_row(c, currency) for c in coins_sorted]
 
+        # Fallback: if the snapshot is empty but has_data is true,
+        # the previous poll cycle produced no CoinData (all providers
+        # failed transiently, or all rows were currencies). Trigger a
+        # forced refresh once and retry. This makes the first render
+        # after a server restart / transient outage self-healing
+        # without requiring the user to click Refresh twice.
+        if not rows:
+            if logger:
+                logger.log(
+                    "coins_api_list: snapshot empty; attempting "
+                    "force refresh",
+                    level="INFO", tag="crypto_coins",
+                )
+            try:
+                await coins_service.refresh_now(force=True)
+            except Exception as exc:
+                if logger:
+                    logger.log(
+                        f"force refresh failed: {exc}",
+                        level="WARNING", tag="crypto_coins",
+                    )
+            try:
+                coins = await coins_service.get_coins()
+                coins_sorted = sorted(coins, key=_sort_key)
+                rows = [
+                    _serialize_coin_row(c, currency)
+                    for c in coins_sorted
+                ]
+                if not rows and logger:
+                    logger.log(
+                        "coins_api_list: still empty after force "
+                        "refresh; providers may be temporarily "
+                        "unavailable",
+                        level="WARNING", tag="crypto_coins",
+                    )
+            except Exception as exc:
+                if logger:
+                    logger.log(
+                        f"re-fetch after force refresh failed: {exc}",
+                        level="ERROR", tag="crypto_coins",
+                    )
+
         columns = [
             {"key": "_coin",      "label": "Coin",
              "type": "avatar"},
