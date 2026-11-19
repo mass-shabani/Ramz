@@ -1,44 +1,45 @@
 """
 crypto_coins Module
 
-Crypto coins page module. In phase 3, this module will provide:
+Crypto coins page module. Provides:
 
-    • A coin list UI (partial injected into user_panel sidebar).
-    • A dashboard widget (top-coins summary).
-    • Per-user coin settings (favorites, display currency).
+    • CoinsService (JSON API wrapper over crypto_market_service).
+    • /crypto/coins/partials/list — HTML shell for the coin list
+      (consumed by user_panel's content-container).
+    • /crypto/coins/api/list — JSON for <ramz-table>.
 
-Internal structure (as it grows):
-    services.py         — CoinsService (public API)
-    repositories/       — user_preference_repository (TASK 79.2)
-    templates/partials/ — coins_list.html, coins_settings.html
-                          (TASK 79.3, 79.4)
-    routes.py           — JSON + HTML partial endpoints (TASK 79.3+)
+Later tasks add:
+    • coins_settings partial + endpoints (TASK 79.4)
+    • favorite toggle (TASK 79.5)
+    • dashboard widget (TASK 79.6)
+    • sidebar/dashboard extensions (TASK 79.7)
+    • presence heartbeat (TASK 79.8)
 
-This file (TASK 79.1) registers the service only. No routes, no
-templates, no extensions. UI is not affected.
+Internal structure:
+    services.py         — CoinsService
+    repositories/       — UserPreferenceRepository
+    templates/partials/ — coins_list.html (+ coins_settings.html later)
+    routes.py           — JSON + HTML endpoints
 
 Startup sequence
 ----------------
     start():
-        1. Resolve crypto_market_service, app_db_service from context.
-        2. Instantiate CoinsService.
+        1. Resolve crypto_market_service, app_db_service,
+           http_api, template_service from context.
+        2. Instantiate CoinsService + UserPreferenceRepository.
         3. Register `crypto_coins_service` in context.services.
+        4. Register templates directory.
+        5. Register routes.
 
-    Each step is fail-soft: a missing prerequisite logs an ERROR and
-    the module does not register its service — the rest of the
-    application keeps working (matching the project's convention).
-
-Deployment notes
-----------------
-Enabling crypto_coins without crypto_market is rejected by Massir's
-check_requirements (crypto_coins declares crypto_market_service in
-`requires`). Disabling crypto_coins while crypto_market and
-crypto_providers are enabled is valid — the data layer keeps
-running (the poller keeps polling while any UI is active), the
-coins UI simply does not appear.
+    Each step is fail-soft: a missing prerequisite logs an ERROR
+    and skips only that step, keeping the rest of the module load
+    healthy.
 """
+from pathlib import Path
+
 from massir.core.interfaces import IModule, ModuleContext
 
+from .repositories import UserPreferenceRepository
 from .services import CoinsService
 
 
@@ -52,6 +53,7 @@ class CryptoCoinsModule(IModule):
 
     def __init__(self):
         self._service = None
+        self._preference_repo = None
 
     async def start(self, context: ModuleContext) -> None:
         logger = context.services.get("core_logger")
@@ -63,8 +65,10 @@ class CryptoCoinsModule(IModule):
             )
 
         # --- 1. Resolve prerequisites -------------------------
-        market_service = context.services.get("crypto_market_service")
-        db_service     = context.services.get("app_db_service")
+        market_service    = context.services.get("crypto_market_service")
+        db_service        = context.services.get("app_db_service")
+        http_api          = context.services.get("http_api")
+        template_service  = context.services.get("template_service")
 
         if not market_service:
             if logger:
@@ -84,7 +88,19 @@ class CryptoCoinsModule(IModule):
                 )
             return
 
-        # --- 2. Create and register service -------------------
+        # --- 2. Create service + repository -------------------
+        try:
+            self._preference_repo = UserPreferenceRepository(
+                db_service, module_name="coins", logger=logger
+            )
+        except Exception as exc:
+            if logger:
+                logger.log(
+                    f"UserPreferenceRepository init failed: {exc}",
+                    level="ERROR", tag="crypto_coins",
+                )
+            return
+
         try:
             self._service = CoinsService(
                 market_service=market_service,
@@ -108,16 +124,67 @@ class CryptoCoinsModule(IModule):
                 "crypto_coins_service registered",
                 tag="crypto_coins",
             )
+
+        # --- 3. Register templates directory ------------------
+        if template_service:
+            try:
+                templates_dir = str(
+                    Path(__file__).parent / "templates"
+                )
+                template_service.register_template_directory(
+                    templates_dir, "crypto_coins"
+                )
+            except Exception as exc:
+                if logger:
+                    logger.log(
+                        f"templates directory registration failed: "
+                        f"{exc}",
+                        level="WARNING", tag="crypto_coins",
+                    )
+
+        # --- 4. Register routes -------------------------------
+        if http_api:
+            try:
+                from .routes import register_routes
+                register_routes(
+                    http_api=http_api,
+                    coins_service=self._service,
+                    preference_repo=self._preference_repo,
+                    db_service=db_service,
+                    template_service=template_service,
+                    logger=logger,
+                )
+                if logger:
+                    logger.log(
+                        "crypto_coins routes registered "
+                        "(api/list, partials/list)",
+                        tag="crypto_coins",
+                    )
+            except Exception as exc:
+                if logger:
+                    logger.log(
+                        f"route registration failed: {exc}",
+                        level="ERROR", tag="crypto_coins",
+                    )
+        else:
+            if logger:
+                logger.log(
+                    "http_api not available — routes NOT registered",
+                    level="WARNING", tag="crypto_coins",
+                )
+
+        if logger:
             logger.log(
                 "crypto_coins module started "
-                "(service only; UI in later tasks)",
+                "(service + routes; UI extension in TASK 79.7)",
                 tag="crypto_coins",
             )
 
     async def stop(self, context: ModuleContext) -> None:
         logger = context.services.get("core_logger")
 
-        # CoinsService is stateless; nothing to close.
+        # CoinsService and UserPreferenceRepository are stateless.
+        # No I/O resources to close.
 
         if logger:
             logger.log(
