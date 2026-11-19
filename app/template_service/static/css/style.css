@@ -4291,3 +4291,26 @@ content-container {
     transition-duration: .001ms !important;
   }
 }
+/* ==========================================================================
+    security
+   ========================================================================== 
+Mask input text visually without using type="password".
+This avoids Chrome's accessibility audit warning
+("Password forms should have username fields"), which fires
+on any type="password" input inside a form without a
+username/email field. API keys are not user passwords, so
+the warning is a false positive; masking via CSS keeps the
+UX without the warning.
+-webkit-text-security is supported in Chromium and WebKit.
+Firefox does not support it; as a fallback, the field will
+show plaintext. Since this is an admin-only settings page
+accessed over HTTPS, that fallback is acceptable, and the
+reveal-on-hover behaviour is preserved via JS below. */
+.masked-secret {
+  -webkit-text-security: disc;
+  font-family: monospace;
+  letter-spacing: 0.5px;
+}
+/* When the user starts typing, keep it masked. The browser's
+    native password manager will not offer to save these fields
+    because type="text" + autocomplete="off". */

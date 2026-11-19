@@ -89,11 +89,12 @@
           </div>
           <div class="settings-row-control">
             <div class="settings-field">
-              <input type="password"
+              <input type="text"
                      name="api_key"
                      placeholder="{% if configured_fields.api_key %}Leave empty to keep current{% else %}Enter API key{% endif %}"
-                     autocomplete="new-password"
-                     spellcheck="false" />
+                     autocomplete="off"
+                     spellcheck="false"
+                     class="masked-secret" />
             </div>
           </div>
         </div>
@@ -132,11 +133,12 @@
           </div>
           <div class="settings-row-control">
             <div class="settings-field">
-              <input type="password"
+              <input type="text"
                      name="api_secret"
                      placeholder="{% if configured_fields.api_secret %}Leave empty to keep current{% else %}Enter API secret{% endif %}"
-                     autocomplete="new-password"
-                     spellcheck="false" />
+                     autocomplete="off"
+                     spellcheck="false"
+                     class="masked-secret" />
             </div>
           </div>
         </div>
