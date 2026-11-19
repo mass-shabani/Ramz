@@ -188,6 +188,79 @@ async def _check_coins_view(request, db_service, logger):
     return user_id, None
 
 
+async def _check_settings_access(request, db_service, logger):
+    """
+    Access check for crypto.coins.favorite (settings page).
+
+    Parallel to _check_coins_view but with the favorite grant
+    (higher privilege — favorites are user-curated, unlike the
+    read-only coin list). Fail-closed on grant-check errors.
+    """
+    session_id, user_id = await _ensure_authenticated(
+        request, db_service, logger
+    )
+    if session_id is None or user_id is None:
+        return None, {
+            "status_code": 401,
+            "body": {
+                "status": "error",
+                "code": "not_authenticated",
+                "message": "Not signed in or session expired.",
+            },
+        }
+
+    if db_service is None:
+        if logger:
+            logger.log(
+                "db_service is None — cannot verify grant; "
+                "denying access (fail-closed)",
+                level="ERROR", tag="crypto_coins",
+            )
+        return None, {
+            "status_code": 503,
+            "body": {
+                "status": "error",
+                "code": "service_unavailable",
+                "message": "Access control unavailable; try later.",
+            },
+        }
+
+    try:
+        allowed = await db_service.has_access(
+            user_id, "crypto.coins.favorite"
+        )
+    except Exception as exc:
+        if logger:
+            logger.log(
+                f"Grant check raised ({exc}); denying access "
+                f"(fail-closed)",
+                level="ERROR", tag="crypto_coins",
+            )
+        return None, {
+            "status_code": 503,
+            "body": {
+                "status": "error",
+                "code": "service_unavailable",
+                "message": "Access control unavailable; try later.",
+            },
+        }
+
+    if not allowed:
+        return None, {
+            "status_code": 403,
+            "body": {
+                "status": "error",
+                "code": "no_permission",
+                "message": (
+                    "You do not have permission to manage coin "
+                    "settings."
+                ),
+            },
+        }
+
+    return user_id, None
+
+
 def _json_error(http_api, status_code: int, code: str, message: str):
     """Build a JSON error response."""
     return http_api.JSONResponse(
@@ -543,6 +616,284 @@ def register_routes(
                 content=(
                     "<div class='card'><p>"
                     "Failed to render coins list."
+                    "</p></div>"
+                ),
+                status_code=500,
+            )
+        return http_api.HTMLResponse(content=html)
+
+    # ----------------------------------------------------------
+    # POST /crypto/coins/api/settings
+    # ----------------------------------------------------------
+    @http_api.post(
+        "/crypto/coins/api/settings",
+        response_class=http_api.JSONResponse,
+    )
+    async def coins_api_settings(request: http_api.Request):
+        """
+        Return the current user's coin settings as JSON.
+
+        Requires `crypto.coins.favorite` grant (settings are higher
+        privilege than read-only coin list viewing).
+
+        Response:
+            {
+                "status":           "success",
+                "display_currency": "USDT",
+                "rows_per_page":    50,
+                "favorites":        ["BTC", "ETH"],
+                "available_currencies": ["USDT", "RLS", "USD"],
+                "min_rows": 10,
+                "max_rows": 500
+            }
+        """
+        user_id, err = await _check_settings_access(
+            request, db_service, logger
+        )
+        if err is not None:
+            return _json_error(
+                http_api, err["status_code"],
+                err["body"]["code"], err["body"]["message"],
+            )
+
+        if preference_repo is None:
+            return _json_error(
+                http_api, 503, "service_unavailable",
+                "Preferences unavailable.",
+            )
+
+        try:
+            currency = await preference_repo.get_display_currency(
+                user_id
+            )
+            rows = await preference_repo.get_rows_per_page(user_id)
+            favorites = await preference_repo.get_favorites(user_id)
+        except Exception as exc:
+            if logger:
+                logger.log(
+                    f"settings read failed: {exc}",
+                    level="ERROR", tag="crypto_coins",
+                )
+            return _json_error(
+                http_api, 500, "internal_error",
+                "Failed to read preferences.",
+            )
+
+        # Local import to avoid a top-level import that could leak
+        # through __init__ ordering; constants are stable.
+        from .repositories import (
+            VALID_DISPLAY_CURRENCIES,
+            MIN_ROWS_PER_PAGE,
+            MAX_ROWS_PER_PAGE,
+        )
+
+        return http_api.JSONResponse(
+            content={
+                "status":               "success",
+                "display_currency":     currency,
+                "rows_per_page":        rows,
+                "favorites":            favorites,
+                "available_currencies": sorted(VALID_DISPLAY_CURRENCIES),
+                "min_rows":             MIN_ROWS_PER_PAGE,
+                "max_rows":             MAX_ROWS_PER_PAGE,
+            },
+            status_code=200,
+        )
+
+    # ----------------------------------------------------------
+    # POST /crypto/coins/api/settings/save
+    # ----------------------------------------------------------
+    @http_api.post(
+        "/crypto/coins/api/settings/save",
+        response_class=http_api.JSONResponse,
+    )
+    async def coins_api_settings_save(request: http_api.Request):
+        """
+        Save display currency and rows-per-page.
+
+        No password prompt: these are display preferences, not
+        security-sensitive operations. (Favorites are managed via
+        TASK 79.5 endpoints.)
+
+        Body (JSON or form-encoded — Content-Type aware):
+            {
+                "display_currency": "USDT" | "RLS" | "USD",
+                "rows_per_page":    10..500
+            }
+
+        Either field may be omitted — the corresponding preference is
+        left unchanged.
+
+        Response:
+            {"status": "success", "message": "Settings saved."}
+        """
+        user_id, err = await _check_settings_access(
+            request, db_service, logger
+        )
+        if err is not None:
+            return _json_error(
+                http_api, err["status_code"],
+                err["body"]["code"], err["body"]["message"],
+            )
+
+        if preference_repo is None:
+            return _json_error(
+                http_api, 503, "service_unavailable",
+                "Preferences unavailable.",
+            )
+
+        # Content-Type aware body parsing (multipart form OR JSON).
+        # Mirrors crypto_providers/routes.py::_parse_body, but local
+        # to crypto_coins to keep modules independent.
+        content_type = (
+            request.headers.get("content-type") or ""
+        ).lower()
+        body: dict = {}
+        try:
+            if "application/json" in content_type:
+                parsed = await request.json()
+                if isinstance(parsed, dict):
+                    body = parsed
+            elif (
+                "multipart/form-data" in content_type
+                or "application/x-www-form-urlencoded" in content_type
+            ):
+                form = await request.form()
+                body = dict(form)
+        except Exception as exc:
+            if logger:
+                logger.log(
+                    f"body parse failed: {exc}",
+                    level="WARNING", tag="crypto_coins",
+                )
+            return _json_error(
+                http_api, 400, "invalid_body",
+                "Malformed request body.",
+            )
+
+        # Validate + apply. Use flags to report which parts were
+        # actually updated (useful for the client if it wants to
+        # show a partial-success message).
+        saved: list[str] = []
+
+        currency_raw = body.get("display_currency")
+        if currency_raw is not None and str(currency_raw).strip():
+            try:
+                ok = await preference_repo.set_display_currency(
+                    user_id, str(currency_raw)
+                )
+            except Exception as exc:
+                if logger:
+                    logger.log(
+                        f"set_display_currency failed: {exc}",
+                        level="ERROR", tag="crypto_coins",
+                    )
+                ok = False
+            if not ok:
+                return _json_error(
+                    http_api, 400, "invalid_currency",
+                    "Display currency must be one of "
+                    "USDT, RLS, USD.",
+                )
+            saved.append("display_currency")
+
+        rows_raw = body.get("rows_per_page")
+        if rows_raw is not None and str(rows_raw).strip():
+            try:
+                ok = await preference_repo.set_rows_per_page(
+                    user_id, int(rows_raw)
+                )
+            except (TypeError, ValueError):
+                ok = False
+            except Exception as exc:
+                if logger:
+                    logger.log(
+                        f"set_rows_per_page failed: {exc}",
+                        level="ERROR", tag="crypto_coins",
+                    )
+                ok = False
+            if not ok:
+                return _json_error(
+                    http_api, 400, "invalid_rows_per_page",
+                    "Rows per page must be an integer between 10 "
+                    "and 500.",
+                )
+            saved.append("rows_per_page")
+
+        if not saved:
+            return _json_error(
+                http_api, 400, "empty_fields",
+                "No valid fields to save.",
+            )
+
+        if logger:
+            logger.log(
+                f"coin settings saved for user_id={user_id}: "
+                f"{saved}",
+                tag="crypto_coins",
+            )
+
+        return http_api.JSONResponse(
+            content={
+                "status":  "success",
+                "message": "Settings saved.",
+                "saved":   saved,
+            },
+            status_code=200,
+        )
+
+    # ----------------------------------------------------------
+    # POST /crypto/coins/partials/settings
+    # ----------------------------------------------------------
+    @http_api.post(
+        "/crypto/coins/partials/settings",
+        response_class=http_api.HTMLResponse,
+    )
+    async def coins_partial_settings(request: http_api.Request):
+        """
+        Render the coin settings partial (HTML shell).
+
+        The shell reads current preferences via the API endpoint
+        after mount (inline JS below), then handles save via fetch.
+        """
+        user_id, err = await _check_settings_access(
+            request, db_service, logger
+        )
+        if err is not None:
+            return _json_error(
+                http_api, err["status_code"],
+                err["body"]["code"], err["body"]["message"],
+            )
+
+        if template_service is None:
+            return http_api.HTMLResponse(
+                content=(
+                    "<div class='card'><p>"
+                    "Template service unavailable."
+                    "</p></div>"
+                ),
+                status_code=500,
+            )
+
+        context = {
+            "module_name":  "crypto_coins",
+            "current_user": request.session.get("user") or {},
+        }
+
+        try:
+            html = await template_service.render(
+                "partials/coins_settings.html", context
+            )
+        except Exception as exc:
+            if logger:
+                logger.log(
+                    f"coins_settings render failed: {exc}",
+                    level="ERROR", tag="crypto_coins",
+                )
+            return http_api.HTMLResponse(
+                content=(
+                    "<div class='card'><p>"
+                    "Failed to render coin settings."
                     "</p></div>"
                 ),
                 status_code=500,

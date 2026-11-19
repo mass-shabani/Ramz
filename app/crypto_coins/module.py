@@ -157,7 +157,8 @@ class CryptoCoinsModule(IModule):
                 if logger:
                     logger.log(
                         "crypto_coins routes registered "
-                        "(api/list, partials/list)",
+                        "(api/list, partials/list, api/settings, "
+                        "api/settings/save, partials/settings)",
                         tag="crypto_coins",
                     )
             except Exception as exc:

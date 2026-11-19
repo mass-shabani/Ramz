@@ -1,0 +1,183 @@
+{# ==========================================================================
+   Crypto Coins — Settings
+   Loaded into user_panel's <content-container> when the "Coin Settings"
+   sidebar item is clicked (extension registered in TASK 79.7).
+   No data-ajax, no dialog: display preferences are non-sensitive.
+   Save triggers a partial reload for visual feedback.
+   ========================================================================== #}
+
+<div style="display: flex; flex-direction: column; gap: 20px;">
+
+  <ramz-card
+    title="Coin Settings"
+    subtitle="Display preferences for the coins list">
+
+    <div slot="icon" class="card-icon icon-soft--sky">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.9" stroke-linecap="round"
+           stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7.9 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 4 13.9H4a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 5.3 7.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 10.9 4V4a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1.3z"/>
+      </svg>
+    </div>
+
+    <form id="coinsSettingsForm"
+          onsubmit="return false;"
+          autocomplete="off">
+
+      <div class="settings-rows">
+
+        <!-- Display Currency -->
+        <div class="settings-row">
+          <div class="settings-row-label">
+            <div class="label">Display Currency</div>
+            <div class="hint">
+              The reference price column will be shown in this
+              currency. Cross-conversion uses the current FX rate.
+            </div>
+          </div>
+          <div class="settings-row-control">
+            <div class="settings-field">
+              <select id="coinsDisplayCurrency"
+                      name="display_currency">
+                <option value="USDT">USDT (Tether)</option>
+                <option value="USD">USD (US Dollar)</option>
+                <option value="RLS">RLS (Iranian Rial)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Rows Per Page -->
+        <div class="settings-row">
+          <div class="settings-row-label">
+            <div class="label">Rows Per Page</div>
+            <div class="hint">
+              Maximum number of coins shown per page (10–500).
+            </div>
+          </div>
+          <div class="settings-row-control">
+            <div class="settings-field">
+              <input type="number"
+                     id="coinsRowsPerPage"
+                     name="rows_per_page"
+                     min="10" max="500" step="10"
+                     value="50" />
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="settings-actions">
+        <button type="button"
+                class="btn-primary"
+                id="coinsSettingsSaveBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2.4" stroke-linecap="round"
+               stroke-linejoin="round">
+            <path d="M20 6 9 17l-5-5"/>
+          </svg>
+          Save Settings
+        </button>
+      </div>
+    </form>
+  </ramz-card>
+
+  <!-- Status banner (initially hidden, shown after save/error) -->
+  <div id="coinsSettingsStatus"
+       style="display: none; padding: 14px 18px;
+              border-radius: 12px; font-size: 13px;
+              line-height: 1.6;">
+  </div>
+
+</div>
+
+{# Inline setup script: runs as a module, so it executes on inject
+   (unlike a plain <script> whose content is not executed when
+   innerHTML is set). Since content-container replaces innerHTML,
+   this module script is guaranteed to run exactly once per load. #}
+<script type="module">
+(function () {
+  const form       = document.getElementById('coinsSettingsForm');
+  const currency   = document.getElementById('coinsDisplayCurrency');
+  const rows       = document.getElementById('coinsRowsPerPage');
+  const saveBtn    = document.getElementById('coinsSettingsSaveBtn');
+  const statusEl   = document.getElementById('coinsSettingsStatus');
+
+  if (!form || !currency || !rows || !saveBtn || !statusEl) return;
+
+  function showStatus(kind, message) {
+    const isOk = kind === 'success';
+    statusEl.style.display = 'block';
+    statusEl.style.background = isOk
+      ? 'rgba(16,185,129,0.10)'
+      : 'rgba(244,63,94,0.10)';
+    statusEl.style.border = isOk
+      ? '1px solid rgba(16,185,129,0.28)'
+      : '1px solid rgba(244,63,94,0.28)';
+    statusEl.style.color = isOk ? '#a7f3d0' : '#fecdd3';
+    statusEl.textContent = message;
+  }
+
+  function hideStatus() {
+    statusEl.style.display = 'none';
+    statusEl.textContent = '';
+  }
+
+  async function load() {
+    hideStatus();
+    try {
+      const r = await fetch('/crypto/coins/api/settings', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        credentials: 'same-origin',
+      });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const d = await r.json();
+      if (d.status !== 'success') return;
+      currency.value = d.display_currency || 'USDT';
+      rows.value = String(d.rows_per_page || 50);
+    } catch (e) {
+      showStatus('error', 'Failed to load settings.');
+    }
+  }
+
+  saveBtn.addEventListener('click', async () => {
+    saveBtn.disabled = true;
+    hideStatus();
+    try {
+      const r = await fetch('/crypto/coins/api/settings/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          display_currency: currency.value,
+          rows_per_page:    parseInt(rows.value, 10) || 50,
+        }),
+      });
+      const d = await r.json();
+      if (d.status === 'success') {
+        showStatus('success',
+          'Settings saved. Change will apply to the next coins list load.');
+      } else {
+        showStatus('error',
+          d.message || 'Failed to save settings.');
+      }
+    } catch (e) {
+      showStatus('error', 'Network error. Please try again.');
+    } finally {
+      saveBtn.disabled = false;
+    }
+  });
+
+  load();
+})();
+</script>
