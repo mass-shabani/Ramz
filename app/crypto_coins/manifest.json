@@ -1,0 +1,19 @@
+{
+  "name": "crypto_coins",
+  "version": "0.1.0",
+  "enabled": true,
+  "entrypoint": "CryptoCoinsModule",
+  "description": "Crypto coins page module. Provides a coin list UI (partial injected into user_panel sidebar), a dashboard widget (top-coins summary), per-user coin settings (favorites, display currency), and a CoinsService wrapping crypto_market_service for JSON APIs.",
+  "requires": [
+    "core_logger",
+    "core_config",
+    "http_api",
+    "template_service",
+    "component_service",
+    "app_db_service",
+    "crypto_market_service"
+  ],
+  "provides": [
+    "crypto_coins_service"
+  ]
+}
