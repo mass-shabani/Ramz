@@ -45,6 +45,7 @@ Currency preference is read from UserPreferenceRepository; default
 "USDT". TASK 79.4 will add a settings UI to change it.
 """
 from typing import Any, Optional
+from html import escape as _html_escape
 
 from app.crypto_market.market_data.types import CoinData
 
@@ -337,14 +338,49 @@ def _pick_provider_quote_price(
     return prices[0].price, prices[0].quote
 
 
-def _serialize_coin_row(coin: CoinData, currency: str) -> dict:
+def _serialize_coin_row(
+    coin: CoinData, currency: str, favorites_set=None
+) -> dict:
     """
     Build one <ramz-table> row for a CoinData.
+
+    `favorites_set`: optional set of uppercase canonicals. When
+    provided, the `_favorite` column shows a filled star for coins
+    in the set. When None, all stars render as unfilled (safe
+    default for callers without favorites context).
 
     See module docstring for column semantics.
     """
     canonical = coin.canonical or ""
     name = coin.name or canonical
+
+    favorited = bool(
+        favorites_set is not None
+        and canonical
+        and canonical.upper() in favorites_set
+    )
+    fav_icon  = "★" if favorited else "☆"
+    fav_cls   = (
+        "favorite-btn favorite-btn--active" if favorited
+        else "favorite-btn"
+    )
+    fav_attr  = "1" if favorited else "0"
+    fav_title = (
+        "Remove from favorites" if favorited
+        else "Add to favorites"
+    )
+    fav_color = "#fbbf24" if favorited else "#64748b"
+    fav_html = (
+        f'<button type="button" class="{fav_cls}" '
+        f'data-canonical="{_html_escape(canonical)}" '
+        f'data-favorited="{fav_attr}" '
+        f'title="{fav_title}" '
+        f'aria-label="{fav_title}" '
+        f'style="background:transparent;border:none;'
+        f'cursor:pointer;font-size:18px;line-height:1;'
+        f'padding:4px 6px;color:{fav_color};'
+        f'transition:color 120ms;">{fav_icon}</button>'
+    )
 
     # Preferred quote for sort/display: user's currency
     preferred = (currency or "USDT", "USDT", "USD", "RLS")
@@ -395,6 +431,7 @@ def _serialize_coin_row(coin: CoinData, currency: str) -> dict:
     initials = canonical[:2].upper() if canonical else "?"
 
     return {
+        "_favorite":   fav_html,
         "_coin": {
             "initials":    initials,
             "name":        name,
@@ -498,6 +535,7 @@ def register_routes(
 
         # Read preferences
         currency = "USDT"
+        favorites_list = []
         if preference_repo is not None:
             try:
                 currency = await preference_repo.get_display_currency(
@@ -510,6 +548,17 @@ def register_routes(
                         f"using USDT",
                         level="WARNING", tag="crypto_coins",
                     )
+            try:
+                favorites_list = await preference_repo.get_favorites(
+                    user_id
+                )
+            except Exception as exc:
+                if logger:
+                    logger.log(
+                        f"get_favorites failed ({exc}); using []",
+                        level="WARNING", tag="crypto_coins",
+                    )
+        favorites_set = set(favorites_list or [])
 
         # Fetch data
         try:
@@ -532,7 +581,10 @@ def register_routes(
             coins_sorted = coins
 
         # Serialize
-        rows = [_serialize_coin_row(c, currency) for c in coins_sorted]
+        rows = [
+            _serialize_coin_row(c, currency, favorites_set)
+            for c in coins_sorted
+        ]
 
         # Fallback: if the snapshot is empty but has_data is true,
         # the previous poll cycle produced no CoinData (all providers
@@ -559,7 +611,7 @@ def register_routes(
                 coins = await coins_service.get_coins()
                 coins_sorted = sorted(coins, key=_sort_key)
                 rows = [
-                    _serialize_coin_row(c, currency)
+                    _serialize_coin_row(c, currency, favorites_set)
                     for c in coins_sorted
                 ]
                 if not rows and logger:
@@ -577,6 +629,9 @@ def register_routes(
                     )
 
         columns = [
+            {"key": "_favorite",  "label": "",
+             "type": "html",      "align": "center",
+             "className": "favorite-cell"},
             {"key": "_coin",      "label": "Coin",
              "type": "avatar"},
             {"key": "_nobitex",   "label": "Nobitex",
@@ -663,6 +718,145 @@ def register_routes(
                 status_code=500,
             )
         return http_api.HTMLResponse(content=html)
+
+    # ----------------------------------------------------------
+    # POST /crypto/coins/api/favorite/toggle
+    # ----------------------------------------------------------
+    @http_api.post(
+        "/crypto/coins/api/favorite/toggle",
+        response_class=http_api.JSONResponse,
+    )
+    async def coins_api_favorite_toggle(request: http_api.Request):
+        """
+        Toggle a coin in/out of the current user's favorites.
+
+        Reuses `_check_settings_access` because the same grant
+        (`crypto.coins.favorite`) covers both favorites and display
+        settings (per schema v11: "manage favorites + settings").
+
+        Body (JSON or form-encoded — Content-Type aware):
+            {
+                "canonical": "BTC",
+                "action":    "add" | "remove"
+            }
+
+        Both fields are required. `canonical` is uppercased and
+        deduped by the repository. `action` is explicitly required
+        (not inferred) so the operation is idempotent and the client
+        knows the intended transition.
+
+        Response:
+            {
+                "status":    "success",
+                "canonical": "BTC",
+                "favorited": true,
+                "favorites": ["BTC", "ETH"]
+            }
+        """
+        user_id, err = await _check_settings_access(
+            request, db_service, logger
+        )
+        if err is not None:
+            return _json_error(
+                http_api, err["status_code"],
+                err["body"]["code"], err["body"]["message"],
+            )
+
+        if preference_repo is None:
+            return _json_error(
+                http_api, 503, "service_unavailable",
+                "Preferences unavailable.",
+            )
+
+        # Content-Type aware body parsing (matches settings/save).
+        content_type = (
+            request.headers.get("content-type") or ""
+        ).lower()
+        body: dict = {}
+        try:
+            if "application/json" in content_type:
+                parsed = await request.json()
+                if isinstance(parsed, dict):
+                    body = parsed
+            elif (
+                "multipart/form-data" in content_type
+                or "application/x-www-form-urlencoded" in content_type
+            ):
+                form = await request.form()
+                body = dict(form)
+        except Exception as exc:
+            if logger:
+                logger.log(
+                    f"favorite toggle body parse failed: {exc}",
+                    level="WARNING", tag="crypto_coins",
+                )
+            return _json_error(
+                http_api, 400, "invalid_body",
+                "Malformed request body.",
+            )
+
+        canonical_raw = body.get("canonical")
+        if not canonical_raw or not str(canonical_raw).strip():
+            return _json_error(
+                http_api, 400, "missing_canonical",
+                "Field 'canonical' is required.",
+            )
+
+        action_raw = body.get("action")
+        if action_raw is None or not str(action_raw).strip():
+            return _json_error(
+                http_api, 400, "missing_action",
+                "Field 'action' is required (add or remove).",
+            )
+
+        action = str(action_raw).strip().lower()
+        if action not in ("add", "remove"):
+            return _json_error(
+                http_api, 400, "invalid_action",
+                "Field 'action' must be 'add' or 'remove'.",
+            )
+
+        canonical = str(canonical_raw).strip().upper()
+
+        if action == "add":
+            ok, favorites = await preference_repo.add_favorite(
+                user_id, canonical
+            )
+        else:
+            ok, favorites = await preference_repo.remove_favorite(
+                user_id, canonical
+            )
+
+        if not ok:
+            if logger:
+                logger.log(
+                    f"favorite {action} failed for user_id={user_id}, "
+                    f"canonical={canonical}",
+                    level="ERROR", tag="crypto_coins",
+                )
+            return _json_error(
+                http_api, 500, "internal_error",
+                "Failed to update favorites.",
+            )
+
+        favorited = canonical in (favorites or [])
+
+        if logger:
+            logger.log(
+                f"favorite {action} for user_id={user_id}: "
+                f"{canonical} (now favorited={favorited})",
+                tag="crypto_coins",
+            )
+
+        return http_api.JSONResponse(
+            content={
+                "status":    "success",
+                "canonical": canonical,
+                "favorited": favorited,
+                "favorites": favorites,
+            },
+            status_code=200,
+        )
 
     # ----------------------------------------------------------
     # POST /crypto/coins/api/settings
