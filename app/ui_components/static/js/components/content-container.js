@@ -29,6 +29,7 @@ class ContentContainer extends HTMLElement {
   #lastUrl      = '';
   #loading      = false;
   #abortCtrl    = null;
+  #scriptsMap   = {};
 
   static get observedAttributes() {
     return ['initial-endpoint', 'method'];
@@ -38,6 +39,17 @@ class ContentContainer extends HTMLElement {
     this._render();
     this._cacheRefs();
     this._attachListeners();
+
+    // Parse the scripts-map attribute (JSON: urlPath → [scriptSrc]).
+    // A malformed value falls back to {} so partials without client
+    // JS keep working unchanged.
+    try {
+      const raw = this.getAttribute('scripts-map') || '';
+      this.#scriptsMap = raw ? JSON.parse(raw) : {};
+    } catch (err) {
+      console.warn('[content-container] invalid scripts-map:', err);
+      this.#scriptsMap = {};
+    }
 
     const initial = attr(this, 'initial-endpoint', '');
     if (initial) {
@@ -96,23 +108,18 @@ class ContentContainer extends HTMLElement {
 
       this.#refs.content.innerHTML = html;
 
-      // Per HTML5 spec, <script> elements inserted via innerHTML are
-      // marked "already started" and never execute. To support
-      // partials with client-side JS, we fetch each script's source
-      // and execute it explicitly (see _executeScripts for details).
-      //
-      // Awaiting here means `ramz:content-loaded` fires only AFTER
-      // all scripts have finished running — so any listener can rely
-      // on the partial being fully wired. Partials with no <script>
-      // resolve immediately (early return in _executeScripts).
+      // Load scripts registered for this URL via ComponentService's
+      // scripts-map. This replaces innerHTML <script> execution with
+      // explicit <script src> injection so the browser handles fetch +
+      // execution reliably and per partials.
       try {
-        await this._executeScripts(this.#refs.content);
+        await this._loadScriptsForUrl(url);
       } catch (err) {
-        // _executeScripts catches per-script errors itself; this
-        // catch is a last-resort safety net so a single failure
-        // never blocks the container from reaching the ready state.
+        // Per-script errors are caught individually; this catch is
+        // a last-resort safety net so a single failure never blocks
+        // the container from reaching the ready state.
         console.error(
-          '[content-container] _executeScripts crashed:', err
+          '[content-container] _loadScriptsForUrl crashed:', err
         );
       }
 
@@ -224,115 +231,81 @@ class ContentContainer extends HTMLElement {
   };
 
   /* --------------------------------------------------------------
-     Script execution (explicit fetch + eval)
-     -------------------------------------------------------------- */
+      Script loading (scripts-map)
+      -------------------------------------------------------------- */
 
   /**
-   * Execute every <script> element inside `container`.
+   * Load the scripts registered for `url` via ComponentService.
    *
-   * Why explicit fetch + eval instead of re-injection?
-   *   Per HTML5 spec, <script> elements inserted via innerHTML are
-   *   marked "already started" and never execute. Replacing them
-   *   with a fresh <script> via replaceChild works in some browsers
-   *   but is NOT reliable across Chrome and other engines (verified
-   *   empirically in this project). The only reliable cross-browser
-   *   approach is to fetch the source text ourselves and execute it
-   *   explicitly.
+   * Why this instead of executing <script> tags found inside the
+   * partial?
+   *   1. HTML5 marks <script> elements inserted via innerHTML as
+   *      "already started" — they never execute.
+   *   2. fetch + eval is brittle (CSP, cross-browser timing, error
+   *      attribution) and hides failures from the user.
+   *   3. The rest of Ramz already keeps JS in the parent page
+   *      (settings.html, admin_layout.html). This method brings
+   *      partial-only JS into the same mental model: the module
+   *      declares its scripts, the container loads them explicitly
+   *      from <head>, and the browser handles fetch + execution.
    *
-   * Execution model:
-   *   • External classic scripts: fetch text, then `(0, eval)(text)`.
-   *     Indirect eval runs the code in the global scope, exactly
-   *     like a real <script> tag would (access to window, document,
-   *     fetch, ...).
-   *   • External module scripts (`type="module"`): fetch text,
-   *     create a Blob URL, and `await import(blobUrl)`. This is the
-   *     standard way to run ES module source at runtime.
-   *   • Inline scripts (classic or module): same as above, using
-   *     the inline textContent instead of a network fetch.
+   * URL normalization:
+   *   The map keys are pathnames (e.g. "/crypto/coins/partials/list").
+   *   We strip query/hash from the loaded URL before lookup so that
+   *   cache-busting query strings do not break matching.
    *
-   * Ordering:
-   *   Scripts execute strictly in document order. For external
-   *   scripts, each fetch is awaited before the next script runs.
-   *
-   * Errors:
-   *   Any fetch/parse/runtime error is caught per-script and logged
-   *   via console.error with the script's src (or "<inline>") so it
-   *   is easy to attribute. Execution continues to the next script.
-   *
-   * Backward compatibility:
-   *   Partials with zero <script> tags are a no-op (early return).
-   *   The whole method is async; callers await it so that
-   *   `ramz:content-loaded` fires only AFTER all scripts have run.
-   *
-   * Security note:
-   *   `(0, eval)` requires no CSP `'unsafe-eval'` for this project
-   *   because the FastAPI app does not set a Content-Security-Policy
-   *   header. The scripts being eval'd are served from the same
-   *   origin (/static/crypto_coins/...). If a CSP is ever added,
-   *   switch the classic branch to Blob + Function or Blob + import
-   *   with `script-src blob:` (see git history for the rationale).
+   * Idempotency:
+   *   Each navigation creates a fresh <script src> element and
+   *   removes it after load. The browser's HTTP cache serves the
+   *   body; execution happens every time, which is what partials
+   *   with DOM-binding initializers need (e.g. coins_settings.js).
    */
-  async _executeScripts(container) {
-    if (!container) return;
+  async _loadScriptsForUrl(url) {
+    if (!url || !this.#scriptsMap) return;
 
-    const scripts = Array.from(container.querySelectorAll('script'));
-    if (scripts.length === 0) return;
+    let pathname;
+    try {
+      pathname = new URL(url, window.location.origin).pathname;
+    } catch (err) {
+      pathname = url;
+    }
 
-    console.debug(
-      `[content-container] executing ${scripts.length} script(s)`
-    );
+    const scripts = this.#scriptsMap[pathname];
+    if (!Array.isArray(scripts) || scripts.length === 0) return;
 
-    for (const oldScript of scripts) {
-      const src = oldScript.getAttribute('src');
-      const textContent = oldScript.textContent || '';
-      const isModule = oldScript.getAttribute('type') === 'module';
-      const label = src || '<inline>';
-
-      // Remove from DOM — we execute manually. Keeping it would also
-      // be harmless, but removing avoids the (non-functional)
-      // "already started" script from confusing DevTools' Elements
-      // panel.
-      oldScript.remove();
-
+    // Strictly sequential: a partial's initializer may depend on
+    // a shared helper registered by an earlier script.
+    for (const src of scripts) {
       try {
-        let code;
-        if (src) {
-          const r = await fetch(src, { credentials: 'same-origin' });
-          if (!r.ok) {
-            throw new Error(`HTTP ${r.status} for ${src}`);
-          }
-          code = await r.text();
-        } else {
-          code = textContent;
-        }
-
-        if (isModule) {
-          // ES module source must go through import(). Blob URL is
-          // the standard mechanism at runtime.
-          const blob = new Blob(
-            [code], { type: 'application/javascript' }
-          );
-          const url = URL.createObjectURL(blob);
-          try {
-            await import(url);
-          } finally {
-            URL.revokeObjectURL(url);
-          }
-        } else {
-          // Classic script — indirect eval runs it in the global
-          // scope (equivalent to a real <script> tag).
-          (0, eval)(code);
-        }
-
-        console.debug(
-          `[content-container] executed: ${label}`
-        );
+        await this._loadScript(src);
       } catch (err) {
         console.error(
-          `[content-container] script failed: ${label}`, err
+          `[content-container] script load failed: ${src}`, err
         );
       }
     }
+  }
+
+  /**
+   * Inject a single <script src> into <head>, await load, then
+   * remove it. Rejection propagates to the caller so a failure is
+   * attributed to the specific src.
+   */
+  _loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const el = document.createElement('script');
+      el.src = src;
+      el.async = false;
+      el.onload = () => {
+        el.remove();
+        resolve();
+      };
+      el.onerror = () => {
+        el.remove();
+        reject(new Error(`Failed to load ${src}`));
+      };
+      document.head.appendChild(el);
+    });
   }
 }
 

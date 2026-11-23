@@ -4,11 +4,11 @@
     "type": "split",
     "children": [
       {
-        "id": "d0c67f8c1f994411",
+        "id": "9556199f5ed62b82",
         "type": "tabs",
         "children": [
           {
-            "id": "94c6393f32394d75",
+            "id": "a0f49d6856809dd6",
             "type": "leaf",
             "state": {
               "type": "empty",
@@ -181,7 +181,7 @@
       "bases:Create new base": false
     }
   },
-  "active": "94c6393f32394d75",
+  "active": "a0f49d6856809dd6",
   "lastOpenFiles": [
     "task-prompt.v2.0.md"
   ]

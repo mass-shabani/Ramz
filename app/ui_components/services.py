@@ -57,6 +57,56 @@ class ComponentService:
         self.logger = logger
         self._components = dict(self.DEFAULT_COMPONENTS)
         self.registry = ComponentExtensionRegistry(logger=logger)
+        # URL-path → ordered list of script URLs to load when
+        # content-container navigates to that path. Populated by
+        # modules via register_content_script() and consumed by
+        # templates through get_content_scripts().
+        self._content_scripts: Dict[str, List[str]] = {}
+
+    # --------------------------------------------------------------
+    # Public API — content scripts (per partial URL)
+    # --------------------------------------------------------------
+    def register_content_script(
+        self, url_pattern: str, script_url: str
+    ) -> bool:
+        """
+        Register a script to load when content-container navigates to
+        `url_pattern`.
+
+        This is the supported mechanism for partials that need
+        client-side JS: instead of embedding <script src> inside the
+        partial (which never executes when injected via innerHTML),
+        the module registers its script here and the template passes
+        get_content_scripts() to content-container via `scripts-map`.
+
+        Idempotent: registering the same (pattern, script_url) twice
+        is a no-op. Order is preserved.
+        """
+        if not url_pattern or not script_url:
+            return False
+        bucket = self._content_scripts.setdefault(url_pattern, [])
+        if script_url not in bucket:
+            bucket.append(script_url)
+        if self.logger:
+            self.logger.log(
+                f"Registered content script '{script_url}' "
+                f"for '{url_pattern}'",
+                tag="ui",
+            )
+        return True
+
+    def get_content_scripts(self) -> Dict[str, List[str]]:
+        """
+        Return a copy of the content-script map.
+
+        Shape: { "/path/to/partial": ["/static/.../a.js", ...] }
+
+        Templates embed this as JSON in the `scripts-map` attribute
+        of <content-container>. content-container normalizes each
+        loaded URL to its pathname and loads the matching scripts
+        before emitting ramz:content-loaded.
+        """
+        return {k: list(v) for k, v in self._content_scripts.items()}
 
     # --------------------------------------------------------------
     # Public API — component registry
