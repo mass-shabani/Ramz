@@ -126,6 +126,7 @@
         <div class="settings-content">
           <content-container
             initial-endpoint="/settings/admin/partials/{{ section }}"
+            scripts-map="{{ content_scripts_map | tojson }}"
           ></content-container>
         </div>
 

@@ -242,11 +242,26 @@ def register_routes(
         # ------------------------------------------------------------
         # Build context and resolve extensions
         # ------------------------------------------------------------
+        # Content scripts map (URL path → [script src]) for the
+        # content-container. Populated by modules via
+        # component_service.register_content_script().
+        try:
+            content_scripts_map = (
+                component_service.get_content_scripts()
+                if component_service
+                and hasattr(component_service, "get_content_scripts")
+                else {}
+            )
+        except Exception:
+            content_scripts_map = {}
+
         context = {
-            "module_name":   "user_panel",
-            "current_user":  current_user,
-            "user_name":     _display_name(current_user),
-            "user_initials": _initials(_display_name(current_user)),
+            "module_name":         "user_panel",
+            "current_user":        current_user,
+            "user_name":           _display_name(current_user),
+            "user_initials":       _initials(_display_name(current_user)),
+            "initial_endpoint":    "/panel/dashboard",
+            "content_scripts_map": content_scripts_map,
         }
 
         if component_service:

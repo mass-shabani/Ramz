@@ -196,12 +196,23 @@ def register_routes(
             "roles":  await _has("admin_panel.roles.view"),
         }
 
+        try:
+            content_scripts_map = (
+                component_service.get_content_scripts()
+                if component_service
+                and hasattr(component_service, "get_content_scripts")
+                else {}
+            )
+        except Exception:
+            content_scripts_map = {}
+
         context = {
-            "profile":      profile,
-            "current_user": current_user,
-            "permissions":  permissions,
-            "section":      section,
-            "module_name":  "admin_panel",
+            "profile":             profile,
+            "current_user":        current_user,
+            "permissions":         permissions,
+            "section":             section,
+            "module_name":         "admin_panel",
+            "content_scripts_map": content_scripts_map,
         }
 
         if component_service:

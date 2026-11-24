@@ -269,6 +269,16 @@ def register_routes(
         context["initial_endpoint"] = initial_endpoint
 
         try:
+            context["content_scripts_map"] = (
+                component_service.get_content_scripts()
+                if component_service
+                and hasattr(component_service, "get_content_scripts")
+                else {}
+            )
+        except Exception:
+            context["content_scripts_map"] = {}
+
+        try:
             html = await template_service.render(
                 "settings.html",
                 context=context,

@@ -106,7 +106,10 @@
     </header>
 
     <main class="content">
-      <content-container initial-endpoint="/panel/dashboard"></content-container>
+      <content-container
+        initial-endpoint="{{ initial_endpoint }}"
+        scripts-map="{{ content_scripts_map | tojson }}"
+      ></content-container>
     </main>
 
   </div>
