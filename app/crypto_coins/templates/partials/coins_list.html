@@ -53,9 +53,9 @@
 
   </ramz-card>
 
-  {# Favorite toggle behavior (TASK 79.5). External script —
-     re-injected by content-container and executed via fetch+eval.
-     See _executeScripts in content-container.js for the mechanism. #}
-  <script src="/static/crypto_coins/js/coins_list.js"></script>
+  {# Favorite toggle behavior is loaded by content-container via the
+     scripts-map attribute (registered in crypto_coins/module.py).
+     Do not add <script src> here — it would not execute after
+     innerHTML injection. #}
 
 </div>

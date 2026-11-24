@@ -69,6 +69,7 @@ class CryptoCoinsModule(IModule):
         db_service        = context.services.get("app_db_service")
         http_api          = context.services.get("http_api")
         template_service  = context.services.get("template_service")
+        component_service = context.services.get("component_service")
 
         if not market_service:
             if logger:
@@ -124,6 +125,35 @@ class CryptoCoinsModule(IModule):
                 "crypto_coins_service registered",
                 tag="crypto_coins",
             )
+
+        # --- 2b. Register content scripts (TASK 79.5) -------------
+        # content-container loads these per partial URL. Partial
+        # HTML no longer contains <script src> (which would not
+        # execute after innerHTML injection).
+        if component_service and hasattr(
+            component_service, "register_content_script"
+        ):
+            try:
+                component_service.register_content_script(
+                    "/crypto/coins/partials/list",
+                    "/static/crypto_coins/js/coins_list.js",
+                )
+                component_service.register_content_script(
+                    "/crypto/coins/partials/settings",
+                    "/static/crypto_coins/js/coins_settings.js",
+                )
+                if logger:
+                    logger.log(
+                        "crypto_coins content scripts registered "
+                        "(list, settings)",
+                        tag="crypto_coins",
+                    )
+            except Exception as exc:
+                if logger:
+                    logger.log(
+                        f"content script registration failed: {exc}",
+                        level="WARNING", tag="crypto_coins",
+                    )
 
         # --- 3. Register templates directory ------------------
         if template_service:
