@@ -149,10 +149,22 @@ class CryptoCoinsModule(IModule):
                     "/panel/dashboard",
                     "/static/crypto_coins/js/top-coins-widget.js",
                 )
+                # Presence heartbeat — keeps crypto_market poller
+                # alive while a coins partial is open. Registered
+                # for both partial URLs; presence.js is idempotent
+                # so double-loading across navigation is safe.
+                component_service.register_content_script(
+                    "/crypto/coins/partials/list",
+                    "/static/crypto_coins/js/presence.js",
+                )
+                component_service.register_content_script(
+                    "/crypto/coins/partials/settings",
+                    "/static/crypto_coins/js/presence.js",
+                )
                 if logger:
                     logger.log(
                         "crypto_coins content scripts registered "
-                        "(list, settings, top-coins-widget)",
+                        "(list, settings, top-coins-widget, presence)",
                         tag="crypto_coins",
                     )
             except Exception as exc:
