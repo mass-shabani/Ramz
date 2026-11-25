@@ -142,10 +142,17 @@ class CryptoCoinsModule(IModule):
                     "/crypto/coins/partials/settings",
                     "/static/crypto_coins/js/coins_settings.js",
                 )
+                # Dashboard widget: register for the dashboard URL
+                # so the widget's custom element is defined before
+                # the extension HTML (added in TASK 79.7) is parsed.
+                component_service.register_content_script(
+                    "/panel/dashboard",
+                    "/static/crypto_coins/js/top-coins-widget.js",
+                )
                 if logger:
                     logger.log(
                         "crypto_coins content scripts registered "
-                        "(list, settings)",
+                        "(list, settings, top-coins-widget)",
                         tag="crypto_coins",
                     )
             except Exception as exc:

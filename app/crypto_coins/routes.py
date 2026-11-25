@@ -446,6 +446,51 @@ def _serialize_coin_row(
     }
 
 
+def _serialize_summary_row(coin: CoinData, currency: str) -> dict:
+    """
+    Build one compact row for the dashboard widget.
+
+    Columns:
+        Coin    — avatar + name + canonical
+        Price   — reference price in `currency`
+        Sources — count of contributing providers (badge)
+
+    Reuses `_format_price`; same reference-price fallback logic as
+    `_serialize_coin_row` (preferred currency → USDT → USD → RLS).
+    """
+    canonical = coin.canonical or ""
+    name = coin.name or canonical
+
+    reference_price = coin.reference_prices.get(currency)
+    if reference_price is None:
+        for alt in ("USDT", "USD", "RLS"):
+            reference_price = coin.reference_prices.get(alt)
+            if reference_price is not None:
+                break
+
+    sources = coin.sources or []
+    sources_count = len(sources)
+    if sources_count >= 2:
+        sources_badge = {"text": str(sources_count), "variant": "active"}
+    elif sources_count == 1:
+        sources_badge = {"text": str(sources_count), "variant": "idle"}
+    else:
+        sources_badge = {"text": "—", "variant": "idle"}
+
+    initials = canonical[:2].upper() if canonical else "?"
+
+    return {
+        "_coin": {
+            "initials":    initials,
+            "name":        name,
+            "email":       canonical,
+            "avatarClass": "avatar--indigo",
+        },
+        "_price":   _format_price(reference_price, currency),
+        "_sources": sources_badge,
+    }
+
+
 def _sort_key(coin: CoinData):
     """
     Sort key: nobitex USDT price desc, then coingecko USD desc,
@@ -1074,6 +1119,154 @@ def register_routes(
                 "status":  "success",
                 "message": "Settings saved.",
                 "saved":   saved,
+            },
+            status_code=200,
+        )
+
+    # ----------------------------------------------------------
+    # POST /crypto/coins/api/summary
+    # ----------------------------------------------------------
+    @http_api.post(
+        "/crypto/coins/api/summary",
+        response_class=http_api.JSONResponse,
+    )
+    async def coins_api_summary(request: http_api.Request):
+        """
+        Return the top N coins as JSON for the dashboard widget.
+
+        Unlike /api/list (full list, 6 columns), this endpoint
+        returns a compact payload (3 columns) of the top N coins
+        sorted by the same key as the list, for a small dashboard
+        card.
+
+        Body (JSON or form-encoded; optional):
+            {"limit": 5}
+
+        `limit` is clamped to [1, 20]. Default is 5.
+
+        Response:
+            {
+                "status":   "success",
+                "currency": "USDT",
+                "total":    5,
+                "columns":  [...],
+                "rows":     [...]
+            }
+
+        Auth: `crypto.coins.view` grant (same as the list endpoint).
+        """
+        user_id, err = await _check_coins_view(
+            request, db_service, logger
+        )
+        if err is not None:
+            return _json_error(
+                http_api, err["status_code"],
+                err["body"]["code"], err["body"]["message"],
+            )
+
+        if coins_service is None:
+            return _json_error(
+                http_api, 503, "service_unavailable",
+                "Coins service unavailable.",
+            )
+
+        # Optional `limit` in body (JSON or form). Any parse error
+        # falls back to the default — the request must not fail
+        # because of a malformed optional field.
+        content_type = (
+            request.headers.get("content-type") or ""
+        ).lower()
+        body: dict = {}
+        try:
+            if "application/json" in content_type:
+                parsed = await request.json()
+                if isinstance(parsed, dict):
+                    body = parsed
+            elif (
+                "multipart/form-data" in content_type
+                or "application/x-www-form-urlencoded" in content_type
+            ):
+                form = await request.form()
+                body = dict(form)
+        except Exception:
+            body = {}
+
+        try:
+            limit = int(body.get("limit", 5))
+        except (TypeError, ValueError):
+            limit = 5
+        if limit < 1:
+            limit = 1
+        if limit > 20:
+            limit = 20
+
+        # Read currency preference.
+        currency = "USDT"
+        if preference_repo is not None:
+            try:
+                currency = await preference_repo.get_display_currency(
+                    user_id
+                )
+            except Exception as exc:
+                if logger:
+                    logger.log(
+                        f"summary get_display_currency failed "
+                        f"({exc}); using USDT",
+                        level="WARNING", tag="crypto_coins",
+                    )
+
+        # Trigger a debounced refresh if there is no snapshot yet.
+        # Same pattern as /api/list, without the self-healing force
+        # pass (the widget is not a primary surface; a follow-up
+        # navigation will retry).
+        try:
+            if not coins_service.has_data():
+                await coins_service.refresh_now(force=False)
+        except Exception as exc:
+            if logger:
+                logger.log(
+                    f"summary refresh_now failed: {exc}",
+                    level="WARNING", tag="crypto_coins",
+                )
+
+        try:
+            coins = await coins_service.get_coins()
+        except Exception as exc:
+            if logger:
+                logger.log(
+                    f"summary get_coins failed: {exc}",
+                    level="ERROR", tag="crypto_coins",
+                )
+            return _json_error(
+                http_api, 500, "internal_error",
+                "Failed to load coins.",
+            )
+
+        try:
+            coins_sorted = sorted(coins, key=_sort_key)
+        except Exception:
+            coins_sorted = coins
+
+        top = coins_sorted[:limit]
+        rows = [_serialize_summary_row(c, currency) for c in top]
+
+        columns = [
+            {"key": "_coin",    "label": "Coin",
+             "type": "avatar"},
+            {"key": "_price",   "label": f"Price ({currency})",
+             "type": "text",    "align": "right",
+             "className": "amount"},
+            {"key": "_sources", "label": "Sources",
+             "type": "badge",   "align": "right"},
+        ]
+
+        return http_api.JSONResponse(
+            content={
+                "status":   "success",
+                "currency": currency,
+                "total":    len(rows),
+                "columns":  columns,
+                "rows":     rows,
             },
             status_code=200,
         )
