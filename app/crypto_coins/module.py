@@ -162,6 +162,85 @@ class CryptoCoinsModule(IModule):
                         level="WARNING", tag="crypto_coins",
                     )
 
+        # --- 2c. Register UI extensions (TASK 79.7) ----------------
+        # Sidebar items and dashboard widget are consumed by the
+        # Phase 0 infrastructure (ramz-sidebar reads
+        # window.__ramz.extensions['ui.sidebar.items']; dashboard-
+        # content.html iterates ui_extensions['ui.dashboard.widgets']).
+        if component_service and hasattr(
+            component_service, "register_extension"
+        ):
+            try:
+                coins_icon = (
+                    '<svg viewBox="0 0 24 24" fill="none" '
+                    'stroke="currentColor" stroke-width="1.9" '
+                    'stroke-linecap="round" stroke-linejoin="round">'
+                    '<path d="M12 2v20"/>'
+                    '<path d="M17 6.5c0-1.9-2.2-3-5-3s-5 1.1-5 3 '
+                    '2.2 2.7 5 3 5 1.1 5 3-2.2 3-5 3-5-1.1-5-3"/>'
+                    '</svg>'
+                )
+                settings_icon = (
+                    '<svg viewBox="0 0 24 24" fill="none" '
+                    'stroke="currentColor" stroke-width="1.9" '
+                    'stroke-linecap="round" stroke-linejoin="round">'
+                    '<circle cx="12" cy="12" r="3"/>'
+                    '<path d="M12 2v3M12 19v3M2 12h3M19 12h3'
+                    'M4.9 4.9l2.1 2.1M17 17l2.1 2.1'
+                    'M4.9 19.1l2.1-2.1M17 7l2.1-2.1"/>'
+                    '</svg>'
+                )
+
+                component_service.register_extension(
+                    "ui.sidebar.items",
+                    {
+                        "label":    "Crypto Coins",
+                        "endpoint": "/crypto/coins/partials/list",
+                        "icon":     coins_icon,
+                        "order":    100,
+                        "group":    "Crypto",
+                    },
+                    "crypto.coins.view",
+                    "crypto_coins",
+                )
+                component_service.register_extension(
+                    "ui.sidebar.items",
+                    {
+                        "label":    "Coin Settings",
+                        "endpoint": "/crypto/coins/partials/settings",
+                        "icon":     settings_icon,
+                        "order":    110,
+                        "group":    "Crypto",
+                    },
+                    "crypto.coins.favorite",
+                    "crypto_coins",
+                )
+                component_service.register_extension(
+                    "ui.dashboard.widgets",
+                    {
+                        "html":  (
+                            '<top-coins-widget '
+                            'endpoint="/crypto/coins/api/summary">'
+                            '</top-coins-widget>'
+                        ),
+                        "order": 10,
+                    },
+                    "crypto.coins.view",
+                    "crypto_coins",
+                )
+                if logger:
+                    logger.log(
+                        "crypto_coins UI extensions registered "
+                        "(2 sidebar items, 1 dashboard widget)",
+                        tag="crypto_coins",
+                    )
+            except Exception as exc:
+                if logger:
+                    logger.log(
+                        f"UI extension registration failed: {exc}",
+                        level="WARNING", tag="crypto_coins",
+                    )
+
         # --- 3. Register templates directory ------------------
         if template_service:
             try:
